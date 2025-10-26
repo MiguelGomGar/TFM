@@ -1,0 +1,30 @@
+# --- Archivos de proyecto ---
+.Rproj.user
+
+# --- Archivos de RStudio ---
+.Rhistory
+.RData
+.Ruserdata
+
+# --- Archivos temporales / caché ---
+*.tmp
+*.log
+*.bak
+*.swp
+*.swo
+*.DS_Store
+
+# --- Archivos generados automáticamente ---
+*.html
+*.pdf
+*.png
+*.jpg
+
+# --- Archivos grandes o datos sin procesar ---
+DATA/RAW/
+OUTPUTS/
+Bibliografía/
+
+# --- Configuración personal o entornos ---
+.env
+.Renviron 
