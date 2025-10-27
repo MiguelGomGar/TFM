@@ -1,11 +1,32 @@
-library(tidyverse)
-
+#---- PAQUETES Y DATOS----
+library(tidyverse) 
 datos <- readRDS("DATA/PROCESSED/conc_polyphen.Rdata")
 
-datos |> # gráfico de cajas y bigotes por sedes comparando por sexo
-    ggplot(aes(x = interv, y = Conc_Hydroxytyrosol_ngml))+
-    geom_boxplot(outliers = TRUE, outlier.color = "red", na.rm = TRUE)+
-    geom_jitter(colour = "blue", na.rm = TRUE)+
+hydroxytyrosol <- datos |> 
+    filter(sustancia == "Hydroxytyrosol")
+tyrosol <- datos |> 
+    filter(sustancia == "Tyrosol")
+
+#----HYDROXYTYROSOL-----
+hydroxytyrosol|>
+    ggplot(aes(x = interv, y = conc_ngml))+
+    geom_boxplot(outliers = TRUE, 
+                 outlier.shape = "o", 
+                 outlier.color = "red",
+                 outlier.size = 2)+
     xlab("")+
-    ylab("Hidroxitirosol (ng/mL)")+
+    ylab("Concentración (ng/mL)")+
+    ggtitle("Hydroxytyrosol")+
+    facet_wrap(~etapa)
+
+#----TYROSOL-----
+tyrosol|>
+    ggplot(aes(x = interv, y = conc_ngml))+
+    geom_boxplot(outliers = TRUE, 
+                 outlier.shape = "o", 
+                 outlier.color = "red",
+                 outlier.size = 2)+
+    xlab("")+
+    ylab("Concentración (ng/mL)")+
+    ggtitle("Tyrosol")+
     facet_wrap(~etapa)
