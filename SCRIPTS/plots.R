@@ -14,6 +14,7 @@ hydroxytyrosol|>
                  outlier.shape = "o", 
                  outlier.color = "red",
                  outlier.size = 2)+
+    geom_jitter()+
     xlab("")+
     ylab("Concentración (ng/mL)")+
     ggtitle("Hydroxytyrosol")+
