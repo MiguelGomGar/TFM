@@ -1,0 +1,9 @@
+# Archivos de R
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+
+# Directorios
+data/
+results/
