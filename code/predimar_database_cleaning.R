@@ -24,8 +24,25 @@ predimar_selected <- predimar_unlabelled |>
     select(
         1:6,
         event18m_conkardia,
+        
         starts_with("p14_tot"),
-        phenetanol4glucur0:ConcTyrosolngmL1
+        starts_with("ac_oliva"),
+        starts_with("ac_olivavir"),
+        starts_with("olivatot"),
+        starts_with("ac_orujo"),
+        starts_with("ac_maiz"),
+        starts_with("ac_girasol"),
+        starts_with("ac_soja"),
+        starts_with("ac_mezcla"),
+        starts_with("v_blanco"),
+        starts_with("v_tinto"),
+        starts_with("v_rosado"),
+        starts_with("v_moscatel"),
+        starts_with("cervezas"),
+        starts_with("alcoholg"),
+        
+        phenetanol4glucur0:ConcTyrosolngmL1,
+        -starts_with("Conc")
     ) |> 
     filter(!(code %in% excluded_patients))
 
