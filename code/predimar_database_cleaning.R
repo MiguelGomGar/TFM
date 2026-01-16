@@ -137,9 +137,7 @@ predimar_event_long <- predimar_modified |>
         names_to  = "visit",
         values_to = "event_conkardia"
     ) |> 
-    mutate(
-        visit = "18"
-    )
+    mutate(visit = "18")
 
 # Inner join p14 & metabolites ----
 keys_long <- c("code", "tipofa", "interv", "nodo", "sexo", "visit", "edad")
@@ -153,7 +151,8 @@ predimar_long <- predimar_p14_long |>
         "af_type" = tipofa,
         "group"   = interv,
         "node"    = nodo,
-        "sex"     = sexo
+        "sex"     = sexo,
+        "age"     = edad
     )
 
 write.csv(
