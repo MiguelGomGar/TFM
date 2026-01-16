@@ -10,6 +10,8 @@ original_dataset <- read_dta(file = "data/raw/predimar_miguelgomez.dta")
 predimar_unlabelled <- original_dataset |> 
     remove_labels() 
 
+excluded_patients <- load("data/processed/patients_excluded.RData")
+
 write.csv(
     predimar_unlabelled,
     file = "data/processed/predimar_original.csv",
@@ -17,14 +19,15 @@ write.csv(
     fileEncoding = "UTF-8"
 )
 
-# Selecting relevant variables ----
+# Selecting relevant variables and filtering excluded records ----
 predimar_selected <- predimar_unlabelled |> 
     select(
         1:6,
         event18m_conkardia,
         starts_with("p14_tot"),
         phenetanol4glucur0:ConcTyrosolngmL1
-    )
+    ) |> 
+    filter(!(code %in% excluded_patients))
 
 # Factors encoding ----
 predimar_modified <- predimar_selected |> 
