@@ -10,12 +10,10 @@ original_dataset <- read_dta(file = "data/raw/predimar_miguelgomez.dta")
 predimar_unlabelled <- original_dataset |> 
     remove_labels() 
 
-write.table(
+write.csv(
     predimar_unlabelled,
-    file = "data/processed/predimar_original.txt",
-    sep = ",",
+    file = "data/processed/predimar_original.csv",
     row.names = FALSE,
-    quote = TRUE,
     fileEncoding = "UTF-8"
 )
 
@@ -140,7 +138,9 @@ predimar_long <- predimar_p14_long |>
 
 write.csv(
     x    = predimar_long,
-    file = "data/processed/predimar_long.csv"
+    file = "data/processed/predimar_long.csv",
+    row.names = FALSE,
+    fileEncoding = "UTF-8"
     )
 
 # Wide pivoting (metabolites) ----
@@ -188,5 +188,7 @@ predimar_wide <- predimar_polyphenols_wide |>
     
 write.csv(
     x    = predimar_wide,
-    file = "data/processed/predimar_wide.csv"
+    file = "data/processed/predimar_wide.csv",
+    row.names = FALSE,
+    fileEncoding = "UTF-8"
 )
