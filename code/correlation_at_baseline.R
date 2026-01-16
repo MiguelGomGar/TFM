@@ -1,19 +1,22 @@
-#---- Packages ----
+## we want to check whether the polyphenol's concentrations vary with the 
+## specified feature before the intervention begins
+
+# Packages ----
 library(tidyverse)
 library(latex2exp)
 
-#---- Data ----
+# Data ----
 data <-  read.csv("data/processed/predimar_long.csv") |> 
     filter(visit == 0) |> 
     drop_na()
 
-compounds <- unique(data$compound)
+compounds <- data |> select(compound) |> pull() |> unique()
 
-#---- Wrapped scatter plot ----
-g1 <-  data |> 
+# Wrapped scatter plot ----
+wrapped_plot <-  data |> 
     ggplot(
         aes(
-            x = p14, 
+            x = p14, # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  PARAMETER 
             y = conc_umol_molcreat,
             color = compound
         )
@@ -33,16 +36,13 @@ g1 <-  data |>
 
 ggsave(
     filename = "results/conc_vs_p14&aove_correlation_baseline/wrapped_scatter_plot.pdf",
-    plot = g1,
+    plot = wrapped_plot,
     device = "pdf",
     width = 18,
     height = 12
 )
 
-#---- Linear regression ----
-
-## we want to check whether the polyphenol's concentrations vary with the p14
-## variable before the trial begins
+# Linear regression ----
 
 r <- rep(0, length(compounds))
 r2 <- rep(0, length(compounds))
@@ -53,13 +53,16 @@ for (i in seq_along(compounds)) {
     df <- data |> 
         filter(compound == compounds[i])
     
-    test <- cor.test(x = df$p14, y = df$conc_umol_molcreat)
+    x <- df |> select(p14) |> pull() # <<<<<<<<<<<<<<<<<<< PARAMETER
+    y <- df |> select(conc_umol_molcreat) |> pull()
+    
+    test <- cor.test(x = x, y = y)
     
     r[i] <- test$estimate
     r2[i]  <- r[i]^2
     p_val[i] <- test$p.value
     
-    g2 <- ggplot(
+    single_plot <- ggplot(
         df,
         aes(
             x = p14,
@@ -94,7 +97,7 @@ for (i in seq_along(compounds)) {
             as.character(compounds[i]),
             "_visit0.pdf"
         ),
-        plot = g2,
+        plot = single_plot,
         device = "pdf",
         width = 7,
         height = 5
@@ -109,7 +112,7 @@ regression_summary <- tibble(
     concen_pvalue = p_val
 )
 
-g3 <- regression_summary |> 
+r2_plot <- regression_summary |> 
     mutate(
         compound = fct_reorder(compound, determination_coef)
     ) |> 
@@ -128,7 +131,7 @@ g3 <- regression_summary |>
 
 ggsave(
     filename = "results/conc_vs_p14&aove_correlation_baseline/r2_compounds.pdf",
-    plot = g3,
+    plot = r2_plot,
     device = "pdf",
     width = 7,
     height = 5
