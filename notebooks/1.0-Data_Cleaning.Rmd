@@ -204,9 +204,16 @@ clinical_data_clean <- clinical_data_modified |> setnames(
 This is the basal data we will use to build the model. Lets save it:
 
 ```{r}
+# Save it into the project's data directory
 write_parquet(
     clinical_data_clean, 
     "data/processed/clinical_data_clean.parquet"
+    )
+
+# Save it into Google drive's data directory
+write_parquet(
+    clinical_data_clean, 
+    "H:/Mi unidad/TFM/data/processed/clinical_data_clean.parquet"
     )
 
 head(clinical_data_clean)
