@@ -1,0 +1,213 @@
+---
+title: "1.0-Data Cleaning"
+output: html_document
+---
+
+# Packages
+
+```{r echo = FALSE, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(haven)
+library(labelled)
+library(arrow)
+library(data.table)
+```
+
+# Load the data
+This data set stores clinical information from patients in the PREDIMAR study. The aim of this project is to build a machine learning model capable of predicting AF recurrence based on medical data.
+
+Let's load the data set:
+
+```{r echo = FALSE}
+global <- read_dta("data/raw/predimar_miguelgomez.dta")
+```
+
+Since it is a STATA file, the labels need to be removed:
+
+```{r}
+original_clinical_data <- global |> remove_labels()
+
+# Save
+write_parquet(
+    original_clinical_data, 
+    "data/processed/clinical_data_original.parquet"
+    )
+```
+
+# Data cleaning
+The data set consists of thousands of features referring over 700 patients. The ones taken into account are clinical and nutritional characteristics:
+
+* **Clinical data**
+** `tipofa`: type of Atrial Fibrillation ($0$ paroxysmal,$1$ recurrent).
+** `fec_fa_0m`: date of the first AF diagnosis.
+** `fec_ablac_0m`: date of the first catheter ablation.
+** `interv`: assigned cohort ($0$ control, $1$ intervention).
+** `event18m_conkardia`: whether there has been AF recurrence after the blanking period and before $18$ months since the catheter ablation ($0$ no, $1$ yes).
+** `sexo`: gender ($0$ male, $1$ female)
+** `edad`: age.
+** `ablacion_previa`: whether the patient has undergone catheter ablation previously to this trial ($0$ no, $1$ yes).
+** `tiempo_fa_ablac`: years since the first AF diagnosis.
+** `dilat_tot4_imp`: left atrial enlargement ($0$ normal, $1$ mild, $2$ moderate, $3$ severe).
+** `bmi_autoref_0m`: Body Mass Index ($0$ normal weight, $25$ overweight, $30$ obese).
+** `mettotal_0m`: MET (physical activity measurement).
+** `hta_0m`: hypertension ($0$ no, $1$ yes).
+** `diabetes2_0m`: type 2 diabetes ($0$ no, $1$ yes).
+** `hipolipemiantes_0m`: whether the patient takes hypolipidemic medication ($0$ no, $1$ yes).
+** `hipercol_0m`: whether the patient suffers from dyslipidemia ($0$ no, $1$ yes).
+
+* **Nutritional data**
+** `p14_tot_0m:`: affinity to the Mediterranean diet ($0 - 14$).
+** `energiat_0m`: total daily energy intake ($kcal$).
+** `ac_oliva_0m`: olive oil daily intake ($g$).
+** `ac_olivavir_0m`: extra virgin olive oil daily intake ($g$).
+** `ac_orujo_0m`: pomace oil daily intake ($g$).
+** `ac_maiz_0m`: corn oil daily intake ($g$).
+** `ac_girasol_0m`: sunflower oil daily intake ($g$).
+** `ac_soja_0m`: soy oil daily intake ($g$).
+** `v_blanco_0m`: white wine daily intake ($g$).
+** `v_tintojov_0m`: young red wine daily intake ($g$
+** `v_tintoaniej_0m`: aged red wine daily intake ($g$).
+** `v_rosado_0m`: rose wine daily intake ($g$).
+** `cervezas_0m`: beer daily intake ($g$).
+** `alcoholg_0m`: total alcohol daily intake ($g$).
+
+```{r}
+clinical_data_selected <- original_clinical_data |> 
+    select(
+
+        # Clinical DATA
+        code,
+        tipofa,
+        fec_fa_0m,
+        fec_ablac_0m,
+        interv,
+        nodo,
+        sexo,
+        edad,
+        event18m_conkardia, # PREDICTED CLASS
+        ablacion_previa,
+        tiempo_fa_ablac,
+        hta_0m,
+        dilat_tot4_imp,
+        bmi_autoref_0m,
+        mettotal_0m,
+        diabetest2_0m,
+        hipolipemiantes_0m,
+        hipercol_0m,
+        
+        # NUTRITIONAL DATA (g/day)
+        p14_tot_0m,
+        energiat_0m,
+        ac_oliva_0m,
+        ac_olivavir_0m,
+        ac_orujo_0m,
+        ac_maiz_0m,
+        ac_girasol_0m,
+        ac_soja_0m,
+        v_blanco_0m,
+        v_tintojov_0m,
+        v_tintoaniej_0m,
+        v_rosado_0m,
+        cervezas_0m,
+        alcoholg_0m,
+    )
+
+head(clinical_data_selected)
+```
+
+Lets label the categorical data using factors:
+
+```{r}
+clinical_data_modified <- clinical_data_selected |> 
+    mutate(
+        tipofa = factor(
+            tipofa,
+            levels = c(0, 1),
+            labels = c("paroxysmal", "persistent")
+        ),
+        interv = factor(
+            interv,
+            levels = c(0, 1),
+            labels = c("control", "intervention")
+        ),
+        nodo = factor(
+            nodo,
+            levels = c(1, 2, 3, 4),
+            labels = c("Pamplona", "Madrid", "Granada", "Alicante")
+        ),
+        sexo = factor(
+            sexo,
+            levels = c(0, 1),
+            labels = c("male", "female")     
+        ),
+        event18m_conkardia = factor(
+            event18m_conkardia,
+            levels = c(0, 1),
+            labels = c("no", "yes")
+        ),
+        ablacion_previa = factor(
+            ablacion_previa,
+            levels = c(0, 1),
+            labels = c("no", "yes")
+        ),
+        hta_0m = factor(
+            hta_0m,
+            levels = c(0, 1),
+            labels = c("no", "yes")
+        ),
+        dilat_tot4_imp = factor(
+            dilat_tot4_imp,
+            levels = c(0, 1, 2, 3),
+            labels = c("normal", "mild", "moderate", "severe")
+        ),
+        diabetest2_0m = factor(
+            diabetest2_0m,
+            levels = c(0, 1),
+            labels = c("no", "yes")
+        ),
+        hipolipemiantes_0m = factor(
+            hipolipemiantes_0m,
+            levels = c(0, 1),
+            labels = c("no", "yes")
+        ),
+        hipercol_0m = factor(
+            hipercol_0m,
+            levels = c(0, 1),
+            labels = c("no", "yes")
+        )
+    )
+
+head(clinical_data_modified)
+```
+
+The `fec_fa_0m` and `fec_ablac_0m` features can be used to create a new feature called `tiempo_fa_ablac` that measures the years since the first AF diagnosis until the catheter ablation.
+
+```{r}
+clinical_data_modified <- clinical_data_modified |> 
+    mutate(
+        tiempo_fa_ablac = as.numeric(fec_ablac_0m - fec_fa_0m) / 365.25
+    ) |> 
+    select(-c(fec_fa_0m, fec_ablac_0m))
+```
+
+Lets translate and modify the variables' names to make them more understandable:
+
+```{r}
+new_names <- c("id", "fa_type", "cohort", "node", "gender", "age", "cardiac_event", "prev_ablation", "fa_ablat_time", "hbp", "atrial_dilation", "bmi", "met", "diabetes_t2", "hypolipidemic", "hypercholest", "p14", "energy", "olive_oil", "ev_olive_oil", "pomace_oil", "corn_oil", "sunflower_oil", "soy_oil", "white_wine", "young_red_wine", "aged_red_wine", "rose_wine", "beer", "alcohol")
+
+clinical_data_clean <- clinical_data_modified |> setnames(
+    old = names(clinical_data_modified), 
+    new = new_names
+    )
+```
+
+This is the basal data we will use to build the model. Lets save it:
+
+```{r}
+write_parquet(
+    clinical_data_clean, 
+    "data/processed/clinical_data_clean.parquet"
+    )
+
+head(clinical_data_clean)
+```

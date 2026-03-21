@@ -1,0 +1,25 @@
+# ========================
+# DATA
+# ========================
+data/
+
+# ========================
+# R & RSTUDIO
+# ========================
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+
+# ========================
+# PYTHON & JUPYTER
+# ========================
+.ipynb_checkpoints/
+__pycache__/
+*.pyc
+
+# ========================
+# IDE & SISTEMA OPERATIVO
+# ========================
+.vscode/
+Thumbs.db

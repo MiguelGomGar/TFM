@@ -1,0 +1,313 @@
+---
+title: "2.0- Exploratory Data Analysis"
+output: html_document
+---
+
+# Packages
+
+```{r echo = FALSE, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(arrow)
+library(skimr)
+library(scales)
+library(car)
+```
+
+# Load the data
+
+```{r}
+# full data
+clinical_data <- read_parquet("data/processed/clinical_data_clean.parquet")
+
+head(clinical_data)
+```
+
+The `id` feature is merely descriptive and will not add information to the model, so we will drop it:
+
+```{r}
+clinical_data <- clinical_data |> select(-id)
+```
+
+# Global summary
+Let's check the column's data types and whether there are many missing values:
+
+```{r}
+skim(clinical_data) |> summary()
+```
+
+There are 720 rows and 30 columns: 11 categorical (one of them is the predicted class) and 19 numerical variables. Let's check each type separately. 
+
+## Numerical features
+Let's sum up the data:
+
+```{r}
+skim(clinical_data) |> yank("numeric") |> 
+  select(-c(starts_with("p"), hist, complete_rate))
+```
+
+There are no missing values in the numerical features.
+
+## Categorical features
+
+Let's sum up the data:
+
+```{r}
+skim(clinical_data) |> yank("factor") |> select(-c(complete_rate, ordered))
+```
+
+There are 17 missing values in the `hypolipidemic` feature.
+
+```{r}
+clinical_data |> select(hypolipidemic) |> table()
+```
+
+Since the class is unbalanced, we will decide later on how to deal with these missing values.
+
+# Statistical analysis
+Firstly, let's check how the data is distributed.
+
+## Numerical features
+
+```{r, fig.width=10, fig.height=8}
+clinical_data |> 
+    select(where(is.numeric)) |> 
+    pivot_longer(
+        cols = everything(),
+        names_to = "feature",
+        values_to = "value"
+        ) |> 
+    ggplot(aes(x = value)) +
+    geom_histogram(bins = 10, color = "black", fill = "cyan") +
+    facet_wrap(~ feature, scales = "free") +
+    theme_minimal()
+```
+
+Most of the numerical features don't show a normal distribution. Apart from this, the `corn_oil`, `pomace_oil`, `rose_wine` and `soy_oil` distributions show that all their values are zero. Let's check these features individually:
+
+```{r}
+clinical_data |> select(corn_oil) |> table()
+```
+
+```{r}
+clinical_data |> select(pomace_oil) |> table()
+```
+
+```{r}
+clinical_data |> select(rose_wine) |> table()
+```
+
+```{r}
+clinical_data |> select(soy_oil) |> table()
+```
+
+Since all these features are empty or almost empty, we will drop them from the data set:
+
+```{r}
+clinical_data <- clinical_data |> 
+  select(-c(corn_oil, pomace_oil, rose_wine, soy_oil))
+```
+
+Let's generate the new histogram with the remaining features:
+
+```{r, fig.width=10, fig.height=8}
+clinical_data |> 
+    select(where(is.numeric)) |> 
+    pivot_longer(
+        cols = everything(),
+        names_to = "feature",
+        values_to = "value"
+        ) |> 
+    ggplot(aes(x = value)) +
+    geom_histogram(bins = 10, color = "black", fill = "cyan") +
+    facet_wrap(~ feature, scales = "free") +
+    theme_minimal()
+```
+
+Now, let's check how does the distribution of each feature behaves when we stratify the data by the target class:
+
+```{r, fig.width=10, fig.height=8}
+clinical_data |> 
+    select(where(is.numeric), cardiac_event) |> 
+    pivot_longer(
+        cols = -cardiac_event,
+        names_to = "feature",
+        values_to = "value"
+    ) |> 
+    ggplot(aes(x = cardiac_event, y = value)) +
+    geom_boxplot() +
+    scale_y_continuous(trans = pseudo_log_trans(base = 10)) +
+    facet_wrap(~ feature, scales = "free") +
+    theme_minimal()
+```
+
+## Categorical features
+
+```{r, fig.width=10, fig.height=8}
+clinical_data |> 
+    select(where(is.factor)) |> 
+    pivot_longer(
+        cols = everything(),
+        names_to = "feature",
+        values_to = "value"
+        ) |> 
+    ggplot(aes(x = value)) +
+    geom_bar(color = "black", fill = "cyan") +
+    facet_wrap(~ feature, scales = "free") + 
+    labs(x = "", y = "") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Most of these categories are unbalanced, including the target class. Now let's see how this changes when we stratify the data by the target class:
+
+```{r, fig.width=10, fig.height=8}
+clinical_data |> 
+    select(where(is.factor)) |> 
+    pivot_longer(
+        cols = -cardiac_event,
+        names_to = "feature",
+        values_to = "value"
+        ) |> 
+    ggplot(aes(x = value, fill = cardiac_event)) +
+    geom_bar(color = "black", position = "fill") +
+    facet_wrap(~ feature, scales = "free") + 
+    labs(x = "", y = "") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Since most of the missing values in the `hypolipidemic` feature belong to the majority category, we will delete those records:
+
+```{r}
+clinical_data <- clinical_data |> drop_na()
+```
+
+# Multicolinearity
+Finally, let's check the correlation between features to drop those that are highly correlated. To address numerical features' colinearity, we will use the **VIF**.
+
+```{r}
+# Fit a linear model with all the features
+model <- glm(
+    cardiac_event ~ ., 
+    data = clinical_data, 
+    family = binomial
+    )
+
+# Calculate the equivalent VIF corrected for the degrees of freedom
+vif_df <- vif(model) |> 
+    as.data.frame() |> 
+    rownames_to_column(var = "feature") |> 
+    as_tibble() |> 
+    rename(
+        GVIF = 2,
+        Df = 3,
+        Adjusted_GVIF = 4
+    ) |> 
+    mutate(VIF_Equivalent = Adjusted_GVIF^2) |> 
+    select(feature, VIF_Equivalent)
+
+# Plot the VIF values
+vif_df |> 
+    ggplot(aes(x = reorder(feature, VIF_Equivalent), y = VIF_Equivalent)) + 
+    geom_bar(stat = "identity", fill = "cyan", color = "black") +
+    geom_hline(yintercept = 5, linetype = "dashed", color = "orange") +
+    geom_hline(yintercept = 10, linetype = "dashed", color = "red") +
+    labs(x = "", y = "VIF") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+The categorical features aren't correlated at all. On the other hand, the alcoholic drinks are somehow correlated with each other, specially with the `alcohol` feature. Therefore we will drop the `alcohol` feature from the data set and calculate again the VIFs:
+
+```{r}
+# drop the alcohol feature
+temp_df <- clinical_data |> 
+    select(-alcohol)
+
+# fit a linear model with the remaining numeric features
+model <- glm(
+    cardiac_event ~ ., 
+    data = temp_df, 
+    family = binomial
+    )
+
+# Calculate the equivalent VIF corrected for the degrees of freedom
+vif_df <- vif(model) |> 
+    as.data.frame() |> 
+    rownames_to_column(var = "feature") |> 
+    as_tibble() |> 
+    rename(
+        GVIF = 2,
+        Df = 3,
+        Adjusted_GVIF = 4
+    ) |> 
+    mutate(VIF_Equivalent = Adjusted_GVIF^2) |> 
+    select(feature, VIF_Equivalent)
+
+# # Plot the VIF values
+vif_df |> 
+    ggplot(aes(x = reorder(feature, VIF_Equivalent), y = VIF_Equivalent)) + 
+    geom_bar(stat = "identity", fill = "cyan", color = "black") +
+    geom_hline(yintercept = 5, linetype = "dashed", color = "orange") +
+    labs(x = "", y = "VIF") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+What happens if we keep the `alcohol` feature and drop the ones referring to specific alcoholic drinks?
+
+```{r}
+# drop the alcohol feature
+temp_df <- clinical_data |> 
+    select(
+        -c(white_wine, young_red_wine, aged_red_wine, beer)
+        )
+
+# fit a linear model with the remaining numeric features
+model <- glm(
+    cardiac_event ~ ., 
+    data = temp_df, 
+    family = binomial
+    )
+
+# Calculate the equivalent VIF corrected for the degrees of freedom
+vif_df <- vif(model) |> 
+    as.data.frame() |> 
+    rownames_to_column(var = "feature") |> 
+    as_tibble() |> 
+    rename(
+        GVIF = 2,
+        Df = 3,
+        Adjusted_GVIF = 4
+    ) |> 
+    mutate(VIF_Equivalent = Adjusted_GVIF^2) |> 
+    select(feature, VIF_Equivalent)
+
+# # Plot the VIF values
+vif_df |> 
+    ggplot(aes(x = reorder(feature, VIF_Equivalent), y = VIF_Equivalent)) + 
+    geom_bar(stat = "identity", fill = "cyan", color = "black") +
+    geom_hline(yintercept = 5, linetype = "dashed", color = "orange") +
+    labs(x = "", y = "VIF") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Since the maximum VIF is the same, we keep the `alcohol` feature and drop the ones referring to specific alcoholic drinks. This way, we reduce the data set's dimensionality as we eliminate multicollinearity.
+
+```{r}
+clinical_data <- clinical_data |> 
+    select(
+        -c(white_wine, young_red_wine, aged_red_wine, beer)
+        )
+```
+
+# Final data set
+Finally, let's save the data set with the selected features:
+
+```{r}
+clinical_data |> 
+  write_parquet("data/clean/clinical_data_selected_features.parquet")
+
+head(clinical_data)
+```
