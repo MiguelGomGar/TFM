@@ -1,5 +1,5 @@
 ---
-title: "1.0-Data Cleaning"
+title: "1.0-Data processeding"
 output: html_document
 ---
 
@@ -30,11 +30,11 @@ original_clinical_data <- global |> remove_labels()
 # Save
 write_parquet(
     original_clinical_data, 
-    "data/processed/clinical_data_original.parquet"
+    "data/intermediate/clinical_data_original.parquet"
     )
 ```
 
-# Data cleaning
+# Data processing
 The data set consists of thousands of features referring over 700 patients. The ones taken into account are clinical and nutritional characteristics:
 
 * **Clinical data**
@@ -195,7 +195,7 @@ Lets translate and modify the variables' names to make them more understandable:
 ```{r}
 new_names <- c("id", "fa_type", "cohort", "node", "gender", "age", "cardiac_event", "prev_ablation", "fa_ablat_time", "hbp", "atrial_dilation", "bmi", "met", "diabetes_t2", "hypolipidemic", "hypercholest", "p14", "energy", "olive_oil", "ev_olive_oil", "pomace_oil", "corn_oil", "sunflower_oil", "soy_oil", "white_wine", "young_red_wine", "aged_red_wine", "rose_wine", "beer", "alcohol")
 
-clinical_data_clean <- clinical_data_modified |> setnames(
+clinical_data_processed <- clinical_data_modified |> setnames(
     old = names(clinical_data_modified), 
     new = new_names
     )
@@ -206,15 +206,9 @@ This is the basal data we will use to build the model. Lets save it:
 ```{r}
 # Save it into the project's data directory
 write_parquet(
-    clinical_data_clean, 
-    "data/processed/clinical_data_clean.parquet"
+    clinical_data_processed, 
+    "data/intermediate/clinical_data_processed.parquet"
     )
 
-# Save it into Google drive's data directory
-write_parquet(
-    clinical_data_clean, 
-    "H:/Mi unidad/TFM/data/processed/clinical_data_clean.parquet"
-    )
-
-head(clinical_data_clean)
+head(clinical_data_processed)
 ```

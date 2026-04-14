@@ -17,7 +17,7 @@ library(car)
 
 ```{r}
 # full data
-clinical_data <- read_parquet("data/processed/clinical_data_clean.parquet")
+clinical_data <- read_parquet("data/intermediate/clinical_data_clean.parquet")
 
 head(clinical_data)
 ```
@@ -244,7 +244,7 @@ vif_df <- vif(model) |>
     mutate(VIF_Equivalent = Adjusted_GVIF^2) |> 
     select(feature, VIF_Equivalent)
 
-# # Plot the VIF values
+# Plot the VIF values
 vif_df |> 
     ggplot(aes(x = reorder(feature, VIF_Equivalent), y = VIF_Equivalent)) + 
     geom_bar(stat = "identity", fill = "cyan", color = "black") +
@@ -257,7 +257,7 @@ vif_df |>
 What happens if we keep the `alcohol` feature and drop the ones referring to specific alcoholic drinks?
 
 ```{r}
-# drop the alcohol feature
+# drop the alcoholic beverages features
 temp_df <- clinical_data |> 
     select(
         -c(white_wine, young_red_wine, aged_red_wine, beer)
@@ -283,7 +283,7 @@ vif_df <- vif(model) |>
     mutate(VIF_Equivalent = Adjusted_GVIF^2) |> 
     select(feature, VIF_Equivalent)
 
-# # Plot the VIF values
+# Plot the VIF values
 vif_df |> 
     ggplot(aes(x = reorder(feature, VIF_Equivalent), y = VIF_Equivalent)) + 
     geom_bar(stat = "identity", fill = "cyan", color = "black") +
@@ -307,7 +307,7 @@ Finally, let's save the data set with the selected features:
 
 ```{r}
 clinical_data |> 
-  write_parquet("data/clean/clinical_data_selected_features.parquet")
+  write_parquet("data/processed/clinical_data_selected_features.parquet")
 
 head(clinical_data)
 ```
