@@ -3,7 +3,7 @@ title: "2.0- Exploratory Data Analysis"
 output: html_document
 ---
 
-# Packages
+# Configuration
 
 ```{r echo = FALSE, warning=FALSE, message=FALSE}
 library(tidyverse)
@@ -16,9 +16,7 @@ library(car)
 # Load the data
 
 ```{r}
-# full data
-clinical_data <- read_parquet("data/intermediate/clinical_data_clean.parquet")
-
+clinical_data <- read_parquet("data/intermediate/clinical_data.parquet")
 head(clinical_data)
 ```
 
@@ -35,7 +33,7 @@ Let's check the column's data types and whether there are many missing values:
 skim(clinical_data) |> summary()
 ```
 
-There are 720 rows and 30 columns: 11 categorical (one of them is the predicted class) and 19 numerical variables. Let's check each type separately. 
+There are 720 rows and 30 columns: 11 categorical (the target class can be found among these) and 19 numerical variables. Let's check each type separately. 
 
 ## Numerical features
 Let's sum up the data:
@@ -55,13 +53,13 @@ Let's sum up the data:
 skim(clinical_data) |> yank("factor") |> select(-c(complete_rate, ordered))
 ```
 
-There are 17 missing values in the `hypolipidemic` feature.
+There are $17$ missing values in the `hypolipidemic` feature.
 
 ```{r}
 clinical_data |> select(hypolipidemic) |> table()
 ```
 
-Since the class is unbalanced, we will decide later on how to deal with these missing values.
+Since the target class is unbalanced, we will decide later on how to deal with these missing values.
 
 # Statistical analysis
 Firstly, let's check how the data is distributed.
@@ -100,11 +98,11 @@ clinical_data |> select(rose_wine) |> table()
 clinical_data |> select(soy_oil) |> table()
 ```
 
-Since all these features are empty or almost empty, we will drop them from the data set:
+Since the `corn_oil` and the `pomace_oil` features are empty, we will drop them from the data set:
 
 ```{r}
 clinical_data <- clinical_data |> 
-  select(-c(corn_oil, pomace_oil, rose_wine, soy_oil))
+  select(-c(corn_oil, pomace_oil))
 ```
 
 Let's generate the new histogram with the remaining features:
@@ -174,12 +172,6 @@ clinical_data |>
     labs(x = "", y = "") +
     theme_minimal() +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
-```
-
-Since most of the missing values in the `hypolipidemic` feature belong to the majority category, we will delete those records:
-
-```{r}
-clinical_data <- clinical_data |> drop_na()
 ```
 
 # Multicolinearity
@@ -297,17 +289,18 @@ Since the maximum VIF is the same, we keep the `alcohol` feature and drop the on
 
 ```{r}
 clinical_data <- clinical_data |> 
-    select(
-        -c(white_wine, young_red_wine, aged_red_wine, beer)
-        )
+    select(-c(white_wine, young_red_wine, aged_red_wine, beer))
 ```
 
-# Final data set
-Finally, let's save the data set with the selected features:
+# Save progress
+Let's save this data set for the next steps:
 
 ```{r}
-clinical_data |> 
-  write_parquet("data/processed/clinical_data_selected_features.parquet")
+# Save it into the project's data directory
+write_parquet(
+    clinical_data, 
+    "data/intermediate/clinical_data_explored.parquet"
+    )
 
 head(clinical_data)
 ```

@@ -26,12 +26,6 @@ Since it is a STATA file, the labels need to be removed:
 
 ```{r}
 original_clinical_data <- global |> remove_labels()
-
-# Save
-write_parquet(
-    original_clinical_data, 
-    "data/intermediate/clinical_data_original.parquet"
-    )
 ```
 
 # Data processing
@@ -207,7 +201,7 @@ This is the basal data we will use to build the model. Lets save it:
 # Save it into the project's data directory
 write_parquet(
     clinical_data_processed, 
-    "data/intermediate/clinical_data_processed.parquet"
+    "data/intermediate/clinical_data.parquet"
     )
 
 head(clinical_data_processed)

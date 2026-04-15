@@ -1,0 +1,143 @@
+---
+title: "3.0-Feature_Selection"
+output: html_document
+---
+
+# Configuration
+
+```{r echo = FALSE, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(arrow)
+library(car)
+```
+
+# Load the data
+
+```{r}
+clinical_data <- read_parquet("data/intermediate/clinical_data_explored.parquet")
+head(clinical_data)
+```
+
+# Feature selection
+Given this data, we will analyze the statistical significance of the features to select those that are more relevant for the model. We will use binary logistic regression to check the significance of the features. We will keep those features with a p-value lower than 0.05.
+
+Before running this analysis, let's drop the features that are not useful to train the model:
+
+```{r}
+clinical_data_selected_biv <- clinical_data |> 
+  select(-c(fa_type))
+```
+
+## Bivariate model selection
+Now, let's fit one logistic regression model and run the ANOVA test for each feature to check their statistical significance at predicting whether AF recurrence will take place:
+
+```{r}
+# Initialize vectors to store the features and their p-values
+features <- clinical_data_selected_biv |> 
+  select(-cardiac_event) |> 
+  names()
+
+p_values <- rep(0, length(features))
+
+for (feature in features){
+  if (feature == "cardiac_event") next else{
+    
+    # Create dynamic formula
+      equation <- as.formula(paste("cardiac_event ~", feature))
+            
+    # Fit a logistic regression model with the current feature as the predictor
+    model <- stats::glm(
+        formula = equation, 
+        data = clinical_data_selected_biv, 
+        family = binomial
+        )
+    
+    # Run ANOVA test to check the significance of the feature
+    anova_result <- anova(model, test = "Chisq")
+    
+    # Extract the p-value of the feature
+    p_values[which(features == feature)] <- anova_result[2, 5]
+    }
+  }
+
+# Create a data frame with the features and their p-values
+binary_logist_model <- data.frame(
+  feature = features,
+  p_value = p_values
+  ) |>
+  arrange(p_value)
+
+binary_logist_model
+```
+
+Given a determined p-value threshold, we can select the features that are statistically significant for predicting the target class. In this case, we will keep those features with a p-value lower than:
+
+```{r}
+# Set the p-value threshold for feature selection
+threshold <- 0.1
+
+# Select features with p-value lower than the threshold
+features_to_keep <- binary_logist_model |> 
+  filter(p_value < threshold) |> 
+  pull(feature)
+
+# Show the selected features and their p-values
+binary_logist_model |> filter(p_value < threshold)
+```
+
+## Multivariate model selection
+Finally, let's fit a multivariate logistic regression model with the features that have a p-value lower than the threshold and check their significance again:
+
+```{r}
+# Add target for the multivariate logistic regression model
+clinical_data_selected_multiv <- clinical_data_selected_biv |> 
+  select(all_of(features_to_keep), cardiac_event)
+
+# Fit a multivariate logistic regression model with the selected features
+multiv_logist_model <- glm(
+  cardiac_event ~ .,
+  data = clinical_data_selected_multiv,
+  family = binomial
+  )
+
+# Run ANOVA test and extract the p-values of the features
+p_values_multiv <- Anova(multiv_logist_model, type = "II") |> 
+  pull("Pr(>Chisq)")
+
+# Create a data frame with the results
+multiv_logist_model <- data.frame(
+  feature = features_to_keep,
+  p_value = p_values_multiv
+  ) |>
+  arrange(p_value)
+
+multiv_logist_model
+```
+
+Let's drop the features that are not statistically significant in the multivariate model:
+
+```{r}
+# Set the p-value threshold for feature selection
+threshold2 <- 0.2
+
+# Select features with p-value lower than the threshold
+ultimate_features <- multiv_logist_model |> 
+  filter(p_value < threshold2) |> 
+  pull(feature)
+
+# Show the selected features and their p-values
+multiv_logist_model |> filter(p_value < threshold)
+```
+
+# Final data set
+Finally, let's save the data set with the selected features:
+
+```{r}
+clinical_data_ultimate <- clinical_data_selected_multiv |> 
+  select(all_of(ultimate_features), cardiac_event)
+
+clinical_data_ultimate |> 
+  write_parquet("data/processed/clinical_data.parquet")
+
+head(clinical_data_ultimate)
+```
