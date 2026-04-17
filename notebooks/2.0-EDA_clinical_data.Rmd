@@ -20,10 +20,10 @@ clinical_data <- read_parquet("data/intermediate/clinical_data.parquet")
 head(clinical_data)
 ```
 
-The `id` feature is merely descriptive and will not add information to the model, so we will drop it:
+The `code` feature is merely descriptive and will not add information to the model, so we will drop it:
 
 ```{r}
-clinical_data <- clinical_data |> select(-id)
+clinical_data <- clinical_data |> select(-code)
 ```
 
 # Global summary
@@ -33,7 +33,7 @@ Let's check the column's data types and whether there are many missing values:
 skim(clinical_data) |> summary()
 ```
 
-There are 720 rows and 30 columns: 11 categorical (the target class can be found among these) and 19 numerical variables. Let's check each type separately. 
+There are $720$ rows and $39$ columns: $17$ categorical (the target class can be found among these) and $21$ numerical features. Let's check each type separately.
 
 ## Numerical features
 Let's sum up the data:
@@ -43,7 +43,7 @@ skim(clinical_data) |> yank("numeric") |>
   select(-c(starts_with("p"), hist, complete_rate))
 ```
 
-There are no missing values in the numerical features.
+The only feature with missing values is `af_trigger`. Given than they represent the majority of the records are missing values, we should either find out whether this is because the trigger is unknown or the data is truly missing. In the first case, we can impute the missing values with a new category, "unknown". However, if the data is truly missing, the feature should be dropped from the data set.
 
 ## Categorical features
 
@@ -53,13 +53,7 @@ Let's sum up the data:
 skim(clinical_data) |> yank("factor") |> select(-c(complete_rate, ordered))
 ```
 
-There are $17$ missing values in the `hypolipidemic` feature.
-
-```{r}
-clinical_data |> select(hypolipidemic) |> table()
-```
-
-Since the target class is unbalanced, we will decide later on how to deal with these missing values.
+There are $17$ missing values in the `hypolipidemics` feature and $37$ in the `left_atrial_enlarg`. We will decide on how to deal with these missing values later on.
 
 # Statistical analysis
 Firstly, let's check how the data is distributed.
@@ -75,8 +69,8 @@ clinical_data |>
         values_to = "value"
         ) |> 
     ggplot(aes(x = value)) +
-    geom_histogram(bins = 10, color = "black", fill = "cyan") +
-    facet_wrap(~ feature, scales = "free") +
+    geom_histogram(bins = 30, color = "black", fill = "cyan") +
+    facet_wrap(~ feature, scales = "free", ncol = 4) +
     theme_minimal()
 ```
 
@@ -125,13 +119,13 @@ Now, let's check how does the distribution of each feature behaves when we strat
 
 ```{r, fig.width=10, fig.height=8}
 clinical_data |> 
-    select(where(is.numeric), cardiac_event) |> 
+    select(where(is.numeric), af_recurrence) |> 
     pivot_longer(
-        cols = -cardiac_event,
+        cols = -af_recurrence,
         names_to = "feature",
         values_to = "value"
     ) |> 
-    ggplot(aes(x = cardiac_event, y = value)) +
+    ggplot(aes(x = af_recurrence, y = value)) +
     geom_boxplot() +
     scale_y_continuous(trans = pseudo_log_trans(base = 10)) +
     facet_wrap(~ feature, scales = "free") +
@@ -146,7 +140,8 @@ clinical_data |>
     pivot_longer(
         cols = everything(),
         names_to = "feature",
-        values_to = "value"
+        values_to = "value",
+        values_transform = list(value = as.character)
         ) |> 
     ggplot(aes(x = value)) +
     geom_bar(color = "black", fill = "cyan") +
@@ -162,11 +157,12 @@ Most of these categories are unbalanced, including the target class. Now let's s
 clinical_data |> 
     select(where(is.factor)) |> 
     pivot_longer(
-        cols = -cardiac_event,
+        cols = -af_recurrence,
         names_to = "feature",
-        values_to = "value"
+        values_to = "value",
+        values_transform = list(value = as.character)
         ) |> 
-    ggplot(aes(x = value, fill = cardiac_event)) +
+    ggplot(aes(x = value, fill = af_recurrence)) +
     geom_bar(color = "black", position = "fill") +
     facet_wrap(~ feature, scales = "free") + 
     labs(x = "", y = "") +
@@ -178,11 +174,14 @@ clinical_data |>
 Finally, let's check the correlation between features to drop those that are highly correlated. To address numerical features' colinearity, we will use the **VIF**.
 
 ```{r}
+# Convert the target class to numeric for the VIF calculation
+temp_clinical_data <- clinical_data |> 
+  mutate(af_recurrence = as.numeric(af_recurrence))
+
 # Fit a linear model with all the features
-model <- glm(
-    cardiac_event ~ ., 
-    data = clinical_data, 
-    family = binomial
+model <- lm(
+    af_recurrence ~ ., 
+    data = temp_clinical_data
     )
 
 # Calculate the equivalent VIF corrected for the degrees of freedom
@@ -213,14 +212,13 @@ The categorical features aren't correlated at all. On the other hand, the alcoho
 
 ```{r}
 # drop the alcohol feature
-temp_df <- clinical_data |> 
+temp_df <- temp_clinical_data |> 
     select(-alcohol)
 
 # fit a linear model with the remaining numeric features
-model <- glm(
-    cardiac_event ~ ., 
-    data = temp_df, 
-    family = binomial
+model <- lm(
+    af_recurrence ~ ., 
+    data = temp_df
     )
 
 # Calculate the equivalent VIF corrected for the degrees of freedom
@@ -250,16 +248,13 @@ What happens if we keep the `alcohol` feature and drop the ones referring to spe
 
 ```{r}
 # drop the alcoholic beverages features
-temp_df <- clinical_data |> 
-    select(
-        -c(white_wine, young_red_wine, aged_red_wine, beer)
-        )
+temp_df <- temp_clinical_data |> 
+    select(-c(white_wine, young_red_wine, aged_red_wine, beer))
 
 # fit a linear model with the remaining numeric features
-model <- glm(
-    cardiac_event ~ ., 
-    data = temp_df, 
-    family = binomial
+model <- lm(
+    af_recurrence ~ ., 
+    data = temp_df
     )
 
 # Calculate the equivalent VIF corrected for the degrees of freedom
@@ -285,11 +280,11 @@ vif_df |>
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-Since the maximum VIF is the same, we keep the `alcohol` feature and drop the ones referring to specific alcoholic drinks. This way, we reduce the data set's dimensionality as we eliminate multicollinearity.
+Since the maximum VIF is slightly lower than in the first scenario, we keep the `alcohol` feature and drop the ones referring to specific alcoholic drinks. Apart from this, the data set's dimensionality is reduced.
 
 ```{r}
 clinical_data <- clinical_data |> 
-    select(-c(white_wine, young_red_wine, aged_red_wine, beer))
+    select(-c(white_wine, young_red_wine, aged_red_wine, rose_wine, beer))
 ```
 
 # Save progress

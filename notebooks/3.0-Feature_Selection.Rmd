@@ -34,16 +34,16 @@ Now, let's fit one logistic regression model and run the ANOVA test for each fea
 ```{r}
 # Initialize vectors to store the features and their p-values
 features <- clinical_data_selected_biv |> 
-  select(-cardiac_event) |> 
+  select(-af_recurrence) |> 
   names()
 
 p_values <- rep(0, length(features))
 
 for (feature in features){
-  if (feature == "cardiac_event") next else{
+  if (feature == "af_recurrence") next else{
     
     # Create dynamic formula
-      equation <- as.formula(paste("cardiac_event ~", feature))
+      equation <- as.formula(paste("af_recurrence ~", feature))
             
     # Fit a logistic regression model with the current feature as the predictor
     model <- stats::glm(
@@ -74,7 +74,7 @@ Given a determined p-value threshold, we can select the features that are statis
 
 ```{r}
 # Set the p-value threshold for feature selection
-threshold <- 0.1
+threshold <- 0.05
 
 # Select features with p-value lower than the threshold
 features_to_keep <- binary_logist_model |> 
@@ -91,11 +91,11 @@ Finally, let's fit a multivariate logistic regression model with the features th
 ```{r}
 # Add target for the multivariate logistic regression model
 clinical_data_selected_multiv <- clinical_data_selected_biv |> 
-  select(all_of(features_to_keep), cardiac_event)
+  select(all_of(features_to_keep), af_recurrence)
 
 # Fit a multivariate logistic regression model with the selected features
 multiv_logist_model <- glm(
-  cardiac_event ~ .,
+  af_recurrence ~ .,
   data = clinical_data_selected_multiv,
   family = binomial
   )
@@ -134,7 +134,7 @@ Finally, let's save the data set with the selected features:
 
 ```{r}
 clinical_data_ultimate <- clinical_data_selected_multiv |> 
-  select(all_of(ultimate_features), cardiac_event)
+  select(all_of(ultimate_features), af_recurrence)
 
 clinical_data_ultimate |> 
   write_parquet("data/processed/clinical_data.parquet")
