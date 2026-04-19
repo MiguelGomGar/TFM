@@ -14,7 +14,7 @@ library(car)
 # Load the data
 
 ```{r}
-clinical_data <- read_parquet("data/intermediate/clinical_data_explored.parquet")
+clinical_data <- read_parquet("data/intermediate/clinical_data_clean.parquet")
 head(clinical_data)
 ```
 
@@ -137,7 +137,7 @@ clinical_data_ultimate <- clinical_data_selected_multiv |>
   select(all_of(ultimate_features), af_recurrence)
 
 clinical_data_ultimate |> 
-  write_parquet("data/processed/clinical_data.parquet")
+  write_parquet("data/processed/clinical_data_selected_features.parquet")
 
 head(clinical_data_ultimate)
 ```

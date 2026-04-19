@@ -294,7 +294,7 @@ Let's save this data set for the next steps:
 # Save it into the project's data directory
 write_parquet(
     clinical_data, 
-    "data/intermediate/clinical_data_explored.parquet"
+    "data/intermediate/clinical_data_clean.parquet"
     )
 
 head(clinical_data)
