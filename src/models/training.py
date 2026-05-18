@@ -45,14 +45,21 @@ def optimize_model(pipeline,
     Returns:
     -------
     - best_model : fitted estimator
-    - metrics_test : dict (metrics from the final evaluation on the test set)
+    - metrics_train_mean : dict (mean of training metrics)
+    - metrics_train_std : dict (standard deviation of training metrics)
     - metrics_val_mean : dict (mean of CV metrics during training)
     - metrics_val_std : dict (standard deviation of CV metrics during training)
+    - metrics_test : dict (metrics from the final evaluation on the test set)
     - precisions : array (precision values for the test PR curve)
     - recalls : array (recall values for the test PR curve)
     """
     
-    # 1. Setup OptunaSearchCV with the provided pipeline and parameter distributions
+    # ---------------------------------------------------------
+    # 1. HYPERPARAMETER OPTIMIZATION WITH OPTUNA
+    # ---------------------------------------------------------
+    print("Starting hyperparameter optimization...")
+    
+    # Set up OptunaSearchCV with the provided pipeline and parameter distributions
     optuna_search = OptunaSearchCV(
         estimator=pipeline,
         param_distributions=param_distributions,
@@ -62,27 +69,22 @@ def optimize_model(pipeline,
         n_jobs=-1,      
         random_state=42 
     )
-
-    # ---------------------------------------------------------
-    # 2. HYPERPARAMETER OPTIMIZATION WITH OPTUNA
-    # ---------------------------------------------------------
-    print("Starting hyperparameter optimization...")
     
     # Fit the OptunaSearchCV to find the best hyperparameters
     optuna_search.fit(X_train, y_train)
     
-    # Retrieve the best model found by Optuna
+    # Get the best model found by Optuna
     best_model = optuna_search.best_estimator_
     
     # Get the study
     study = optuna_search.study_
 
-    # Display the plot
+    # Display the optimization history plot
     fig = vis.plot_optimization_history(study)
     fig.show()
     
     # ---------------------------------------------------------
-    # 3. EVALUATION OF THE BEST MODEL ON TRAINING
+    # 2. EVALUATION OF THE BEST MODEL ON TRAINING
     # ---------------------------------------------------------
     print("Evaluating on the training set...")
     
@@ -97,9 +99,25 @@ def optimize_model(pipeline,
     
     # Evaluate the best model using cross-validation on the training set
     cv_results = cross_validate(best_model, X_train, y_train, cv=cv, 
-                                scoring=scoring_dict, n_jobs=-1)
+                                scoring=scoring_dict, n_jobs=-1, return_train_score=True)
     
     # Compute means and standard deviations
+    metrics_train_mean = {
+        'Accuracy': cv_results['train_Accuracy'].mean(),
+        'Precision': cv_results['train_Precision'].mean(),
+        'Recall': cv_results['train_Recall'].mean(),
+        'F1-Score': cv_results['train_F1-Score'].mean(),
+        'PR-AUC': cv_results['train_PR-AUC'].mean()
+    }
+    
+    metrics_train_std = {
+        'Accuracy': cv_results['train_Accuracy'].std(),
+        'Precision': cv_results['train_Precision'].std(),
+        'Recall': cv_results['train_Recall'].std(),
+        'F1-Score': cv_results['train_F1-Score'].std(),
+        'PR-AUC': cv_results['train_PR-AUC'].std()
+    }
+    
     metrics_val_mean = {
         'Accuracy': cv_results['test_Accuracy'].mean(),
         'Precision': cv_results['test_Precision'].mean(),
@@ -117,7 +135,7 @@ def optimize_model(pipeline,
     }
 
     # ---------------------------------------------------------
-    # 4. FINAL EVALUATION ON TEST
+    # 3. FINAL EVALUATION ON TEST
     # ---------------------------------------------------------
     print("Evaluating on the test set...")
     
@@ -151,4 +169,11 @@ def optimize_model(pipeline,
     print("\n")
     print("Training and evaluation completed!")
 
-    return best_model, metrics_test, metrics_val_mean, metrics_val_std, precisions, recalls
+    return (best_model, 
+            metrics_train_mean, 
+            metrics_train_std, 
+            metrics_val_mean, 
+            metrics_val_std, 
+            metrics_test, 
+            precisions, 
+            recalls)
