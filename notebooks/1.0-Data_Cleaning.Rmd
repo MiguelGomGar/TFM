@@ -1,5 +1,5 @@
 ---
-title: "1.0-Data processeding"
+title: "1.0-Data processing"
 output: html_document
 ---
 
