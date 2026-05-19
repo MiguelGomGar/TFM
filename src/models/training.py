@@ -66,7 +66,6 @@ def optimize_model(pipeline,
         n_trials=n_trials,
         scoring=scoring,
         cv=cv,
-        n_jobs=-1,      
         random_state=42 
     )
     
