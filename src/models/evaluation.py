@@ -1,11 +1,12 @@
 import pandas as pd
 from pathlib import Path
 
-def save_model_results(model_names, 
+def save_scores(model_names, 
                     test_metrics, 
                     train_metrics=None, 
                     validation_metrics=None, 
-                    results_path=None):
+                    results_path=None,
+                    prefix="scores"):
     """
     Groups the metrics of different models into DataFrames and saves them in CSV files.
 
@@ -21,6 +22,8 @@ def save_model_results(model_names,
         List of dictionaries with the validation metrics.
     - results_path : str o pathlib.Path, opcional
         Path to the directory where the CSV files will be saved.
+    - prefix : str, optional
+        Prefix for the CSV file names.
 
     Returns:
     -------
@@ -46,12 +49,63 @@ def save_model_results(model_names,
     if results_path is not None:
         path = Path(results_path)
         
-        df_test.to_csv(path / "test_results.csv", index=True)
+        df_test.to_csv(path / f"{prefix}_test_results.csv", index=True)
         
         if df_train is not None:
-            df_train.to_csv(path / "train_results.csv", index=True)
+            df_train.to_csv(path / f"{prefix}_train_results.csv", index=True)
             
         if df_val is not None:
-            df_val.to_csv(path / "validation_results.csv", index=True)
+            df_val.to_csv(path / f"{prefix}_validation_results.csv", index=True)
 
     return df_test, df_train, df_val
+
+def save_pr_curves_long_format(model_names, 
+                            precisions_list, recalls_list, 
+                            results_path=None, prefix="pr_curves"):
+    """
+    Builds a data frame in long format with the PR curve data for multiple models and saves it to a CSV file.
+
+    Parameters:
+    ----------
+    - model_names : list
+        List of strings with the names of the models.
+    - precisions_list : list of arrays/lists
+        List that contains the lists of Precision values for each model.
+    - recalls_list : list of arrays/lists
+        List that contains the lists of Recall values for each model.
+    - results_path : str or pathlib.Path, optional
+        Directory where the CSV file will be saved.
+
+    Returns:
+    -------
+    - df_pr_long : DataFrame
+        Unified DataFrame in long format.
+    """
+    
+    # 1. List to hold the individual DataFrames for each model
+    individuals_df= []
+    
+    # 2. Iterate over the models to create individual DataFrames
+    for model, precs, recs in zip(model_names, precisions_list, recalls_list):
+        df_temp = pd.DataFrame({
+            'Precision': precs,
+            'Recall': recs,
+            'Model': model
+        })
+        # Add it to the list of DataFrames
+        individuals_df.append(df_temp)
+        
+    # 3. Concatenate all individual DataFrames into a single long format DataFrame
+    df_pr_long = pd.concat(individuals_df, ignore_index=True)
+    
+    # 4. Save the DataFrame if a path is provided
+    if results_path is not None:
+        path = Path(results_path)
+        
+        # Create the file name
+        file_path = path / f"{prefix}_pr_curves_long.csv"
+        
+        # Save it
+        df_pr_long.to_csv(file_path, index=False)
+        
+    return df_pr_long

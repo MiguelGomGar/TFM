@@ -147,14 +147,116 @@ def plot_overfitting_bars(metrics_train_mean,
     ax.set_xticks(x)
     ax.set_xticklabels(labels, fontsize=12, weight='bold')
     ax.set_ylim(0, 1.1)
-    ax.legend(loc='upper right', fontsize=11)
+    ax.legend(loc='upper right', fontsize=11, bbox_to_anchor=(1.02, 1))
     
     ax.grid(axis='y', linestyle='--', alpha=0.6)
 
     # Add labels on top of the bars
-    autolabel(rects1, ax)
-    autolabel(rects2, ax)
+    # autolabel(rects1, ax)
+    # autolabel(rects2, ax)
 
     # Adjust layout and show the plot
+    plt.tight_layout()
+    plt.show()
+
+def plot_combined_pr_curves(df_long, title='Precision-Recall Curves'):
+    """
+    Plots multiple Precision-Recall curves on the same axes.
+    
+    Parameters:
+    - df_long : pandas.DataFrame
+        DataFrame in long format with three columns:
+            * model's names.
+            * recall values.
+            * precision values.
+    """
+    
+    # Create the figure and set the theme
+    plt.figure(figsize=(10, 7))
+    sns.set_theme(style="whitegrid")
+    
+    # Plot the Precision-Recall curves for each model
+    sns.lineplot(
+        data=df_long,
+        x='Recall',
+        y='Precision',
+        hue='Model',
+        drawstyle='steps-post',
+        linewidth=2.5,
+        alpha=0.8
+    )
+    
+    # Add a horizontal line for the baseline
+    plt.axhline(y=0.36, 
+                color='black', linestyle='--', linewidth=1.5, 
+                label='Random Classifier')
+    
+    # Title and labels
+    plt.title(title, fontsize=16, weight='bold', pad=20)
+    plt.xlabel('Recall', fontsize=14, weight='bold')
+    plt.ylabel('Precision', fontsize=14, weight='bold')
+    
+    # Limits of the axes
+    plt.xlim([-0.02, 1.02])
+    plt.ylim([-0.02, 1.05])
+    
+    # Legend outside the plot (the trick we saw before)
+    plt.legend(title='Models', title_fontsize='12', fontsize='11', 
+            loc='upper left', bbox_to_anchor=(1.02, 1))
+    
+    plt.tight_layout()
+    plt.show()
+
+def plot_metric_comparison(df, metric_name, color_palette='viridis'):
+    """
+    Plots a bar chart comparing a specific metric across multiple models.
+
+    Parameters:
+    ----------
+    - df : pandas.DataFrame
+        DataFrame with models as index and metrics as columns.
+    - metric_name : str
+        The exact name of the column containing the metric to plot (e.g., 'PR-AUC').
+    - color_palette : str, default='viridis'
+        Color palette for seaborn.
+    """
+    # Check if the metric exists
+    if metric_name not in df.columns:
+        print(f"Error: The metric does not exist in the DataFrame.")
+        return
+    
+    # Set up the figure and theme
+    plt.figure(figsize=(8, 6))
+    sns.set_theme(style="whitegrid")
+    
+    # Plot the bar chart
+    ax = sns.barplot(
+        x=df.index, 
+        y=df[metric_name], 
+        hue=df.index,
+        palette=color_palette,
+        edgecolor='black',
+        linewidth=1.5,
+        legend=False
+    )
+    
+    # Customizations
+    plt.title(f'Models comparison: {metric_name} (Test)', fontsize=16, weight='bold', pad=20)
+    plt.xlabel('Model', fontsize=14, weight='bold')
+    plt.ylabel(metric_name, fontsize=14, weight='bold')
+    
+    # Fix the y-axis limits to better visualize differences
+    plt.ylim(0, 1.05)
+    
+    # Add value labels on top of the bars
+    for p in ax.patches:
+        height = p.get_height()
+        ax.annotate(f'{height:.3f}', 
+                    (p.get_x() + p.get_width() / 2., height), 
+                    ha='center', va='bottom', 
+                    xytext=(0, 5),
+                    textcoords='offset points',
+                    fontsize=12, weight='bold')
+        
     plt.tight_layout()
     plt.show()
