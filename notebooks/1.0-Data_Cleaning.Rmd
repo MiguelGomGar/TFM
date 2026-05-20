@@ -48,6 +48,7 @@ The data set consists of thousands of features referring over 700 patients. The 
 ** `fec_ablac_0m`: date of the first catheter ablation.
 ** `interv`: assigned cohort ($0$ control, $1$ intervention).
 ** `event18m_conkardia`: whether there has been AF recurrence after the blanking period and before $18$ months since the catheter ablation ($0$ no, $1$ yes).
+** `episod3m_blank_3m`: whether there has been AF recurrence during the blanking period ($0$ no, $1$ yes).
 ** `ablacion_previa`: whether the patient has undergone catheter ablation previously to this trial ($0$ no, $1$ yes).
 ** `tiempo_fa_ablac`: years since the first AF diagnosis.
 ** `dilat_tot4_imp`: left atrial enlargement ($0$ normal, $1$ mild, $2$ moderate, $3$ severe).
@@ -62,18 +63,6 @@ The data set consists of thousands of features referring over 700 patients. The 
 
 * **Nutritional data**
 ** `p14_tot_0m:`: affinity to the Mediterranean diet ($0 - 14$).
-** `energiat_0m`: total daily energy intake ($kcal$).
-** `ac_oliva_0m`: olive oil daily intake ($g$).
-** `ac_olivavir_0m`: extra virgin olive oil daily intake ($g$).
-** `ac_orujo_0m`: pomace oil daily intake ($g$).
-** `ac_maiz_0m`: corn oil daily intake ($g$).
-** `ac_girasol_0m`: sunflower oil daily intake ($g$).
-** `ac_soja_0m`: soy oil daily intake ($g$).
-** `v_blanco_0m`: white wine daily intake ($g$).
-** `v_tintojov_0m`: young red wine daily intake ($g$).
-** `v_tintoaniej_0m`: aged red wine daily intake ($g$).
-** `v_rosado_0m`: rose wine daily intake ($g$).
-** `cervezas_0m`: beer daily intake ($g$).
 ** `alcoholg_0m`: total alcohol daily intake ($g$).
 
 ```{r}
@@ -106,22 +95,11 @@ clinical_data_selected <- original_clinical_data |>
         ablacion_previa,
         dilat_tot4,
         desenca_fa_0m,
+        episod3m_blank_3m,
         event18m_conkardia, # PREDICTED CLASS
         
         # NUTRITIONAL DATA (g/day)
         p14_tot_0m,
-        energiat_0m,
-        ac_oliva_0m,
-        ac_olivavir_0m,
-        ac_orujo_0m,
-        ac_maiz_0m,
-        ac_girasol_0m,
-        ac_soja_0m,
-        v_blanco_0m,
-        v_tintojov_0m,
-        v_tintoaniej_0m,
-        v_rosado_0m,
-        cervezas_0m,
         alcoholg_0m,
     )
 
@@ -254,6 +232,13 @@ clinical_data_modified <- clinical_data_selected |>
                 "lack of sleep", "heavy meals", "other"
                 ),
             ordered = FALSE
+        ),
+        
+        episod3m_blank_3m = factor(
+            episod3m_blank_3m,
+            levels = c(0, 1),
+            labels = c("no", "yes"),
+            ordered = TRUE
         )
     )
 
@@ -269,13 +254,11 @@ Let's modify and translate the variables' names to make them more understandable
 ```{r}
 new_names <- c(
     "gender", "age", "smoking_status", "working_status", "education_level", 
-    "household_size", "children", "marital_status", "code", "cohort", "node", 
-    "bmi", "total_met", "t2_diabetes", "hypolipidemics", "hypercholesterol", 
-    "hbp", "fa_type", "stroke", "heart_failure", "fa_ablat_time", 
-    "prev_ablation", "left_atrial_enlarg", "af_trigger", "af_recurrence", 
-    "p14_score", "energy", "olive_oil", "ev_olive_oil", "pomace_oil", "corn_oil", 
-    "sunflower_oil", "soy_oil", "white_wine", "young_red_wine", "aged_red_wine", 
-    "rose_wine", "beer", "alcohol"
+    "household_size", "children", "marital_status", "code", "intervention", 
+    "center", "bmi", "total_met", "t2_diabetes", "hypolipidemics", 
+    "hypercholesterol", "hbp", "fa_type", "stroke", "heart_failure", 
+    "fa_ablat_time", "prev_ablation", "left_atrial_enlarg", "af_trigger", 
+    "blanking_recurrence", "af_recurrence", "p14_score", "alcohol"
     )
 
 clinical_data_processed <- clinical_data_modified |> setnames(

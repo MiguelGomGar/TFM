@@ -20,12 +20,6 @@ clinical_data <- read_parquet("data/intermediate/clinical_data.parquet")
 head(clinical_data)
 ```
 
-The `code` feature is merely descriptive and will not add information to the model, so we will drop it:
-
-```{r}
-clinical_data <- clinical_data |> select(-code)
-```
-
 # Global summary
 Let's check the column's data types and whether there are many missing values:
 
@@ -33,17 +27,15 @@ Let's check the column's data types and whether there are many missing values:
 skim(clinical_data) |> summary()
 ```
 
-There are $720$ rows and $39$ columns: $17$ categorical (the target class can be found among these) and $21$ numerical features. Let's check each type separately.
+There are $720$ rows and $27$ columns: $18$ categorical (the target class can be found among these) and $9$ numerical features. Let's check each type separately.
 
 ## Numerical features
 Let's sum up the data:
 
 ```{r}
-skim(clinical_data) |> yank("numeric") |> 
+clinical_data |> select(-code) |> skim() |> yank("numeric") |> 
   select(-c(starts_with("p"), hist, complete_rate))
 ```
-
-The only feature with missing values is `af_trigger`. Given than they represent the majority of the records are missing values, we should either find out whether this is because the trigger is unknown or the data is truly missing. In the first case, we can impute the missing values with a new category, "unknown". However, if the data is truly missing, the feature should be dropped from the data set.
 
 ## Categorical features
 
@@ -53,7 +45,7 @@ Let's sum up the data:
 skim(clinical_data) |> yank("factor") |> select(-c(complete_rate, ordered))
 ```
 
-There are $17$ missing values in the `hypolipidemics` feature and $37$ in the `left_atrial_enlarg`. We will decide on how to deal with these missing values later on.
+There are $17$ missing values in the `hypolipidemics` feature, $37$ in `left_atrial_enlarg` and 587 in `af_trigger`. In the last case, given than these missing values represent the majority of the records, we should either find out whether this is because the trigger is unknown or the data is truly missing. In the first case, we can impute the missing values with a new category, "unknown". However, if the data is truly missing, the feature should be dropped from the data set. We will decide on how to deal with these missing values later on.
 
 # Statistical analysis
 Firstly, let's check how the data is distributed.
@@ -61,121 +53,247 @@ Firstly, let's check how the data is distributed.
 ## Numerical features
 
 ```{r, fig.width=10, fig.height=8}
-clinical_data |> 
-    select(where(is.numeric)) |> 
-    pivot_longer(
-        cols = everything(),
-        names_to = "feature",
-        values_to = "value"
-        ) |> 
-    ggplot(aes(x = value)) +
-    geom_histogram(bins = 30, color = "black", fill = "cyan") +
-    facet_wrap(~ feature, scales = "free", ncol = 4) +
-    theme_minimal()
-```
-
-Most of the numerical features don't show a normal distribution. Apart from this, the `corn_oil`, `pomace_oil`, `rose_wine` and `soy_oil` distributions show that all their values are zero. Let's check these features individually:
-
-```{r}
-clinical_data |> select(corn_oil) |> table()
-```
-
-```{r}
-clinical_data |> select(pomace_oil) |> table()
-```
-
-```{r}
-clinical_data |> select(rose_wine) |> table()
-```
-
-```{r}
-clinical_data |> select(soy_oil) |> table()
-```
-
-Since the `corn_oil` and the `pomace_oil` features are empty, we will drop them from the data set:
-
-```{r}
-clinical_data <- clinical_data |> 
-  select(-c(corn_oil, pomace_oil))
-```
-
-Let's generate the new histogram with the remaining features:
-
-```{r, fig.width=10, fig.height=8}
-clinical_data |> 
-    select(where(is.numeric)) |> 
-    pivot_longer(
-        cols = everything(),
-        names_to = "feature",
-        values_to = "value"
-        ) |> 
-    ggplot(aes(x = value)) +
-    geom_histogram(bins = 10, color = "black", fill = "cyan") +
-    facet_wrap(~ feature, scales = "free") +
-    theme_minimal()
+clinical_data |> select(-code) |> 
+  select(where(is.numeric)) |> 
+  pivot_longer(
+    cols = everything(),
+    names_to = "feature",
+    values_to = "value"
+  ) |> 
+  ggplot(aes(x = value)) +
+  # 1. Histograma sutil de fondo (bajamos la opacidad a 0.4)
+  # Usamos una paleta médica (ej. azul acero) en lugar del cyan puro que satura
+  geom_histogram(
+    aes(y = after_stat(density)), # Sincroniza la escala con la curva de densidad
+    bins = 20,                    # Reducimos bins para evitar el efecto "peine desdentado"
+    color = "white",              # Bordes blancos separadores más elegantes
+    fill = "#2c3e50", 
+    alpha = 0.4
+  ) +
+  # 2. Curva de densidad suavizada (elimina el problema visual de las barras sueltas)
+  geom_density(
+    color = "#16a085", 
+    linewidth = 1, 
+    fill = "#16a085", 
+    alpha = 0.15
+  ) +
+  # 3. TRUCO CORRECCIÓN DECIMALES: labels = label_percent() o integers
+  # Si el rango es pequeño, forzamos saltos enteros
+  scale_x_continuous(
+    labels = function(x) {
+      # Eliminamos los valores NA para que no rompan la validación
+      x_clean <- x[!is.na(x)]
+      
+      # Si todos los números del eje son enteros, quitamos decimales
+      if (length(x_clean) > 0 && all(x_clean == round(x_clean))) {
+        return(sprintf("%d", as.integer(x)))
+      } else {
+        # Si es continua real (ej. bmi), usamos el formato estándar de R
+        return(labels(x)) 
+      }
+    }
+  ) +
+  facet_wrap(~ feature, scales = "free", ncol = 4) +
+  theme_minimal(base_size = 11) +
+  theme(
+    # Limpieza de cuadrículas
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_line(color = "#eaeded", linewidth = 0.4),
+    
+    # Consistencia con el diseño de tus boxplots (paneles estructurados)
+    strip.background = element_rect(fill = "#f8f9f9", color = "#d5dbdb", linewidth = 0.5),
+    strip.text = element_text(face = "bold", color = "#2c3e50", size = 10),
+    
+    # Línea base en el eje X para que descansen los histogramas
+    axis.line.x = element_line(color = "#bdc3c7", linewidth = 0.6),
+    axis.text = element_text(color = "#34495e"),
+    axis.title = element_text(face = "bold", color = "#2c3e50")
+  ) +
+  labs(
+    x = "",
+    y = "",
+    title = "Distribution of numeric features"
+  )
 ```
 
 Now, let's check how does the distribution of each feature behaves when we stratify the data by the target class:
 
 ```{r, fig.width=10, fig.height=8}
-clinical_data |> 
-    select(where(is.numeric), af_recurrence) |> 
-    pivot_longer(
-        cols = -af_recurrence,
-        names_to = "feature",
-        values_to = "value"
-    ) |> 
-    ggplot(aes(x = af_recurrence, y = value)) +
-    geom_boxplot() +
-    scale_y_continuous(trans = pseudo_log_trans(base = 10)) +
-    facet_wrap(~ feature, scales = "free") +
-    theme_minimal()
+clinical_data |> select(-code) |> 
+  select(any_of(c("af_recurrence")), where(is.numeric)) |> 
+  pivot_longer(
+    cols = -af_recurrence,
+    names_to = "feature",
+    values_to = "value"
+  ) |> 
+  ggplot(aes(x = af_recurrence, y = value, fill = af_recurrence)) +
+  # Cajas con bordes definidos, transparencia y outliers sutiles
+  geom_boxplot(
+    alpha = 0.75, 
+    color = "#2c3e50", 
+    outlier.size = 1, 
+    outlier.alpha = 0.4,
+    linewidth = 0.6
+  ) +
+  # Escala logarítmica para manejar variables con rangos muy distintos
+  scale_y_continuous(trans = pseudo_log_trans(base = 10)) +
+  # Paleta de colores médica y profesional (puedes cambiar "D" por "A" o "E")
+  scale_fill_viridis_d(option = "D", begin = 0.3, end = 0.8) +
+  # Cuadrícula modular con escalas libres
+  facet_wrap(~ feature, scales = "free", ncol = 4) +
+  # Basado en minimal pero súper vitaminado
+  theme_minimal(base_size = 11) +
+  theme(
+    # Leyenda innecesaria porque el eje X ya dice la clase, la quitamos para ganar espacio
+    legend.position = "none",
+    
+    # Limpiamos el fondo eliminando líneas secundarias pesadas
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_line(color = "#eaeded", linewidth = 0.5),
+    
+    # Estilizamos las etiquetas de las facetas (los títulos de cada caja)
+    strip.background = element_rect(fill = "#f8f9f9", color = "#d5dbdb", linewidth = 0.5),
+    strip.text = element_text(face = "bold", color = "#2c3e50", size = 10),
+    
+    # Añadimos un sutil eje inferior para asentar los gráficos
+    axis.line.x = element_line(color = "#bdc3c7", linewidth = 0.6),
+    axis.text = element_text(color = "#34495e"),
+    axis.title = element_text(face = "bold", color = "#2c3e50"),
+    
+    # Separación elegante entre las cajitas
+    panel.spacing = unit(1.2, "lines")
+  ) +
+  labs(
+    x = "",
+    y = "",
+    title = "Numeric features distributed by AF recurrence"
+  )
 ```
 
 ## Categorical features
 
-```{r, fig.width=10, fig.height=8}
-clinical_data |> 
-    select(where(is.factor)) |> 
-    pivot_longer(
-        cols = everything(),
-        names_to = "feature",
-        values_to = "value",
-        values_transform = list(value = as.character)
-        ) |> 
-    ggplot(aes(x = value)) +
-    geom_bar(color = "black", fill = "cyan") +
-    facet_wrap(~ feature, scales = "free") + 
-    labs(x = "", y = "") +
-    theme_minimal() +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```{r, fig.width=16, fig.height=12}
+clinical_data |> select(-code) |> 
+  select(where(is.factor)) |> 
+  pivot_longer(
+    cols = everything(),
+    names_to = "feature",
+    values_to = "value",
+    values_transform = list(value = as.character)
+  ) |> 
+  mutate(value = fct_rev(fct_infreq(value))) |> 
+  ggplot(aes(y = value, fill = value)) + 
+  geom_bar(
+    color = "#2c3e50", 
+    alpha = 0.8, 
+    width = 0.7,
+    linewidth = 0.5
+  ) +
+  geom_text(
+    aes(label = after_stat(count)),
+    stat = "count",
+    hjust = -0.2,            
+    size = 3.2,
+    fontface = "bold",
+    color = "#2c3e50"
+  ) +
+  scale_fill_viridis_d(option = "mako", begin = 0.3, end = 0.8) +
+  facet_wrap(~ feature, scales = "free", ncol = 3) +
+  coord_cartesian(clip = "off") +
+  theme_minimal(base_size = 11) +
+  theme(
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_line(color = "#f2f4f4", linewidth = 0.5),
+    panel.grid.major.y = element_blank(),
+    strip.background = element_rect(fill = "#f8f9f9", color = "#d5dbdb", linewidth = 0.5),
+    strip.text = element_text(face = "bold", color = "#2c3e50", size = 10),
+    axis.line.y = element_line(color = "#bdc3c7", linewidth = 0.6),
+    axis.text = element_text(color = "#34495e", face = "bold"),
+    axis.title = element_text(face = "bold", color = "#2c3e50"),
+    panel.spacing = unit(1.5, "lines")
+  ) +
+  labs(
+    x = "Counts",
+    y = "",
+    title = "Distribution of categorical features"
+  )
 ```
 
 Most of these categories are unbalanced, including the target class. Now let's see how this changes when we stratify the data by the target class:
 
-```{r, fig.width=10, fig.height=8}
+```{r, fig.width=10, fig.height=16}
 clinical_data |> 
-    select(where(is.factor)) |> 
-    pivot_longer(
-        cols = -af_recurrence,
-        names_to = "feature",
-        values_to = "value",
-        values_transform = list(value = as.character)
-        ) |> 
-    ggplot(aes(x = value, fill = af_recurrence)) +
-    geom_bar(color = "black", position = "fill") +
-    facet_wrap(~ feature, scales = "free") + 
-    labs(x = "", y = "") +
-    theme_minimal() +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  select(where(is.factor)) |> 
+  pivot_longer(
+    cols = -af_recurrence,
+    names_to = "feature",
+    values_to = "value",
+    values_transform = list(value = as.character)
+  ) |> 
+  filter(!is.na(value)) |> 
+  # Ordenamos las categorías del eje X por su frecuencia total
+  mutate(value = fct_infreq(value)) |> 
+  
+  ggplot(aes(x = value, fill = af_recurrence)) +
+  # Dibujamos las barras proporcionales al 100%
+  geom_bar(
+    color = "#2c3e50", 
+    position = "fill",
+    alpha = 0.85, 
+    width = 0.7,
+    linewidth = 0.5
+  ) +
+  # TRUCO INTERNO: Añadir el conteo absoluto de pacientes dentro de cada bloque de la barra
+  geom_text(
+    aes(label = after_stat(count)),
+    stat = "count",
+    position = position_fill(vjust = 0.5), # Centra el número en medio de cada color
+    size = 3.0,
+    fontface = "bold",
+    color = "white" # Blanco para que resalte sobre los colores oscuros de la barra
+  ) +
+  # Formateamos el eje Y para que muestre porcentajes reales (0% a 100%)
+  scale_y_continuous(
+    labels = label_percent(),
+    expand = expansion(mult = c(0, 0.05)) # Margen mínimo porque el tope fijo es siempre 100%
+  ) +
+  # Paleta de colores consistente con tus boxplots (Viridis para la recidiva no/yes)
+  scale_fill_viridis_d(option = "D", begin = 0.3, end = 0.8) +
+  
+  # Liberamos el eje X para que cada panel acomode solo sus categorías reales
+  facet_wrap(~ feature, scales = "free_x", ncol = 3) +
+  
+  theme_minimal(base_size = 11) +
+  theme(
+    legend.position = "top", # Colocamos la leyenda arriba para que no robe espacio a los lados
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(), 
+    panel.grid.major.y = element_line(color = "#eaeded", linewidth = 0.5), 
+    strip.background = element_rect(fill = "#f8f9f9", color = "#d5dbdb", linewidth = 0.5),
+    strip.text = element_text(face = "bold", color = "#2c3e50", size = 10),
+    axis.line.x = element_line(color = "#bdc3c7", linewidth = 0.6),
+    axis.text.x = element_text(color = "#34495e", face = "bold", angle = 45, hjust = 1),
+    axis.text.y = element_text(color = "#34495e"),
+    axis.title = element_text(face = "bold", color = "#2c3e50"),
+    panel.spacing = unit(1.5, "lines")
+  ) +
+  labs(
+    x = "",
+    y = "",
+    fill = "¿AF recurrence?",
+    title = "Categorical features distributed by AF recurrence"
+  )
 ```
 
-# Multicolinearity
+## Multicolinearity
 Finally, let's check the correlation between features to drop those that are highly correlated. To address numerical features' colinearity, we will use the **VIF**.
 
 ```{r}
 # Convert the target class to numeric for the VIF calculation
-temp_clinical_data <- clinical_data |> 
+temp_clinical_data <- clinical_data |> select(-code) |> 
   mutate(af_recurrence = as.numeric(af_recurrence))
 
 # Fit a linear model with all the features
@@ -211,9 +329,9 @@ vif_df |>
 The categorical features aren't correlated at all. On the other hand, the alcoholic drinks are somehow correlated with each other, specially with the `alcohol` feature. Therefore we will drop the `alcohol` feature from the data set and calculate again the VIFs:
 
 ```{r}
-# drop the alcohol feature
+# drop the age feature
 temp_df <- temp_clinical_data |> 
-    select(-alcohol)
+    select(-age)
 
 # fit a linear model with the remaining numeric features
 model <- lm(
@@ -244,58 +362,19 @@ vif_df |>
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-What happens if we keep the `alcohol` feature and drop the ones referring to specific alcoholic drinks?
+Since a VIF value of $5$ is not that critical, we will not drop the `age` feature.
 
-```{r}
-# drop the alcoholic beverages features
-temp_df <- temp_clinical_data |> 
-    select(-c(white_wine, young_red_wine, aged_red_wine, beer))
-
-# fit a linear model with the remaining numeric features
-model <- lm(
-    af_recurrence ~ ., 
-    data = temp_df
-    )
-
-# Calculate the equivalent VIF corrected for the degrees of freedom
-vif_df <- vif(model) |> 
-    as.data.frame() |> 
-    rownames_to_column(var = "feature") |> 
-    as_tibble() |> 
-    rename(
-        GVIF = 2,
-        Df = 3,
-        Adjusted_GVIF = 4
-    ) |> 
-    mutate(VIF_Equivalent = Adjusted_GVIF^2) |> 
-    select(feature, VIF_Equivalent)
-
-# Plot the VIF values
-vif_df |> 
-    ggplot(aes(x = reorder(feature, VIF_Equivalent), y = VIF_Equivalent)) + 
-    geom_bar(stat = "identity", fill = "cyan", color = "black") +
-    geom_hline(yintercept = 5, linetype = "dashed", color = "orange") +
-    labs(x = "", y = "VIF") +
-    theme_minimal() +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
-```
-
-Since the maximum VIF is slightly lower than in the first scenario, we keep the `alcohol` feature and drop the ones referring to specific alcoholic drinks. Apart from this, the data set's dimensionality is reduced.
-
-```{r}
-clinical_data <- clinical_data |> 
-    select(-c(white_wine, young_red_wine, aged_red_wine, rose_wine, beer))
-```
+# Missing values
 
 # Save progress
-Let's save this data set for the next steps:
 
 ```{r}
-# Save it into the project's data directory
+# Save the data
 write_parquet(
     clinical_data, 
-    "data/intermediate/clinical_data_clean.parquet"
+    "data/clean/clinical_data_clean.parquet"
     )
 
-head(clinical_data)
+head(clinical_data_processed)
 ```
+
