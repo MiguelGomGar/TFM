@@ -1,6 +1,6 @@
 import pandas as pd
 from pathlib import Path
-import json
+import joblib
 
 def save_scores(model_names, 
                     test_metrics, 
@@ -111,44 +111,45 @@ def save_pr_curves_long_format(model_names,
         
     return df_pr_long
 
-def save_hyperparameters(fitted_pipeline, results_path, filename_prefix="best_params"):
+def save_model(fitted_pipeline, results_path, filename_prefix="best_model"):
     """
-    Extracts the hyperparameters of a fitted model, saves the dictionary as a JSON file 
-    in the specified results directory, and returns the hyperparameters as a pandas DataFrame.
+    Saves the entire fitted pipeline as a binary file (.joblib), displays its 
+    hyperparameters as a formatted pandas DataFrame, and returns that DataFrame.
 
     Parameters:
     ----------
-    - fitted_model : sklearn.pipeline.Pipeline or estimator
-        The trained model from which to extract hyperparameters.
+    - fitted_pipeline : sklearn.pipeline.Pipeline
+        The fully trained pipeline object to be serialized and saved.
     - results_path : str or pathlib.Path
-        The directory path where the JSON file will be saved.
-    - filename_prefix : str, default="best_params"
-        The prefix used for the output JSON file name.
+        The directory path where the binary file will be stored.
+    - filename_prefix : str, default="best_model"
+        The prefix used for the output file name.
 
     Returns:
     -------
     - df_display : pandas.DataFrame
-        A DataFrame containing the hyperparameters for aesthetic rendering or further analysis.
+        A DataFrame containing the final hyperparameters for notebook visualization.
     """
-    # 1. Extract hyperparameters based on object structure
+    # 1. Extract hyperparameters from the specific estimator step ('clf')
     fitted_model_params = fitted_pipeline['clf'].get_params()
 
-    # 2. Save the dictionary as a JSON file in the results folder
+    # 2. Serialize and save the entire pipeline object to disk using joblib
     output_dir = Path(results_path)
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    # Define the final file path
+    # Extract the classifier class name dynamically for a precise filename
     model_class_name = type(fitted_pipeline['clf']).__name__
-    file_path = output_dir / f"{filename_prefix}_{model_class_name}.json"
+    file_path = output_dir / f"{filename_prefix}_{model_class_name}.joblib"
     
-    with open(file_path, "w", encoding="utf-8") as json_file:
-        json.dump(fitted_model_params, json_file, indent=4, ensure_ascii=False)
+    # Save the binary object (contains preprocessing states, weights, and params)
+    joblib.dump(fitted_pipeline, file_path)
 
-    # 3. Convert to DataFrame for notebook presentation and returning
+    # 3. Convert parameters to a DataFrame for clean notebook rendering
     df_display = pd.DataFrame(
         list(fitted_model_params.items()), 
         columns=["Hyperparameter", "Optimal Value"]
     )
     df_display.index = df_display.index + 1
 
+    # 4. Return the DataFrame so Jupyter can display it natively
     return df_display

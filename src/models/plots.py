@@ -9,7 +9,8 @@ def plot_cm(y_true, y_pred,
             title='Confusion Matrix', 
             cmap='Blues'):
     """
-    Plots a confusion matrix.
+    Plots a confusion matrix with absolute counts and relative percentages as text, 
+    but strictly uses the relative percentages to drive the color scale.
 
     Parameters:
     ----------
@@ -25,13 +26,13 @@ def plot_cm(y_true, y_pred,
         Color palette.
     """
     
-    # 1. Compute the confusion matrix
+    # 1. Compute the absolute confusion matrix
     cm = confusion_matrix(y_true, y_pred)
     
-    # 2. Compute the percentages per row
+    # 2. Compute the percentages per row (normalization by true labels)
     cm_percentages = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
     
-    # 3. Create the text labels by combining counts and percentages
+    # 3. Create the text labels by combining absolute counts and percentages
     labels = [f"{v1}\n({v2:.1%})" for v1, v2 in zip(cm.flatten(), cm_percentages.flatten())]
     labels = np.asarray(labels).reshape(cm.shape)
     
@@ -39,11 +40,16 @@ def plot_cm(y_true, y_pred,
     plt.figure(figsize=(8, 6))
     
     # 5. Draw the heatmap
-    ax = sns.heatmap(cm, 
+    # CRITICAL FIX: Pass 'cm_percentages' as the data so the color scale 
+    # uses relative values, while keeping 'annot=labels' for the dual text.
+    ax = sns.heatmap(cm_percentages, 
                     annot=labels, 
                     fmt='', 
                     cmap=cmap, 
-                    cbar=True, 
+                    vmin=0.0,      # Min color is 0%
+                    vmax=1.0,      # Max color is 100%
+                    cbar=True,
+                    cbar_kws={'label': 'Proportion of Actual Class'}, # Legend for the colorbar
                     linewidths=1, 
                     linecolor='white', 
                     annot_kws={"size": 12, "weight": "bold"})
@@ -308,6 +314,7 @@ def plot_all_metrics_comparison(df,
         ax.set_ylim(0, 1.05)
         
         # Rotate x-axis labels for better readability
+        ax.set_xticks(range(len(df.index)))
         ax.set_xticklabels(df.index, fontsize=12, weight='bold', rotation=45, ha='right')
         
         # Add value labels on top of the bars
