@@ -184,7 +184,8 @@ def plot_combined_pr_curves(df_long, title='Precision-Recall Curves'):
         hue='Model',
         drawstyle='steps-post',
         linewidth=2.5,
-        alpha=0.8
+        alpha=0.8,
+        errorbar=None
     )
     
     # Add a horizontal line for the baseline
@@ -303,8 +304,11 @@ def plot_all_metrics_comparison(df,
         # Customizations
         ax.set_title(metric, fontsize=14, weight='bold')
         ax.set_xlabel('')
-        ax.set_ylabel('Score', fontsize=12)
+        ax.set_ylabel('', fontsize=12)
         ax.set_ylim(0, 1.05)
+        
+        # Rotate x-axis labels for better readability
+        ax.set_xticklabels(df.index, fontsize=12, weight='bold', rotation=45, ha='right')
         
         # Add value labels on top of the bars
         autolabel(ax.patches, ax)
