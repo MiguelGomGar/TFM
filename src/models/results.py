@@ -1,5 +1,6 @@
 import pandas as pd
 from pathlib import Path
+import json
 
 def save_scores(model_names, 
                     test_metrics, 
@@ -109,3 +110,45 @@ def save_pr_curves_long_format(model_names,
         df_pr_long.to_csv(file_path, index=False)
         
     return df_pr_long
+
+def save_hyperparameters(fitted_pipeline, results_path, filename_prefix="best_params"):
+    """
+    Extracts the hyperparameters of a fitted model, saves the dictionary as a JSON file 
+    in the specified results directory, and returns the hyperparameters as a pandas DataFrame.
+
+    Parameters:
+    ----------
+    - fitted_model : sklearn.pipeline.Pipeline or estimator
+        The trained model from which to extract hyperparameters.
+    - results_path : str or pathlib.Path
+        The directory path where the JSON file will be saved.
+    - filename_prefix : str, default="best_params"
+        The prefix used for the output JSON file name.
+
+    Returns:
+    -------
+    - df_display : pandas.DataFrame
+        A DataFrame containing the hyperparameters for aesthetic rendering or further analysis.
+    """
+    # 1. Extract hyperparameters based on object structure
+    fitted_model_params = fitted_pipeline['clf'].get_params()
+
+    # 2. Save the dictionary as a JSON file in the results folder
+    output_dir = Path(results_path)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Define the final file path
+    model_class_name = type(fitted_pipeline['clf']).__name__
+    file_path = output_dir / f"{filename_prefix}_{model_class_name}.json"
+    
+    with open(file_path, "w", encoding="utf-8") as json_file:
+        json.dump(fitted_model_params, json_file, indent=4, ensure_ascii=False)
+
+    # 3. Convert to DataFrame for notebook presentation and returning
+    df_display = pd.DataFrame(
+        list(fitted_model_params.items()), 
+        columns=["Hyperparameter", "Optimal Value"]
+    )
+    df_display.index = df_display.index + 1
+
+    return df_display

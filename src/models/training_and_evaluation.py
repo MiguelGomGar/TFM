@@ -1,6 +1,7 @@
 import numpy as np
 import optuna
 from optuna.integration import OptunaSearchCV
+from optuna.samplers import TPESampler
 from optuna import visualization as vis
 from sklearn.metrics import (
     accuracy_score, 
@@ -18,7 +19,8 @@ def optimize_model_optuna_search(pipeline,
                     X_train, y_train, X_test, y_test, 
                     scoring='average_precision', 
                     cv=5, 
-                    n_trials=50, 
+                    n_startup_trials=30,
+                    n_iter=100, 
                     seed=42):
     """
     Optimizes a model using Bayesian optimization, trains it, and returns 
@@ -39,8 +41,10 @@ def optimize_model_optuna_search(pipeline,
         Metric to optimize in the Optuna search.
     - cv : int, default=5
         Number of partitions (folds) for cross-validation.
-    - n_trials : int, default=50
-        Optuna iterations.
+    - n_startup_trials : int, default=10
+        Number of initial trials for the sampler.
+    - n_iter : int, default=50
+        Number of iterations for the Optuna search.
     - seed : int, default=42
         Random seed for reproducibility.
 
@@ -61,11 +65,19 @@ def optimize_model_optuna_search(pipeline,
     # ---------------------------------------------------------
     print("Starting hyperparameter optimization...")
     
-    # Set up OptunaSearchCV with the provided pipeline and parameter distributions
+    # Instantiate a custom sampler
+    custom_sampler = TPESampler(n_startup_trials=n_startup_trials, seed=seed)
+    
+    # Create a study object where the custom sampler can be injected
+    custom_study = optuna.create_study(direction="maximize",
+                                sampler=custom_sampler)
+    
+    # Set up the search 
     optuna_search = OptunaSearchCV(
         estimator=pipeline,
         param_distributions=param_distributions,
-        n_trials=n_trials,
+        n_trials=n_iter,
+        study=custom_study,
         scoring=scoring,
         cv=cv,
         random_state=seed 
@@ -102,7 +114,7 @@ def optimize_model_optuna_search(pipeline,
     
     # Evaluate the best model using cross-validation on the training set
     cv_results = cross_validate(best_model, X_train, y_train, cv=cv, 
-                                scoring=scoring_dict, n_jobs=1, return_train_score=True)
+                                scoring=scoring_dict, return_train_score=True)
     
     # Compute means and standard deviations
     metrics_train_mean = {
@@ -191,7 +203,7 @@ def optimize_model_random_search(pipeline,
                     X_train, y_train, X_test, y_test, 
                     scoring='average_precision', 
                     cv=5, 
-                    n_trials=1000, 
+                    n_trials=100, 
                     seed=42):
     """
     Optimizes a model using Bayesian optimization, trains it, and returns 
