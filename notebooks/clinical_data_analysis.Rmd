@@ -27,7 +27,7 @@ Let's check the column's data types and whether there are many missing values:
 skim(clinical_data) |> summary()
 ```
 
-There are $720$ rows and $27$ columns: $18$ categorical (the target class can be found among these) and $9$ numerical features. Let's check each type separately.
+There are $720$ rows and $33$ columns: $21$ categorical (the target class can be found among these) and $12$ numerical features. Let's check each type separately.
 
 ## Numerical features
 Let's sum up the data:
@@ -37,6 +37,14 @@ clinical_data |> select(-code) |> skim() |> yank("numeric") |>
   select(-c(starts_with("p"), hist, complete_rate))
 ```
 
+Since most of the data in `LAD`, `LAA` and `LAV` is missing, we will drop those features:
+
+```{r}
+clinical_data <- clinical_data |> 
+  select(-c(LAD, LAA, LAV))
+```
+
+
 ## Categorical features
 
 Let's sum up the data:
@@ -45,7 +53,13 @@ Let's sum up the data:
 skim(clinical_data) |> yank("factor") |> select(-c(complete_rate, ordered))
 ```
 
-There are $17$ missing values in the `hypolipidemics` feature, $37$ in `left_atrial_enlarg` and 587 in `af_trigger`. In the last case, given than these missing values represent the majority of the records, we should either find out whether this is because the trigger is unknown or the data is truly missing. In the first case, we can impute the missing values with a new category, "unknown". However, if the data is truly missing, the feature should be dropped from the data set. We will decide on how to deal with these missing values later on.
+There are $17$ missing values in the `hypolipidemics` feature, $37$ in `left_atrial_enlarg` and $587$ in `af_trigger`. In this last case, since most of the data is missing, we will drop the feature:
+
+```{r}
+clinical_data <- clinical_data |> 
+  select(-AF_trigger)
+```
+
 
 # Statistical analysis
 Firstly, let's check how the data is distributed.
@@ -121,13 +135,13 @@ Now, let's check how does the distribution of each feature behaves when we strat
 
 ```{r, fig.width=10, fig.height=8}
 clinical_data |> select(-code) |> 
-  select(any_of(c("af_recurrence")), where(is.numeric)) |> 
+  select(any_of(c("AF_recurrence")), where(is.numeric)) |> 
   pivot_longer(
-    cols = -af_recurrence,
+    cols = -AF_recurrence,
     names_to = "feature",
     values_to = "value"
   ) |> 
-  ggplot(aes(x = af_recurrence, y = value, fill = af_recurrence)) +
+  ggplot(aes(x = AF_recurrence, y = value, fill = AF_recurrence)) +
   # Cajas con bordes definidos, transparencia y outliers sutiles
   geom_boxplot(
     alpha = 0.75, 
@@ -222,13 +236,13 @@ clinical_data |> select(-code) |>
   )
 ```
 
-Most of these categories are unbalanced, including the target class. Now let's see how this changes when we stratify the data by the target class:
+Most of these categories are imbalanced, including the target class. Now let's see how this changes when we stratify the data by the target class:
 
 ```{r, fig.width=10, fig.height=16}
 clinical_data |> 
   select(where(is.factor)) |> 
   pivot_longer(
-    cols = -af_recurrence,
+    cols = -AF_recurrence,
     names_to = "feature",
     values_to = "value",
     values_transform = list(value = as.character)
@@ -237,7 +251,7 @@ clinical_data |>
   # Ordenamos las categorías del eje X por su frecuencia total
   mutate(value = fct_infreq(value)) |> 
   
-  ggplot(aes(x = value, fill = af_recurrence)) +
+  ggplot(aes(x = value, fill = AF_recurrence)) +
   # Dibujamos las barras proporcionales al 100%
   geom_bar(
     color = "#2c3e50", 
@@ -294,11 +308,11 @@ Finally, let's check the correlation between features to drop those that are hig
 ```{r}
 # Convert the target class to numeric for the VIF calculation
 temp_clinical_data <- clinical_data |> select(-code) |> 
-  mutate(af_recurrence = as.numeric(af_recurrence))
+  mutate(AF_recurrence = as.numeric(AF_recurrence))
 
 # Fit a linear model with all the features
 model <- lm(
-    af_recurrence ~ ., 
+    AF_recurrence ~ ., 
     data = temp_clinical_data
     )
 
@@ -326,43 +340,7 @@ vif_df |>
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-The categorical features aren't correlated at all. On the other hand, the alcoholic drinks are somehow correlated with each other, specially with the `alcohol` feature. Therefore we will drop the `alcohol` feature from the data set and calculate again the VIFs:
-
-```{r}
-# drop the age feature
-temp_df <- temp_clinical_data |> 
-    select(-age)
-
-# fit a linear model with the remaining numeric features
-model <- lm(
-    af_recurrence ~ ., 
-    data = temp_df
-    )
-
-# Calculate the equivalent VIF corrected for the degrees of freedom
-vif_df <- vif(model) |> 
-    as.data.frame() |> 
-    rownames_to_column(var = "feature") |> 
-    as_tibble() |> 
-    rename(
-        GVIF = 2,
-        Df = 3,
-        Adjusted_GVIF = 4
-    ) |> 
-    mutate(VIF_Equivalent = Adjusted_GVIF^2) |> 
-    select(feature, VIF_Equivalent)
-
-# Plot the VIF values
-vif_df |> 
-    ggplot(aes(x = reorder(feature, VIF_Equivalent), y = VIF_Equivalent)) + 
-    geom_bar(stat = "identity", fill = "cyan", color = "black") +
-    geom_hline(yintercept = 5, linetype = "dashed", color = "orange") +
-    labs(x = "", y = "VIF") +
-    theme_minimal() +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
-```
-
-Since a VIF value of $5$ is not that critical, we will not drop the `age` feature.
+Since a$VIF < 5$, there is no multicolinearity between the numeric features, so we will keep all of them.
 
 # Missing values
 
@@ -375,6 +353,6 @@ write_parquet(
     "data/clean/clinical_data_clean.parquet"
     )
 
-head(clinical_data_processed)
+head(clinical_data)
 ```
 

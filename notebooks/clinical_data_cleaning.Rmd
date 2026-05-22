@@ -1,0 +1,327 @@
+---
+title: "1.0-Data processing"
+output: html_document
+---
+
+# Packages
+
+```{r echo = FALSE, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(haven)
+library(labelled)
+library(arrow)
+library(data.table)
+```
+
+# Load the data
+This data set stores clinical information from patients in the PREDIMAR study. The aim of this project is to build a machine learning model capable of predicting AF recurrence based on medical data.
+
+Let's load the data set:
+
+```{r echo = FALSE}
+global <- read_dta("data/raw/predimar_miguelgomez.dta")
+```
+
+Since it is a STATA file, the labels need to be removed:
+
+```{r}
+original_clinical_data <- global |> remove_labels()
+```
+
+# Data processing
+The data set consists of thousands of features referring over 700 patients. The ones taken into account are sociodemographic, clinical and nutritional characteristics:
+
+* **Sociodemographic data**
+** `sexo`: gender ($0$ male, $1$ female).
+** `edad`: age.
+** `fum_0m`: whether the patient is/was a smoker ($0$ no, $1$ yes).
+** `trabajo_0m`: whether the patient is currently working ($0$ no, $1$ yes).
+** `tipoest_0m`: educational level.
+** `ecivil_0m`: marital status ($0$ single, $1$ married, $2$ divorced, $3$ widowed).
+** `numhog_0m`: number of people living in the same household.
+** `numhij_0m`: number of children.
+
+* **Clinical data**
+** `code`: patient tracking identifier.
+** `nodo`: assigned hospital node/center.
+** `interv`: assigned cohort ($0$ control, $1$ intervention).
+** `bmi_autoref_0m`: Body Mass Index ($0$ normal weight, $25$ overweight, $30$ obese).
+** `mettotal_0m`: MET (physical activity measurement).
+** `hta_0m`: hypertension ($0$ no, $1$ yes).
+** `diabetest2_0m`: type 2 diabetes ($0$ no, $1$ yes).
+** `hipercol_0m`: whether the patient suffers from dyslipidemia ($0$ no, $1$ yes).
+** `hipolipemiantes_0m`: whether the patient takes hypolipidemic medication ($0$ no, $1$ yes).
+** `saos_0m`: whether the patient suffers from sleep apnea ($0$ no, $1$ yes). 
+** `ictus_0m`: whether the patient has suffered from a stroke ($0$ no, $1$ yes).
+** `ic_v00`: whether the patient has suffered from heart failure ($0$ no, $1$ yes).
+** `miocardiopat_0m_imp`: whether the patient suffers from cardiomyopathy ($0$ no, $1$ yes).
+** `dilat_tot4`: left atrial enlargement ($0$ normal, $1$ mild, $2$ moderate, $3$ severe).
+** `eco_diamai_0m`: left atrial diameter ($cm$).
+** `eco_areaai_0m`: left atrial area in ($cm^2)$.
+** `eco_volumenai_0m`: left atrial volume ($mL)$.
+** `tipofa`: type of Atrial Fibrillation ($0$ paroxysmal, $1$ recurrent).
+** `desenca_fa_0m`: whether the AF diagnosis was made after a cardiac event ($0$ no, $1$ yes).
+** `tiempo_fa_ablac`: years since the first AF diagnosis.
+** `ablacion_previa`: whether the patient has undergone catheter ablation previously to this trial ($0$ no, $1$ yes).
+** `event_blank`: whether there has been AF recurrence during the blanking period ($0$ no, $1$ yes).
+** `event18m_conkardia`: whether there has been AF recurrence after the blanking period and before $18$ months since the catheter ablation ($0$ no, $1$ yes).
+
+* **Nutritional data**
+** `p14_tot_0m`: affinity to the Mediterranean diet ($0 - 14$).
+** `alcoholg_0m`: total alcohol daily intake ($g$).
+
+```{r}
+clinical_data_selected <- original_clinical_data |> 
+    select(
+        # SOCIODEMOGRAPHIC DATA
+        sexo,
+        edad,
+        fum_0m,
+        trabajo_0m,
+        tipoest_0m,
+        ecivil_0m,
+        numhog_0m,
+        numhij_0m,
+        
+        # CLINICAL DATA: Tracking & Trial Context
+        code,
+        nodo,
+        interv,
+        
+        # CLINICAL DATA: Lifestyle & General Comorbidities
+        bmi_autoref_0m,
+        mettotal_0m,
+        hta_0m,
+        diabetest2_0m,
+        hipercol_0m,
+        hipolipemiantes_0m,
+        saos_0m,
+        ictus_0m,
+        
+        # CLINICAL DATA: Specific Cardiac Conditions & Echo Structural Measurements
+        ic_v00,
+        miocardiopat_0m_imp,
+        dilat_tot4,
+        eco_diamai_0m,
+        eco_areaai_0m,
+        eco_volumenai_0m,
+        
+        # CLINICAL DATA: Atrial Fibrillation History & Dynamics
+        tipofa,
+        desenca_fa_0m,
+        tiempo_fa_ablac,
+        ablacion_previa,
+        event_blank,
+        
+        # PREDICTED CLASS / OUTCOME
+        event18m_conkardia,
+        
+        # NUTRITIONAL DATA
+        p14_tot_0m,
+        alcoholg_0m
+    )
+
+head(clinical_data_selected)
+```
+
+Lets label the categorical data using factors:
+
+```{r}
+clinical_data_modified <- clinical_data_selected |> 
+    mutate(
+        # =====================================================================
+        # SOCIODEMOGRAPHIC DATA
+        # =====================================================================
+        sexo = factor(
+            sexo, 
+            levels = c(0, 1), 
+            labels = c("male", "female"),
+            ordered = FALSE
+        ),
+        
+        fum_0m = factor(
+            fum_0m,
+            levels = c(0, 2, 1),
+            labels = c("never", "current", "former"),
+            ordered = TRUE
+        ),
+        
+        trabajo_0m = factor(
+            trabajo_0m,
+            levels = seq(1, 5),
+            labels = c("full-time", "part-time", "houskeeper", "unemployed", "retired")
+        ),
+        
+        tipoest_0m = factor(
+            tipoest_0m,
+            levels = c(0, 4, 3, 2, 1),
+            labels = c("none", "diploma", "college", "master", "doctorate"),
+            ordered = TRUE
+        ),
+        
+        ecivil_0m = factor(
+            ecivil_0m,
+            levels = c(0, 1, 2, 3, 4),
+            labels = c("single", "married", "widowed", "divorced", "other")
+        ),
+        
+        # =====================================================================
+        # CLINICAL DATA: Tracking & Trial Context
+        # =====================================================================
+        nodo = factor(
+            nodo,
+            levels = c(1, 2, 3, 4),
+            labels = c("Pamplona", "Madrid", "Granada", "Alicante")
+        ),
+        
+        interv = factor(
+            interv,
+            levels = c(0, 1),
+            labels = c("control", "intervention")
+        ),
+        
+        # =====================================================================
+        # CLINICAL DATA: Lifestyle & General Comorbidities
+        # =====================================================================
+        hta_0m = factor(
+            hta_0m,
+            levels = c(0, 1),
+            labels = c("no", "yes")
+        ),
+        
+        diabetest2_0m = factor(
+            diabetest2_0m,
+            levels = c(0, 1),
+            labels = c("no", "yes"),
+            ordered = TRUE
+        ),
+        
+        hipercol_0m = factor(
+            hipercol_0m,
+            levels = c(0, 1),
+            labels = c("no", "yes"),
+            ordered = TRUE
+        ),
+        
+        hipolipemiantes_0m = factor(
+            hipolipemiantes_0m,
+            levels = c(0, 1),
+            labels = c("no", "yes"),
+            ordered = TRUE
+        ),
+        
+        saos_0m = factor(
+            saos_0m,
+            levels = c(0, 1),
+            labels = c("no", "yes"),
+            ordered = TRUE
+        ),
+        
+        ictus_0m = factor(
+            ictus_0m,
+            levels = c(0, 1),
+            labels = c("no", "yes"),
+            ordered = TRUE
+        ),
+        
+        # =====================================================================
+        # CLINICAL DATA: Specific Cardiac Conditions & Echo Measurements
+        # =====================================================================
+        ic_v00 = factor(
+            ic_v00,
+            levels = c(0, 1),
+            labels = c("no", "yes"),
+            ordered = TRUE
+        ),
+        
+        miocardiopat_0m_imp = factor(
+            miocardiopat_0m_imp,
+            levels = c(0, 1),
+            labels = c("no", "yes"),
+            ordered = TRUE
+        ),
+        
+        dilat_tot4 = factor(
+            dilat_tot4,
+            levels = c(0, 1, 2, 3),
+            labels = c("normal", "mild", "moderate", "severe"),
+            ordered = TRUE
+        ),
+        
+        # =====================================================================
+        # CLINICAL DATA: Atrial Fibrillation History & Dynamics
+        # =====================================================================
+        tipofa = factor(
+            tipofa,
+            levels = c(0, 1),
+            labels = c("paroxysmal", "persistent")
+        ),
+        
+        desenca_fa_0m = factor(
+            desenca_fa_0m,
+            levels = c(1, 2, 3, 4, 6, 7, 8),
+            labels = c("physical exercise", "drinking", "emotion", "stress", 
+                       "lack of sleep", "heavy meals", "other"),
+            ordered = FALSE
+        ),
+        
+        ablacion_previa = factor(
+            ablacion_previa,
+            levels = c(0, 1),
+            labels = c("no", "yes")
+        ),
+        
+        event_blank = factor(
+            event_blank,
+            levels = c(0, 1),
+            labels = c("no", "yes"),
+            ordered = TRUE
+        ),
+        
+        # =====================================================================
+        # PREDICTED CLASS / OUTCOME
+        # =====================================================================
+        event18m_conkardia = factor(
+            event18m_conkardia,
+            levels = c(0, 1),
+            labels = c("no", "yes")
+        )
+    )
+
+head(clinical_data_modified)
+```
+
+```{r}
+names(clinical_data_modified)
+```
+
+Let's modify and translate the variables' names to make them more understandable:
+
+```{r}
+new_names <- c(
+    "gender", "age", "smoking_status", "working_status", "education_level", 
+    "marital_status", "household_size", "children", "code", "center", 
+    "intervention", "BMI", "MET", "hypertension", "type2_diabetes", 
+    "hypercholesterolemia", "hypolipidemic_medication", "OSA", "stroke", 
+    "heart_failure", "cardiomyopathy", "atrial_enlargement", "LAD", "LAA", 
+    "LAV", "AF_type", "AF_trigger", "AF_ablation_time", "previous_ablation", 
+    "AF_recurrence_blank_period", "AF_recurrence", "p14_score", "alcohol_intake"
+    )
+
+clinical_data_processed <- clinical_data_modified |> setnames(
+    old = names(clinical_data_modified), 
+    new = new_names
+    )
+```
+
+This is the primary data we will use to build the model. Lets save it:
+
+```{r}
+# Save it into the project's data directory
+write_parquet(
+    clinical_data_processed, 
+    "data/intermediate/clinical_data.parquet"
+    )
+
+head(clinical_data_processed)
+```
