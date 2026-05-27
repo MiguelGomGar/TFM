@@ -11,6 +11,8 @@ library(arrow)
 library(skimr)
 library(scales)
 library(car)
+
+source("src/data_wrangling/data_analysis.R")
 ```
 
 # Load the data
@@ -27,7 +29,7 @@ Let's check the column's data types and whether there are many missing values:
 skim(clinical_data) |> summary()
 ```
 
-There are $720$ rows and $33$ columns: $21$ categorical (the target class can be found among these) and $12$ numerical features. Let's check each type separately.
+There are $720$ rows and $34$ columns: $20$ categorical (the target class can be found among these) and $14$ numerical features. Let's check each type separately.
 
 ## Numerical features
 Let's sum up the data:
@@ -37,13 +39,49 @@ clinical_data |> select(-code) |> skim() |> yank("numeric") |>
   select(-c(starts_with("p"), hist, complete_rate))
 ```
 
-Since most of the data in `LAD`, `LAA` and `LAV` is missing, we will drop those features:
+Since half of the data in the `LAD`, `LAA` and `LAV` columns is missing, we will drop those features:
 
 ```{r}
-clinical_data <- clinical_data |> 
+clinical_data <- clinical_data |>
   select(-c(LAD, LAA, LAV))
 ```
 
+The remaining columns with missing values are: `waist_to_height`, `glucose`, `HDL`, and `triglicerides`. Let's check if these missing values are concentrated in a specific class of the target variable:
+
+```{r}
+clinical_data |> 
+  filter(is.na(waist_to_height)) |>
+  group_by(AF_recurrence) |>
+  summarise(count = n())
+```
+
+```{r}
+clinical_data |> 
+  filter(is.na(glucose)) |>
+  group_by(AF_recurrence) |>
+  summarise(count = n())
+```
+
+```{r}
+clinical_data |> 
+  filter(is.na(HDL)) |>
+  group_by(AF_recurrence) |>
+  summarise(count = n())
+```
+
+```{r}
+clinical_data |> 
+  filter(is.na(triglicerides)) |>
+  group_by(AF_recurrence) |>
+  summarise(count = n())
+```
+
+```{r}
+clinical_data |> 
+  filter(is.na(waist_to_height) & is.na(glucose) & is.na(HDL) & is.na(triglicerides)) |>
+  group_by(AF_recurrence) |>
+  summarise(count = n())
+```
 
 ## Categorical features
 
@@ -53,257 +91,83 @@ Let's sum up the data:
 skim(clinical_data) |> yank("factor") |> select(-c(complete_rate, ordered))
 ```
 
-There are $17$ missing values in the `hypolipidemics` feature, $37$ in `left_atrial_enlarg` and $587$ in `af_trigger`. In this last case, since most of the data is missing, we will drop the feature:
+There are $17$ missing values in the `hypolipidemic_meds` feature. Let's check if these missing values are concentrated in a specific class of the target variable:
 
 ```{r}
-clinical_data <- clinical_data |> 
-  select(-AF_trigger)
+clinical_data |> 
+  filter(is.na(hypolipidemic_meds)) |>
+  group_by(AF_recurrence) |>
+  summarise(count = n())
 ```
 
-
 # Statistical analysis
-Firstly, let's check how the data is distributed.
+Firstly, let's check how is the data distributed.
 
 ## Numerical features
 
 ```{r, fig.width=10, fig.height=8}
-clinical_data |> select(-code) |> 
-  select(where(is.numeric)) |> 
-  pivot_longer(
-    cols = everything(),
-    names_to = "feature",
-    values_to = "value"
-  ) |> 
-  ggplot(aes(x = value)) +
-  # 1. Histograma sutil de fondo (bajamos la opacidad a 0.4)
-  # Usamos una paleta médica (ej. azul acero) en lugar del cyan puro que satura
-  geom_histogram(
-    aes(y = after_stat(density)), # Sincroniza la escala con la curva de densidad
-    bins = 20,                    # Reducimos bins para evitar el efecto "peine desdentado"
-    color = "white",              # Bordes blancos separadores más elegantes
-    fill = "#2c3e50", 
-    alpha = 0.4
-  ) +
-  # 2. Curva de densidad suavizada (elimina el problema visual de las barras sueltas)
-  geom_density(
-    color = "#16a085", 
-    linewidth = 1, 
-    fill = "#16a085", 
-    alpha = 0.15
-  ) +
-  # 3. TRUCO CORRECCIÓN DECIMALES: labels = label_percent() o integers
-  # Si el rango es pequeño, forzamos saltos enteros
-  scale_x_continuous(
-    labels = function(x) {
-      # Eliminamos los valores NA para que no rompan la validación
-      x_clean <- x[!is.na(x)]
-      
-      # Si todos los números del eje son enteros, quitamos decimales
-      if (length(x_clean) > 0 && all(x_clean == round(x_clean))) {
-        return(sprintf("%d", as.integer(x)))
-      } else {
-        # Si es continua real (ej. bmi), usamos el formato estándar de R
-        return(labels(x)) 
-      }
-    }
-  ) +
-  facet_wrap(~ feature, scales = "free", ncol = 4) +
-  theme_minimal(base_size = 11) +
-  theme(
-    # Limpieza de cuadrículas
-    panel.grid.minor = element_blank(),
-    panel.grid.major.x = element_blank(),
-    panel.grid.major.y = element_line(color = "#eaeded", linewidth = 0.4),
-    
-    # Consistencia con el diseño de tus boxplots (paneles estructurados)
-    strip.background = element_rect(fill = "#f8f9f9", color = "#d5dbdb", linewidth = 0.5),
-    strip.text = element_text(face = "bold", color = "#2c3e50", size = 10),
-    
-    # Línea base en el eje X para que descansen los histogramas
-    axis.line.x = element_line(color = "#bdc3c7", linewidth = 0.6),
-    axis.text = element_text(color = "#34495e"),
-    axis.title = element_text(face = "bold", color = "#2c3e50")
-  ) +
-  labs(
-    x = "",
-    y = "",
-    title = "Distribution of numeric features"
-  )
+clinical_data |> 
+  select(-code) |> 
+  plot_global_numeric_distribution()
 ```
 
-Now, let's check how does the distribution of each feature behaves when we stratify the data by the target class:
+Now, let's check the distribution stratified by the target class:
 
 ```{r, fig.width=10, fig.height=8}
-clinical_data |> select(-code) |> 
-  select(any_of(c("AF_recurrence")), where(is.numeric)) |> 
-  pivot_longer(
-    cols = -AF_recurrence,
-    names_to = "feature",
-    values_to = "value"
-  ) |> 
-  ggplot(aes(x = AF_recurrence, y = value, fill = AF_recurrence)) +
-  # Cajas con bordes definidos, transparencia y outliers sutiles
-  geom_boxplot(
-    alpha = 0.75, 
-    color = "#2c3e50", 
-    outlier.size = 1, 
-    outlier.alpha = 0.4,
-    linewidth = 0.6
-  ) +
-  # Escala logarítmica para manejar variables con rangos muy distintos
-  scale_y_continuous(trans = pseudo_log_trans(base = 10)) +
-  # Paleta de colores médica y profesional (puedes cambiar "D" por "A" o "E")
-  scale_fill_viridis_d(option = "D", begin = 0.3, end = 0.8) +
-  # Cuadrícula modular con escalas libres
-  facet_wrap(~ feature, scales = "free", ncol = 4) +
-  # Basado en minimal pero súper vitaminado
-  theme_minimal(base_size = 11) +
-  theme(
-    # Leyenda innecesaria porque el eje X ya dice la clase, la quitamos para ganar espacio
-    legend.position = "none",
-    
-    # Limpiamos el fondo eliminando líneas secundarias pesadas
-    panel.grid.minor = element_blank(),
-    panel.grid.major.x = element_blank(),
-    panel.grid.major.y = element_line(color = "#eaeded", linewidth = 0.5),
-    
-    # Estilizamos las etiquetas de las facetas (los títulos de cada caja)
-    strip.background = element_rect(fill = "#f8f9f9", color = "#d5dbdb", linewidth = 0.5),
-    strip.text = element_text(face = "bold", color = "#2c3e50", size = 10),
-    
-    # Añadimos un sutil eje inferior para asentar los gráficos
-    axis.line.x = element_line(color = "#bdc3c7", linewidth = 0.6),
-    axis.text = element_text(color = "#34495e"),
-    axis.title = element_text(face = "bold", color = "#2c3e50"),
-    
-    # Separación elegante entre las cajitas
-    panel.spacing = unit(1.2, "lines")
-  ) +
-  labs(
-    x = "",
-    y = "",
-    title = "Numeric features distributed by AF recurrence"
-  )
+clinical_data |> 
+  select(-code) |> 
+  plot_stratified_numeric_distribution(target_var = "AF_recurrence")
+
 ```
 
 ## Categorical features
 
 ```{r, fig.width=16, fig.height=12}
 clinical_data |> select(-code) |> 
-  select(where(is.factor)) |> 
-  pivot_longer(
-    cols = everything(),
-    names_to = "feature",
-    values_to = "value",
-    values_transform = list(value = as.character)
-  ) |> 
-  mutate(value = fct_rev(fct_infreq(value))) |> 
-  ggplot(aes(y = value, fill = value)) + 
-  geom_bar(
-    color = "#2c3e50", 
-    alpha = 0.8, 
-    width = 0.7,
-    linewidth = 0.5
-  ) +
-  geom_text(
-    aes(label = after_stat(count)),
-    stat = "count",
-    hjust = -0.2,            
-    size = 3.2,
-    fontface = "bold",
-    color = "#2c3e50"
-  ) +
-  scale_fill_viridis_d(option = "mako", begin = 0.3, end = 0.8) +
-  facet_wrap(~ feature, scales = "free", ncol = 3) +
-  coord_cartesian(clip = "off") +
-  theme_minimal(base_size = 11) +
-  theme(
-    legend.position = "none",
-    panel.grid.minor = element_blank(),
-    panel.grid.major.x = element_line(color = "#f2f4f4", linewidth = 0.5),
-    panel.grid.major.y = element_blank(),
-    strip.background = element_rect(fill = "#f8f9f9", color = "#d5dbdb", linewidth = 0.5),
-    strip.text = element_text(face = "bold", color = "#2c3e50", size = 10),
-    axis.line.y = element_line(color = "#bdc3c7", linewidth = 0.6),
-    axis.text = element_text(color = "#34495e", face = "bold"),
-    axis.title = element_text(face = "bold", color = "#2c3e50"),
-    panel.spacing = unit(1.5, "lines")
-  ) +
-  labs(
-    x = "Counts",
-    y = "",
-    title = "Distribution of categorical features"
-  )
+  plot_global_categorical_distribution()
 ```
 
 Most of these categories are imbalanced, including the target class. Now let's see how this changes when we stratify the data by the target class:
 
 ```{r, fig.width=10, fig.height=16}
-clinical_data |> 
-  select(where(is.factor)) |> 
-  pivot_longer(
-    cols = -AF_recurrence,
-    names_to = "feature",
-    values_to = "value",
-    values_transform = list(value = as.character)
-  ) |> 
-  filter(!is.na(value)) |> 
-  # Ordenamos las categorías del eje X por su frecuencia total
-  mutate(value = fct_infreq(value)) |> 
-  
-  ggplot(aes(x = value, fill = AF_recurrence)) +
-  # Dibujamos las barras proporcionales al 100%
-  geom_bar(
-    color = "#2c3e50", 
-    position = "fill",
-    alpha = 0.85, 
-    width = 0.7,
-    linewidth = 0.5
-  ) +
-  # TRUCO INTERNO: Añadir el conteo absoluto de pacientes dentro de cada bloque de la barra
-  geom_text(
-    aes(label = after_stat(count)),
-    stat = "count",
-    position = position_fill(vjust = 0.5), # Centra el número en medio de cada color
-    size = 3.0,
-    fontface = "bold",
-    color = "white" # Blanco para que resalte sobre los colores oscuros de la barra
-  ) +
-  # Formateamos el eje Y para que muestre porcentajes reales (0% a 100%)
-  scale_y_continuous(
-    labels = label_percent(),
-    expand = expansion(mult = c(0, 0.05)) # Margen mínimo porque el tope fijo es siempre 100%
-  ) +
-  # Paleta de colores consistente con tus boxplots (Viridis para la recidiva no/yes)
-  scale_fill_viridis_d(option = "D", begin = 0.3, end = 0.8) +
-  
-  # Liberamos el eje X para que cada panel acomode solo sus categorías reales
-  facet_wrap(~ feature, scales = "free_x", ncol = 3) +
-  
-  theme_minimal(base_size = 11) +
-  theme(
-    legend.position = "top", # Colocamos la leyenda arriba para que no robe espacio a los lados
-    panel.grid.minor = element_blank(),
-    panel.grid.major.x = element_blank(), 
-    panel.grid.major.y = element_line(color = "#eaeded", linewidth = 0.5), 
-    strip.background = element_rect(fill = "#f8f9f9", color = "#d5dbdb", linewidth = 0.5),
-    strip.text = element_text(face = "bold", color = "#2c3e50", size = 10),
-    axis.line.x = element_line(color = "#bdc3c7", linewidth = 0.6),
-    axis.text.x = element_text(color = "#34495e", face = "bold", angle = 45, hjust = 1),
-    axis.text.y = element_text(color = "#34495e"),
-    axis.title = element_text(face = "bold", color = "#2c3e50"),
-    panel.spacing = unit(1.5, "lines")
-  ) +
-  labs(
-    x = "",
-    y = "",
-    fill = "¿AF recurrence?",
-    title = "Categorical features distributed by AF recurrence"
-  )
+clinical_data |> select(-code) |> 
+  plot_stratified_categorical_distribution(target_var = "AF_recurrence")
 ```
 
 ## Multicolinearity
-Finally, let's check the correlation between features to drop those that are highly correlated. To address numerical features' colinearity, we will use the **VIF**.
+Let's check the correlation between features to drop those that are highly correlated. 
+
+### Numeric features
+Firstly, let's take a look at the correlation matrix:
+
+```{r}
+clinical_data |> select(-code) |> plot_corr_matrix(threshold = 0.5)
+```
+
+Since the waist to height ratio is a better predictor of obesity, a risk factor for AF recurrence, than the waist circumference, we will drop the `BMI` feature:
+
+```{r}
+clinical_data <- clinical_data |> select(-BMI)
+```
+
+
+### Categorical features
+To address categorical features' colinearity, we will use **Cramer's V**.
+
+```{r}
+clinical_data |> 
+  plot_corr_matrix(dtype = "cat", threshold = 0.5) |> 
+  suppressWarnings()
+```
+
+There is a perfect correlation between the `heart_failure` and `LVEF` features. Since the latter is more informative, we will drop the `heart_failure` feature:
+
+```{r}
+clinical_data <- clinical_data |> select(-heart_failure)
+```
+
+### Global correlation
+To address global colinearity, we will use the **VIF**.
 
 ```{r}
 # Convert the target class to numeric for the VIF calculation
@@ -340,7 +204,7 @@ vif_df |>
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-Since a$VIF < 5$, there is no multicolinearity between the numeric features, so we will keep all of them.
+Since $VIF < 5$ for all of the features, there is no significant multicollinearity among anyone of them.
 
 # Missing values
 
@@ -350,9 +214,8 @@ Since a$VIF < 5$, there is no multicolinearity between the numeric features, so 
 # Save the data
 write_parquet(
     clinical_data, 
-    "data/clean/clinical_data_clean.parquet"
+    "data/clean/clinical_data.parquet"
     )
 
 head(clinical_data)
 ```
-

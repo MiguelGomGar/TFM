@@ -1,4 +1,6 @@
 reformat_visit <- function(old_column_name){
+    # Replaces de visit number at the end of a column name with the 
+    # corresponding month in a more readable format.
     
     map_visit <- c(
         "0" =  "0",
