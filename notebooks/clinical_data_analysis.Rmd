@@ -15,7 +15,7 @@ library(car)
 source("src/data_wrangling/data_analysis.R")
 
 # Set output directory for results
-output_dir <- "results/clinical_data_EDA/"
+output_dir <- "results/EDA/"
 ```
 
 # Load the data
@@ -123,7 +123,7 @@ Since there are no categorical features with a $missing \ rate > 25 \%$, we will
 Let's check the distribution of the missing values stratified by the target class:
 
 ```{r, fig.width=10, fig.height=8}
-plot_stratified_missingness(clinical_data)
+plot_stratified_missingness(clinical_data, output = output_dir)
 ```
 
 There is no significant difference in the distribution of the missing values between the two classes, so we can assume that the data is missing completely at random (MCAR).
@@ -131,7 +131,7 @@ There is no significant difference in the distribution of the missing values bet
 Furthermore, we will delete those records and features where $missing_rate > 25 \%$:
 
 ```{r}
-plot_row_missingness(clinical_data)
+plot_row_missingness(clinical_data, output = output_dir)
 ```
 
 Since there are no records with more than $5$ missing values ($missing \ rate < 1 \%$), we will keep all of them.
@@ -146,7 +146,7 @@ Numeric features distribution:
 ```{r, fig.width=10, fig.height=8}
 clinical_data |> 
   select(-code) |> 
-  plot_global_numeric_distribution()
+  plot_global_numeric_distribution(output = output_dir)
 ```
 
 Numeric features distribution stratified by the target class:
@@ -154,8 +154,22 @@ Numeric features distribution stratified by the target class:
 ```{r, fig.width=10, fig.height=8}
 clinical_data |> 
   select(-code) |> 
-  plot_stratified_numeric_distribution(target_var = "AF_recurrence")
+  plot_stratified_numeric_distribution(
+    target_var = "AF_recurrence", 
+    output = output_dir
+    )
 
+```
+
+Numeric features distribution stratified by the intervention feature:
+
+```{r, fig.width=10, fig.height=8}
+clinical_data |> 
+  select(-code) |> 
+  plot_stratified_numeric_distribution(
+    target_var = "intervention", 
+    output = output_dir
+    )
 ```
 
 Numeric features distribution stratified by the center variable:
@@ -163,15 +177,10 @@ Numeric features distribution stratified by the center variable:
 ```{r, fig.width=10, fig.height=8}
 clinical_data |> 
   select(-code) |> 
-  plot_stratified_numeric_distribution(target_var = "intervention")
-```
-
-Numeric features distribution stratified by the center variable:
-
-```{r, fig.width=10, fig.height=8}
-clinical_data |> 
-  select(-code) |> 
-  plot_stratified_numeric_distribution(target_var = "center")
+  plot_stratified_numeric_distribution(
+    target_var = "center",
+    output = output_dir
+    )
 ```
 
 ## Categorical features
@@ -180,14 +189,17 @@ Categorical features distribution:
 
 ```{r, fig.width=16, fig.height=12}
 clinical_data |> select(-code) |> 
-  plot_global_categorical_distribution()
+  plot_global_categorical_distribution(output = output_dir)
 ```
 
 Categorical features distribution stratified by the target class:
 
 ```{r, fig.width=10, fig.height=16}
 clinical_data |> select(-code) |> 
-  plot_stratified_categorical_distribution(target_var = "AF_recurrence")
+  plot_stratified_categorical_distribution(
+    target_var = "AF_recurrence",
+    output = output_dir
+    )
 ```
 
 Categorical features distribution stratified by the intervention variable:
@@ -195,7 +207,10 @@ Categorical features distribution stratified by the intervention variable:
 ```{r, fig.width=10, fig.height=16}
 clinical_data |> 
   select(-code) |> 
-  plot_stratified_categorical_distribution(target_var = "intervention")
+  plot_stratified_categorical_distribution(
+    target_var = "intervention", 
+    output = output_dir
+    )
 ```
 
 Categorical features distribution stratified by the center variable:
@@ -203,7 +218,10 @@ Categorical features distribution stratified by the center variable:
 ```{r, fig.width=10, fig.height=16}
 clinical_data |> 
   select(-code) |> 
-  plot_stratified_categorical_distribution(target_var = "center")
+  plot_stratified_categorical_distribution(
+    target_var = "center", 
+    output = output_dir
+    )
 ```
 
 ## Multicolinearity
@@ -213,13 +231,15 @@ Let's check the correlation between features.
 Correlation matrix of numeric features:
 
 ```{r}
-clinical_data |> select(-code) |> plot_corr_matrix(threshold = 0.5)
+clinical_data |> select(-code) |> 
+  plot_corr_matrix(threshold = 0.5, output = output_dir)
 ```
 
 Since the waist to height ratio is significantly better as an obesity indicator (see the numeric distribution stratified by AF recurrence), which is also a risk factor for AF recurrence, we will drop the `BMI` feature:
 
 ```{r}
-clinical_data <- clinical_data |> select(-BMI)
+clinical_data <- clinical_data |> 
+  select(-BMI)
 ```
 
 
@@ -228,7 +248,7 @@ To address categorical features' colinearity, we will use **Cramer's V**.
 
 ```{r}
 clinical_data |> 
-  plot_corr_matrix(dtype = "cat", threshold = 0.5) |> 
+  plot_corr_matrix(dtype = "cat", threshold = 0.5, output = output_dir) |> 
   suppressWarnings()
 ```
 
@@ -252,7 +272,7 @@ Where $R_i^2$ is the determination coefficient of the regression of the $i$-th f
 # VIF calculation
 clinical_data |> 
 select(-code) |>
-plot_vif()
+plot_vif(output = output_dir)
 ```
 
 Since $VIF < 5$ for all of the features, there is no more multicollinearity.

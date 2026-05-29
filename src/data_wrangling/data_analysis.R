@@ -1,14 +1,36 @@
 library(tidyverse)
 
-output = "results/clinical_data_EDA/"
-
 #---- Distributions ----
+format_axis_labels = function(x) {
+    
+    # Custom x-axis label formatting function that dynamically checks if the 
+    # input vector contains only integers and formats them without decimal 
+    # places, while safely falling back to standard formatting for real 
+    # continuous scales (like BMI) to prevent errors from non-integer values.
+    # 
+    # Parameters:
+    # - x: A numeric vector representing the x-axis tick values.
+    # 
+    # Returns:
+    # - A character vector of formatted labels, where integers are shown without 
+    # decimal places and non-integers are formatted with standard numeric 
+    # formatting.
+
+    x_clean <- x[!is.na(x)]
+    if (length(x_clean) > 0 && all(x_clean == round(x_clean))) {
+        return(sprintf("%d", as.integer(x)))
+    } else {
+        # Safe fallback formatting for real continuous scales (e.g., BMI)
+        return(format(x, trim = TRUE)) 
+    }
+}
 
 plot_global_numeric_distribution <- function(
         df, 
-        title = NULL, 
+        output,
+        title = "Numeric features distribution", 
         x_label = NULL, 
-        y_label = NULL,
+        y_label = "Count",
         bins = 20) {
     
     # Renders a professional multi-panel grid of histograms and density curves 
@@ -17,6 +39,7 @@ plot_global_numeric_distribution <- function(
     # Parameters:
     #
     # - df: a data frame containing numeric features.
+    # - output: a string path to save the resulting plot.
     # - title: plot title string.
     # - x_label: character string for the horizontal axis title.
     # - y_label: character string for the vertical axis title.
@@ -47,17 +70,7 @@ plot_global_numeric_distribution <- function(
         ) +
         
         # Custom x-axis label formatting to safely handle decimals and integers dynamically
-        scale_x_continuous(
-            labels = function(x) {
-                x_clean <- x[!is.na(x)]
-                if (length(x_clean) > 0 && all(x_clean == round(x_clean))) {
-                    return(sprintf("%d", as.integer(x)))
-                } else {
-                    # Safe fallback formatting for real continuous scales (e.g., BMI)
-                    return(format(x, trim = TRUE)) 
-                }
-            }
-        ) +
+        scale_x_continuous(format_axis_labels) +
         
         # Multi-panel wrapping with independent free axes
         facet_wrap(~ feature, scales = "free", ncol = 4) +
@@ -99,10 +112,14 @@ plot_global_numeric_distribution <- function(
 
 plot_stratified_numeric_distribution <- function(
         df, 
+        output,
         target_var = "AF_recurrence", 
-        title = NULL, 
+        title = paste0(
+            "Numeric features distribution stratified by ", 
+            target_var
+            ),
         x_label = NULL, 
-        y_label = NULL) {
+        y_label = target_var) {
     
     # Renders a professional multi-panel grid of boxplots for all numeric variables 
     # stratified by a categorical target class.
@@ -110,6 +127,7 @@ plot_stratified_numeric_distribution <- function(
     # Parameters:
     # 
     # - df: a data frame containing numeric features and a target column.
+    # - output: a string path to save the resulting plot.
     # - target_var: string name of the categorical variable to stratify by.
     # - title: plot title string.
     # - x_label: character string for the horizontal axis title.
@@ -185,9 +203,10 @@ plot_stratified_numeric_distribution <- function(
 
 plot_global_categorical_distribution <- function(
         df, 
-        title = NULL, 
+        output,
+        title = "Categorical features distribution", 
         x_label = NULL, 
-        y_label = NULL) {
+        y_label = "Count") {
     
     # Renders a professional multi-panel grid of horizontal bar charts 
     # for all categorical and factor columns in the dataframe.
@@ -195,6 +214,7 @@ plot_global_categorical_distribution <- function(
     # Parameters:
     # 
     # - df: a data frame containing categorical features.
+    # - output: a string path to save the resulting plot.
     # - title: plot title string.
     # - x_label: character string for the horizontal axis title.
     # - y_label: character string for the vertical axis title.
@@ -284,18 +304,24 @@ plot_global_categorical_distribution <- function(
 
 plot_stratified_categorical_distribution <- function(
         df, 
+        output,
         target_var = "AF_recurrence", 
-        title = NULL, 
+        title = paste0(
+            "Categorical features distribution stratified by ",
+            target_var
+        ),
         x_label = NULL, 
         y_label = NULL,
         legend_title = NULL) {
     
-    # Renders a professional multi-panel grid of proportional stacked bar charts
-    # for all categorical features, stratified by a chosen target class variable.
+    # Renders a professional multi-panel grid of absolute stacked bar charts
+    # for all categorical features, where the Y-axis displays absolute counts
+    # and internal bar labels dynamically show the relative percentage.
     #
     # Parameters:
     # 
     # - df: a data frame containing categorical features and a target column.
+    # - output: a string path to save the resulting plot.
     # - target_var: string name of the categorical variable to stratify and color by.
     # - title: plot title string.
     # - x_label: character string for the horizontal axis title.
@@ -311,7 +337,7 @@ plot_stratified_categorical_distribution <- function(
         legend_title <- target_var
     }
     
-    # 1. Isolate the target column along with all categorical predictors
+    # 1. Isolate target and factors, compute absolute counts and within-bar percentages
     df_long <- df |> 
         select(any_of(target_var), where(is.factor)) |> 
         
@@ -327,47 +353,54 @@ plot_stratified_categorical_distribution <- function(
         filter(!is.na(value)) |> 
         
         # Reorder predictor levels based on their overall frequency counts
-        mutate(value = fct_infreq(value))
+        mutate(value = fct_infreq(value)) |> 
+        
+        # NEW PATTERN: Pre-aggregate frequencies and compute localized percentage strings
+        group_by(feature, value, .data[[target_var]]) |> 
+        summarise(n_records = n(), .groups = "drop_last") |> 
+        mutate(
+            pct = n_records / sum(n_records),
+            pct_label = scales::percent(pct, accuracy = 0.1)
+        ) |> 
+        ungroup()
     
     # Safety check if there are no features left to plot
     if (ncol(df_long) <= 1) {
-        stop("The provided dataframe does not contain enough categorical columns 
-             besides the target.")
+        stop("The provided dataframe does not contain enough categorical columns besides the target.")
     }
     
-    # 2. Generate the proportional stacked bar chart grid
-    p <- ggplot(df_long, aes(x = value, fill = .data[[target_var]])) +
+    # 2. Generate the absolute stacked bar chart grid with relative labels
+    # FIX: Mapped 'y' to the pre-aggregated absolute 'n_records' count column
+    p <- ggplot(df_long, aes(x = value, y = n_records, fill = .data[[target_var]])) +
         
-        # Proportional bar layer
-        geom_bar(
+        # FIX: Swapped geom_bar(position="fill") for geom_col(position="stack") for absolute scaling
+        geom_col(
             color = "#2c3e50", 
-            position = "fill",
+            position = "stack",
             alpha = 0.85, 
             width = 0.7,
             linewidth = 0.5
         ) + 
         
-        # Add absolute count labels centered within each filled segment
+        # Add text relative labels
         geom_text(
-            aes(label = after_stat(count)),
-            stat = "count",
-            position = position_fill(vjust = 0.5),
+            aes(label = pct_label),
+            position = position_stack(vjust = 0.5),
             size = 3.0,
             fontface = "bold",
             color = "white"
         ) +
         
-        # Explicitly call the 'scales' namespace to format the vertical axis as %
+        # Expand scales to prevent label clipping and ensure readability
         scale_y_continuous(
-            labels = scales::label_percent(),
-            expand = expansion(mult = c(0, 0.05))
+            expand = expansion(mult = c(0, 0.08))
         ) +
         
         # Apply professional high-contrast palette for clinical stratification
         scale_fill_viridis_d(option = "D", begin = 0.3, end = 0.8) +
         
-        # Multi-panel grid with free horizontal scales per clinical factor
-        facet_wrap(~ feature, scales = "free_x", ncol = 3) +
+        # Facet grid
+        facet_wrap(~ feature, scales = "free", ncol = 3) +
         
         # Clinical theme adjustments
         theme_minimal(base_size = 11) +
@@ -404,8 +437,8 @@ plot_stratified_categorical_distribution <- function(
             "categorical_distribution_stratified_by_",
             target_var,
             ".png"
-            ),
-        plot = p, width = 10, height = 16, dpi = 300
+        ),
+        plot = p, width = 12, height = 16, dpi = 300
     )
     
     return(p)
@@ -498,6 +531,7 @@ compute_cat_corr_matrix <- function(df){
 
 plot_corr_matrix <- function(
         df, 
+        output,
         dtype = "num",
         title = NULL,
         threshold = 0.4) {
@@ -509,6 +543,7 @@ plot_corr_matrix <- function(
     # Parameters:
     # 
     # - df: a data frame containing clinical features.
+    # - output: a string path to save the resulting plot.
     # - dtype: determines whether data is categorical ("cat") or numeric ("num").
     # - title: plot title string.
     # - threshold: absolute value threshold to display numerical labels.
@@ -519,7 +554,7 @@ plot_corr_matrix <- function(
     
     if (dtype == "num") {
         
-        flag <- "Numeric"
+        flag <- "numeric"
         
         # Compute numeric matrix using your helper function
         matrix_data <- compute_num_corr_matrix(df)
@@ -538,7 +573,7 @@ plot_corr_matrix <- function(
             name = coefficient
         )
     } else if (dtype == "cat") {
-        flag <- "Categorical"
+        flag <- "categorical"
         
         # Compute numeric matrix using your helper function
         matrix_data <- compute_cat_corr_matrix(df)
@@ -629,9 +664,10 @@ plot_corr_matrix <- function(
 }
 
 plot_vif <- function(
-        df, target_var="AF_recurrence", 
+        df, 
+        output,
+        target_var="AF_recurrence",
         title = "Variance Inflation Factor (VIF) Diagnostics",
-        subtitle = "Multivariate collinearity analysis targeting: ",
         x_label = "VIF / GVIF^2",
         y_label = NULL) {
     # Computes the Generalized Variance Inflation Factor (GVIF) for a mixed dataset,
@@ -641,7 +677,11 @@ plot_vif <- function(
     # Parameters:
     # 
     # - df: A data frame containing both numeric features and categorical factors.
+    # - output: A string path to save the resulting plot.
     # - target_var: Character string specifying the dependent variable to predict.
+    # - title: Character string for the plot title.
+    # - x_label: Character string for the horizontal axis title.
+    # - y_label: Character string for the vertical axis title. Defaults to NULL for no label.
     #
     # Returns:
     # 
@@ -730,7 +770,6 @@ plot_vif <- function(
         # Titles and design setup
         labs(
             title = title,
-            subtitle = paste(subtitle, target_var),
             x = y_label, 
             y = x_label
         ) +
@@ -764,6 +803,7 @@ plot_vif <- function(
 # ---- Missing values ----
 plot_stratified_missingness <- function(
         df, 
+        output,
         target_var = "AF_recurrence",
         title = "Missing Data Diagnostic",
         subtitle = "Proportion and absolute count of missing values evaluated 
@@ -777,8 +817,13 @@ plot_stratified_missingness <- function(
     # Parameters:
     #
     # - df: A data frame containing clinical features.
+    # - output: A string path to save the resulting plot.
     # - target_var: Character string specifying the categorical variable to 
     # stratify by.
+    # - title: Character string for the plot title.
+    # - subtitle: Character string for the plot subtitle.
+    # - x_label: Character string for the horizontal axis title.
+    # - y_label: Character string for the vertical axis title.
     #
     # Returns:
     #
@@ -793,6 +838,7 @@ plot_stratified_missingness <- function(
             values_to = "value",
             values_transform = list(value = as.character)
         ) |> 
+        
         # Calculate the missingness rate inside each stratum dynamically
         group_by(feature, .data[[target_var]]) |> 
         summarise(
@@ -864,7 +910,7 @@ plot_stratified_missingness <- function(
     ggsave(
         filename = paste0(
             output,
-            "missingness_stratified_by_",
+            "NAs_stratified_by_",
             target_var,
             ".png"
         ),
@@ -876,10 +922,11 @@ plot_stratified_missingness <- function(
 
 plot_row_missingness <- function(
         df,
+        output,
         title = "Distribution of Missing Values per Patient",
         subtitle = "Analysis of row-wise missingness patterns across the PREDIMAR cohort",
         x_label = "Number of missing values",
-        y_label = "Number of Records"
+        y_label = "Number of Rrcords"
 ) {
     # Computes the total number of missing values (NAs) per row (patient),
     # aggregates their frequency counts, and renders a professional distribution plot.
@@ -887,15 +934,16 @@ plot_row_missingness <- function(
     # bar labels dynamically show relative percentages for clinical impact assessment.
     #
     # Parameters:
-    # ----------
+    # 
     # - df: A data frame containing clinical features.
+    # - output: A string path to save the resulting plot.
     # - title: plot title string.
     # - subtitle: plot subtitle string.
     # - x_label: character string for the horizontal axis title.
     # - y_label: character string for the vertical axis title.
     #
     # Returns:
-    # --------
+    # 
     # - A ggplot2 object representing the publication-ready missingness distribution.
     
     # 1. Compute missing values per row and aggregate metrics cleanly
