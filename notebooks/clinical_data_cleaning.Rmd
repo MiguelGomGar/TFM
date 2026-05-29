@@ -1,5 +1,5 @@
 ---
-title: "1.0-Data processing"
+title: "Data cleaning"
 output: html_document
 ---
 
@@ -28,7 +28,7 @@ Since it is a STATA file, the labels need to be removed:
 original_clinical_data <- global |> remove_labels()
 ```
 
-# Data processing
+# Features selection
 The data set consists of thousands of features referring over 700 patients. The ones taken into account are sociodemographic, clinical and nutritional characteristics:
 
 * **Sociodemographic data**
@@ -46,6 +46,7 @@ The data set consists of thousands of features referring over 700 patients. The 
 ** `mettotal_0m`: Met (physical activity measurement).
 ** `glu_new0m`: glucose level ($mg/dL$).
 ** `diabetest1_0m`:type 1 diabetes ($0$ no, $1$ yes).
+** `diabetest2_0m`:type 2 diabetes ($0$ no, $1$ yes).
 ** `hdl_new0m`: HDL cholesterol level ($mg/dL$).
 ** `trig_new0m`: triglycerides level ($mg/dL$).
 ** `hipercol_0m`: whether the patient suffers from dyslipidemia ($0$ no, $1$ yes).
@@ -53,6 +54,7 @@ The data set consists of thousands of features referring over 700 patients. The 
 ** `saos_0m`: whether the patient suffers from sleep apnea ($0$ no, $1$ yes). 
 ** `insurenal_0m`: whether the patient suffers from renal insufficiency ($0$ no, $1$ yes).
 ** `hta_0m`: hypertension ($0$ no, $1$ yes).
+** `epoc_0m`: whether the patient suffers from chronic obstructive pulmonary disease ($0$ no, $1$ yes).
 ** `ictus_0m`: whether the patient has suffered from a stroke ($0$ no, $1$ yes).
 ** `ic_v00`: whether the patient has suffered from heart failure ($0$ no, $1$ yes).
 ** `miocardiopat_0m_imp`: whether the patient suffers from cardiomyopathy ($0$ no, $1$ yes).
@@ -97,6 +99,7 @@ clinical_data_selected <- original_clinical_data |>
         mettotal_0m,
         glu_new0m,
         diabetest1_0m,
+        diabetest2_0m,
         hdl_new0m,
         trig_new0m,
         hipercol_0m,
@@ -104,6 +107,7 @@ clinical_data_selected <- original_clinical_data |>
         saos_0m,
         insurenal_0m,
         hta_0m,
+        epoc_0m,
         ictus_0m,
         
         # Specific Cardiac Conditions & Echo Structural Measurements
@@ -135,6 +139,7 @@ clinical_data_selected <- original_clinical_data |>
 head(clinical_data_selected)
 ```
 
+# Data cleaning
 Lets label the categorical data using factors:
 
 ```{r}
@@ -181,6 +186,13 @@ clinical_data_modified <- clinical_data_selected |>
             ordered = TRUE
         ),
         
+        diabetest2_0m = factor(
+            diabetest2_0m,
+            levels = c(0, 1),
+            labels = c("no", "yes"),
+            ordered = TRUE
+        ),
+        
         hipercol_0m = factor(
             hipercol_0m,
             levels = c(0, 1),
@@ -215,7 +227,13 @@ clinical_data_modified <- clinical_data_selected |>
             labels = c("no", "yes")
         ),
         
-        # Specific Cardiac Conditions & Echo Measurements
+        epoc_0m = factor(
+            epoc_0m,
+            levels = c(0, 1),
+            labels = c("no", "yes"),
+            ordered = TRUE
+        ),
+        
         ictus_0m = factor(
             ictus_0m,
             levels = c(0, 1),
@@ -223,6 +241,7 @@ clinical_data_modified <- clinical_data_selected |>
             ordered = TRUE
         ),
         
+        # Specific Cardiac Conditions & Echo Measurements
         ic_v00 = factor(
             ic_v00,
             levels = c(0, 1),
@@ -265,7 +284,7 @@ clinical_data_modified <- clinical_data_selected |>
         tipofa = factor(
             tipofa,
             levels = c(0, 1),
-            labels = c("paroxysmal", "persistent")
+            labels = c("persistent", "paroxysmal")
         ),
         
         ablacion_previa = factor(
@@ -301,10 +320,11 @@ Let's modify them:
 
 ```{r}
 new_names <- c(
-    "gender", "age", "smoking_status", "code", "center", "intervention", "BMI", 
-    "waist_circumference", "height", "Met", "glucose", "type1_diabetes", "HDL", 
+    "sex", "age", "smoking_status", "code", "center", "intervention", "BMI", 
+    "waist_circumference", "height", "Met", "glucose", "type1_diabetes", 
+    "type2_diabetes", "HDL", 
     "triglicerides", "hypercholesterolemia", "hypolipidemic_meds", "OSA", 
-    "renal_insuf", "hypertension", "stroke", "heart_failure", "cardiomyopathy", 
+    "renal_insuf", "hypertension", "COPD", "stroke", "heart_failure", "cardiomyopathy", 
     "antirrythmic_meds", "LA_enlargment", "LAD", "LAA", "LAV", "LVEF", "AF_type", 
     "AF_ablation_time", "previous_ablation", "ERAF", "p14_score", 
     "alcohol_intake", "AF_recurrence"
@@ -316,19 +336,20 @@ clinical_data_processed <- clinical_data_modified |> setnames(
     )
 ```
 
+# Feature engineering
 As an alternative to the `BMI` feature, we can compute the waist-to-height ratio to assess obesity:
 
 ```{r}
 clinical_data_processed <- clinical_data_processed |> 
     mutate(
-        waist_to_height = waist_circumference / height,
+        waist_height_ratio = waist_circumference / height,
         .after = BMI
     ) |> 
     select(-c(waist_circumference, height))
 ```
 
-
-This is the primary data we will use to build the model. Lets save it:
+# Save data
+This is the entire data set. Lets save it:
 
 ```{r}
 # Save it into the project's data directory
@@ -338,4 +359,13 @@ write_parquet(
     )
 
 head(clinical_data_processed)
+```
+
+Save specific subset for scores:
+
+```{r}
+# Save specific subset for scores
+clinical_data_processed |> 
+    select(AF_recurrence, age, heart_failure, hypertension, COPD, stroke, OSA) |> 
+    write_parquet("data/clean/HATCH_clinical_data.parquet")
 ```

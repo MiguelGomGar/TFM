@@ -13,6 +13,9 @@ library(scales)
 library(car)
 
 source("src/data_wrangling/data_analysis.R")
+
+# Set output directory for results
+output_dir <- "results/clinical_data_EDA/"
 ```
 
 # Load the data
@@ -29,81 +32,116 @@ Let's check the column's data types and whether there are many missing values:
 skim(clinical_data) |> summary()
 ```
 
-There are $720$ rows and $34$ columns: $20$ categorical (the target class can be found among these) and $14$ numerical features. Let's check each type separately.
+There are $720$ rows and $36$ columns: $22$ categorical (the target class can be found among these) and $14$ numeric features. Let's check each type separately.
+```{r}
+clinical_data |> 
+  select(-code) |> 
+  skim() |> 
+  yank("numeric") |> 
+  names()
+```
 
-## Numerical features
+## Numeric features
 Let's sum up the data:
 
 ```{r}
-clinical_data |> select(-code) |> skim() |> yank("numeric") |> 
-  select(-c(starts_with("p"), hist, complete_rate))
+# Numeric features summary
+num_features_summary <- clinical_data |> 
+  select(-code) |> 
+  
+  # Compute summary statistics for numeric features
+  skim() |> yank("numeric") |> 
+  
+  select(c(skim_variable, mean, sd, complete_rate)) |> 
+  rename(feature = skim_variable) |> 
+  
+  # Replace the rate of complete values with the rate of missing values
+  mutate(
+    missing_rate = 1 - complete_rate,
+    complete_rate = NULL
+    )
+
+print(num_features_summary, digits = 4)
+
+# Save results
+num_features_summary |> 
+  write.csv(paste0(output_dir, "num_features_summary.csv"))
 ```
 
-Since half of the data in the `LAD`, `LAA` and `LAV` columns is missing, we will drop those features:
+We will drop the features with $missing \ rate > 25 \%$:
+
+```{r}
+num_features_summary |> 
+  filter(missing_rate > 0.25) |> 
+  select(c(feature, missing_rate))
+```
+
+
+Therefore, we will drop these features:
 
 ```{r}
 clinical_data <- clinical_data |>
   select(-c(LAD, LAA, LAV))
 ```
 
-The remaining columns with missing values are: `waist_to_height`, `glucose`, `HDL`, and `triglicerides`. Let's check if these missing values are concentrated in a specific class of the target variable:
-
-```{r}
-clinical_data |> 
-  filter(is.na(waist_to_height)) |>
-  group_by(AF_recurrence) |>
-  summarise(count = n())
-```
-
-```{r}
-clinical_data |> 
-  filter(is.na(glucose)) |>
-  group_by(AF_recurrence) |>
-  summarise(count = n())
-```
-
-```{r}
-clinical_data |> 
-  filter(is.na(HDL)) |>
-  group_by(AF_recurrence) |>
-  summarise(count = n())
-```
-
-```{r}
-clinical_data |> 
-  filter(is.na(triglicerides)) |>
-  group_by(AF_recurrence) |>
-  summarise(count = n())
-```
-
-```{r}
-clinical_data |> 
-  filter(is.na(waist_to_height) & is.na(glucose) & is.na(HDL) & is.na(triglicerides)) |>
-  group_by(AF_recurrence) |>
-  summarise(count = n())
-```
-
 ## Categorical features
-
 Let's sum up the data:
 
 ```{r}
-skim(clinical_data) |> yank("factor") |> select(-c(complete_rate, ordered))
+# Categorical features summary
+cat_features_summary <- clinical_data |> 
+  select(-code) |> 
+  
+  # Compute summary statistics for categorical features
+  skim() |> 
+  yank("factor") |> 
+  select(-c(complete_rate, ordered, top_counts)) |> 
+  rename(feature = skim_variable) |> 
+  mutate(
+    missing_rate = n_missing/nrow(clinical_data),
+    n_missing = NULL
+    )
+
+print(cat_features_summary, digits = 4)
+
+# Save results
+cat_features_summary |> 
+  write.csv(paste0(output_dir, "cat_features_summary.csv"))
 ```
 
-There are $17$ missing values in the `hypolipidemic_meds` feature. Let's check if these missing values are concentrated in a specific class of the target variable:
+Using the same criteria as for the numeric features, we will drop those categorical features with $missing \ rate > 25 \%$:
 
 ```{r}
-clinical_data |> 
-  filter(is.na(hypolipidemic_meds)) |>
-  group_by(AF_recurrence) |>
-  summarise(count = n())
+cat_features_summary |> 
+  filter(missing_rate > 0.25) |> 
+  select(c(feature, missing_rate))
 ```
 
+Since there are no categorical features with a $missing \ rate > 25 \%$, we will keep all of them.
+
+# Missing values
+Let's check the distribution of the missing values stratified by the target class:
+
+```{r, fig.width=10, fig.height=8}
+plot_stratified_missingness(clinical_data)
+```
+
+There is no significant difference in the distribution of the missing values between the two classes, so we can assume that the data is missing completely at random (MCAR).
+
+Furthermore, we will delete those records and features where $missing_rate > 25 \%$:
+
+```{r}
+plot_row_missingness(clinical_data)
+```
+
+Since there are no records with more than $5$ missing values ($missing \ rate < 1 \%$), we will keep all of them.
+
 # Statistical analysis
-Firstly, let's check how is the data distributed.
+Let's check how is the data distributed.
 
 ## Numerical features
+
+Numeric features distribution:
 
 ```{r, fig.width=10, fig.height=8}
 clinical_data |> 
@@ -111,7 +149,7 @@ clinical_data |>
   plot_global_numeric_distribution()
 ```
 
-Now, let's check the distribution stratified by the target class:
+Numeric features distribution stratified by the target class:
 
 ```{r, fig.width=10, fig.height=8}
 clinical_data |> 
@@ -120,31 +158,65 @@ clinical_data |>
 
 ```
 
+Numeric features distribution stratified by the center variable:
+
+```{r, fig.width=10, fig.height=8}
+clinical_data |> 
+  select(-code) |> 
+  plot_stratified_numeric_distribution(target_var = "intervention")
+```
+
+Numeric features distribution stratified by the center variable:
+
+```{r, fig.width=10, fig.height=8}
+clinical_data |> 
+  select(-code) |> 
+  plot_stratified_numeric_distribution(target_var = "center")
+```
+
 ## Categorical features
+
+Categorical features distribution:
 
 ```{r, fig.width=16, fig.height=12}
 clinical_data |> select(-code) |> 
   plot_global_categorical_distribution()
 ```
 
-Most of these categories are imbalanced, including the target class. Now let's see how this changes when we stratify the data by the target class:
+Categorical features distribution stratified by the target class:
 
 ```{r, fig.width=10, fig.height=16}
 clinical_data |> select(-code) |> 
   plot_stratified_categorical_distribution(target_var = "AF_recurrence")
 ```
 
+Categorical features distribution stratified by the intervention variable:
+
+```{r, fig.width=10, fig.height=16}
+clinical_data |> 
+  select(-code) |> 
+  plot_stratified_categorical_distribution(target_var = "intervention")
+```
+
+Categorical features distribution stratified by the center variable:
+
+```{r, fig.width=10, fig.height=16}
+clinical_data |> 
+  select(-code) |> 
+  plot_stratified_categorical_distribution(target_var = "center")
+```
+
 ## Multicolinearity
-Let's check the correlation between features to drop those that are highly correlated. 
+Let's check the correlation between features.
 
 ### Numeric features
-Firstly, let's take a look at the correlation matrix:
+Correlation matrix of numeric features:
 
 ```{r}
 clinical_data |> select(-code) |> plot_corr_matrix(threshold = 0.5)
 ```
 
-Since the waist to height ratio is a better predictor of obesity, a risk factor for AF recurrence, than the waist circumference, we will drop the `BMI` feature:
+Since the waist to height ratio is significantly better as an obesity indicator (see the numeric distribution stratified by AF recurrence), which is also a risk factor for AF recurrence, we will drop the `BMI` feature:
 
 ```{r}
 clinical_data <- clinical_data |> select(-BMI)
@@ -160,58 +232,35 @@ clinical_data |>
   suppressWarnings()
 ```
 
-There is a perfect correlation between the `heart_failure` and `LVEF` features. Since the latter is more informative, we will drop the `heart_failure` feature:
+There is a perfect correlation between `heart_failure`-`LVEF` and a significant correlation between `hypolipidemic_meds`-`hypercholesterolemia`. Since the latter ones are more informative, we will drop `heart_failure` and `hypolipidemic_meds` feature:
 
 ```{r}
-clinical_data <- clinical_data |> select(-heart_failure)
+clinical_data <- clinical_data |> 
+  select(-c(heart_failure, hypolipidemic_meds))
 ```
 
 ### Global correlation
-To address global colinearity, we will use the **VIF**.
+To address global colinearity, we will use the **Variance Inflation Factor**:
+
+$$
+VIF_i = \frac{1}{1 - R_i^2}
+$$
+
+Where $R_i^2$ is the determination coefficient of the regression of the $i$-th feature on the remaining features.
 
 ```{r}
-# Convert the target class to numeric for the VIF calculation
-temp_clinical_data <- clinical_data |> select(-code) |> 
-  mutate(AF_recurrence = as.numeric(AF_recurrence))
-
-# Fit a linear model with all the features
-model <- lm(
-    AF_recurrence ~ ., 
-    data = temp_clinical_data
-    )
-
-# Calculate the equivalent VIF corrected for the degrees of freedom
-vif_df <- vif(model) |> 
-    as.data.frame() |> 
-    rownames_to_column(var = "feature") |> 
-    as_tibble() |> 
-    rename(
-        GVIF = 2,
-        Df = 3,
-        Adjusted_GVIF = 4
-    ) |> 
-    mutate(VIF_Equivalent = Adjusted_GVIF^2) |> 
-    select(feature, VIF_Equivalent)
-
-# Plot the VIF values
-vif_df |> 
-    ggplot(aes(x = reorder(feature, VIF_Equivalent), y = VIF_Equivalent)) + 
-    geom_bar(stat = "identity", fill = "cyan", color = "black") +
-    geom_hline(yintercept = 5, linetype = "dashed", color = "orange") +
-    geom_hline(yintercept = 10, linetype = "dashed", color = "red") +
-    labs(x = "", y = "VIF") +
-    theme_minimal() +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+# VIF calculation
+clinical_data |> 
+select(-code) |>
+plot_vif()
 ```
 
-Since $VIF < 5$ for all of the features, there is no significant multicollinearity among anyone of them.
+Since $VIF < 5$ for all of the features, there is no more multicollinearity.
 
-# Missing values
-
-# Save progress
+# Saving the data
+Since there are some machine learning models that deal with NA values, we will save the global data set to use it later on.
 
 ```{r}
-# Save the data
 write_parquet(
     clinical_data, 
     "data/clean/clinical_data.parquet"
