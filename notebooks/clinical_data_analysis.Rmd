@@ -15,7 +15,7 @@ library(car)
 source("src/data_wrangling/data_analysis.R")
 
 # Set output directory for results
-output_dir <- "results/EDA/"
+output_dir <- "results/tables"
 ```
 
 # Load the data

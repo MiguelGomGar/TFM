@@ -166,6 +166,55 @@ def plot_overfitting_bars(metrics_train_mean,
     plt.tight_layout()
     plt.show()
 
+def plot_combined_roc_curves(df_long, title='ROC Curves'):
+    """
+    Plots multiple ROC curves on the same axes.
+    
+    Parameters:
+    - df_long : pandas.DataFrame
+        DataFrame in long format with three columns:
+            - model's names.
+            - false positive rate values.
+            - true positive rate values.
+    """
+    
+    # Create the figure and set the theme
+    plt.figure(figsize=(10, 7))
+    sns.set_theme(style="whitegrid")
+    
+    # Plot the ROC curves for each model
+    sns.lineplot(
+        data=df_long,
+        x='False Positive Rate',
+        y='True Positive Rate',
+        hue='Model',
+        drawstyle='steps-post',
+        linewidth=2.5,
+        alpha=0.8,
+        errorbar=None
+    )
+    
+    # Add a diagonal line for the baseline
+    plt.plot([0, 1], [0, 1], 
+            color='black', linestyle='--', linewidth=1.5, 
+            label='Random Classifier')
+    
+    # Title and labels
+    plt.title(title, fontsize=16, weight='bold', pad=20)
+    plt.xlabel('False Positive Rate', fontsize=14, weight='bold')
+    plt.ylabel('True Positive Rate', fontsize=14, weight='bold')
+    
+    # Limits of the axes
+    plt.xlim([-0.02, 1.02])
+    plt.ylim([-0.02, 1.05])
+    
+    # Legend outside the plot (the trick we saw before)
+    plt.legend(title='Models', title_fontsize='12', fontsize='11', 
+            loc='upper left', bbox_to_anchor=(1.02, 1))
+    
+    plt.tight_layout()
+    plt.show()
+
 def plot_combined_pr_curves(df_long, title='Precision-Recall Curves'):
     """
     Plots multiple Precision-Recall curves on the same axes.

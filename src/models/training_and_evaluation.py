@@ -8,7 +8,9 @@ from sklearn.metrics import (
     precision_score, 
     recall_score, 
     f1_score, 
-    precision_recall_curve, 
+    roc_auc_score,
+    roc_curve,
+    precision_recall_curve,
     average_precision_score,
     make_scorer
     )
@@ -17,7 +19,7 @@ from sklearn.model_selection import cross_validate, RandomizedSearchCV
 def optimize_model_optuna_search(pipeline, 
                     param_distributions, 
                     X_train, y_train, X_test, y_test, 
-                    scoring='average_precision', 
+                    scoring='recall', 
                     cv=5, 
                     n_startup_trials=30,
                     n_iter=100, 
@@ -37,7 +39,7 @@ def optimize_model_optuna_search(pipeline,
         Training data.
     - X_test, y_test : array-like
         Test data.
-    - scoring : str, default="average_precision"
+    - scoring : str, default="recall"
         Metric to optimize in the Optuna search.
     - cv : int, default=5
         Number of partitions (folds) for cross-validation.
@@ -103,12 +105,14 @@ def optimize_model_optuna_search(pipeline,
     
     # Define the metrics we want to evaluate
     specificity_score = make_scorer(recall_score, pos_label=0)
+    
     scoring_dict = {
         'Accuracy': 'accuracy',
         'Precision': 'precision',
         'Recall': 'recall',
         'Specificity': specificity_score,
         'F1-Score': 'f1',
+        'ROC-AUC': 'roc_auc',
         'PR-AUC': 'average_precision'
     }
     
@@ -123,6 +127,7 @@ def optimize_model_optuna_search(pipeline,
         'Recall': cv_results['train_Recall'].mean(),
         'Specificity': cv_results['train_Specificity'].mean(),
         'F1-Score': cv_results['train_F1-Score'].mean(),
+        'ROC-AUC': cv_results['train_ROC-AUC'].mean(),
         'PR-AUC': cv_results['train_PR-AUC'].mean()
     }
     
@@ -132,6 +137,7 @@ def optimize_model_optuna_search(pipeline,
         'Recall': cv_results['train_Recall'].std(),
         'Specificity': cv_results['train_Specificity'].std(),
         'F1-Score': cv_results['train_F1-Score'].std(),
+        'ROC-AUC': cv_results['train_ROC-AUC'].std(),
         'PR-AUC': cv_results['train_PR-AUC'].std()
     }
     
@@ -141,6 +147,7 @@ def optimize_model_optuna_search(pipeline,
         'Recall': cv_results['test_Recall'].mean(),
         'Specificity': cv_results['test_Specificity'].mean(),
         'F1-Score': cv_results['test_F1-Score'].mean(),
+        'ROC-AUC': cv_results['test_ROC-AUC'].mean(),
         'PR-AUC': cv_results['test_PR-AUC'].mean()
     }
     
@@ -150,6 +157,7 @@ def optimize_model_optuna_search(pipeline,
         'Recall': cv_results['test_Recall'].std(),
         'Specificity': cv_results['test_Specificity'].std(),
         'F1-Score': cv_results['test_F1-Score'].std(),
+        'ROC-AUC': cv_results['test_ROC-AUC'].std(),
         'PR-AUC': cv_results['test_PR-AUC'].std()
     }
 
@@ -178,11 +186,15 @@ def optimize_model_optuna_search(pipeline,
         'F1-Score': f1_score(y_test, y_pred_test, zero_division=0)
     }
 
-    # Compute PR-AUC and Precision-Recall curve data if scores are available
+    # Compute ROC-curve, Precision-Recall curve and respective AUCs if scores are available
     if y_score_test is not None:
+        metrics_test['ROC-AUC'] = roc_auc_score(y_test, y_score_test)
+        fpr, tpr, thresholds = roc_curve(y_test, y_score_test)
+        
         metrics_test['PR-AUC'] = average_precision_score(y_test, y_score_test)
         precisions, recalls, _ = precision_recall_curve(y_test, y_score_test)
     else:
+        metrics_test['ROC-AUC'] = np.nan
         metrics_test['PR-AUC'] = np.nan
         precisions, recalls = None, None
     
@@ -190,18 +202,15 @@ def optimize_model_optuna_search(pipeline,
     print("Training and evaluation completed!")
 
     return (best_model, 
-            metrics_train_mean, 
-            metrics_train_std, 
-            metrics_val_mean, 
-            metrics_val_std, 
-            metrics_test, 
-            precisions, 
-            recalls)
+            metrics_train_mean, metrics_train_std, metrics_val_mean, 
+            metrics_val_std, metrics_test, 
+            fpr, tpr,
+            precisions, recalls)
 
 def optimize_model_random_search(pipeline, 
                     param_distributions, 
                     X_train, y_train, X_test, y_test, 
-                    scoring='average_precision', 
+                    scoring='recall', 
                     cv=5, 
                     n_trials=100, 
                     seed=42):
@@ -220,7 +229,7 @@ def optimize_model_random_search(pipeline,
         Training data.
     - X_test, y_test : array-like
         Test data.
-    - scoring : str, default="average_precision"
+    - scoring : str, default="recall"
         Metric to optimize in the Optuna search.
     - cv : int, default=5
         Number of partitions (folds) for cross-validation.
@@ -275,6 +284,7 @@ def optimize_model_random_search(pipeline,
         'Recall': 'recall',
         'Specificity': specificity_score,
         'F1-Score': 'f1',
+        'ROC-AUC': 'roc_auc',
         'PR-AUC': 'average_precision'
     }
     
@@ -289,6 +299,7 @@ def optimize_model_random_search(pipeline,
         'Recall': cv_results['train_Recall'].mean(),
         'Specificity': cv_results['train_Specificity'].mean(),
         'F1-Score': cv_results['train_F1-Score'].mean(),
+        'ROC-AUC': cv_results['train_ROC-AUC'].mean(),
         'PR-AUC': cv_results['train_PR-AUC'].mean()
     }
     
@@ -298,6 +309,7 @@ def optimize_model_random_search(pipeline,
         'Recall': cv_results['train_Recall'].std(),
         'Specificity': cv_results['train_Specificity'].std(),
         'F1-Score': cv_results['train_F1-Score'].std(),
+        'ROC-AUC': cv_results['train_ROC-AUC'].std(),
         'PR-AUC': cv_results['train_PR-AUC'].std()
     }
     
@@ -307,6 +319,7 @@ def optimize_model_random_search(pipeline,
         'Recall': cv_results['test_Recall'].mean(),
         'Specificity': cv_results['test_Specificity'].mean(),
         'F1-Score': cv_results['test_F1-Score'].mean(),
+        'ROC-AUC': cv_results['test_ROC-AUC'].mean(),
         'PR-AUC': cv_results['test_PR-AUC'].mean()
     }
     
@@ -316,6 +329,7 @@ def optimize_model_random_search(pipeline,
         'Recall': cv_results['test_Recall'].std(),
         'Specificity': cv_results['test_Specificity'].std(),
         'F1-Score': cv_results['test_F1-Score'].std(),
+        'ROC-AUC': cv_results['test_ROC-AUC'].std(),
         'PR-AUC': cv_results['test_PR-AUC'].std()
     }
 
@@ -346,9 +360,13 @@ def optimize_model_random_search(pipeline,
 
     # Compute PR-AUC and Precision-Recall curve data if scores are available
     if y_score_test is not None:
+        metrics_test['ROC-AUC'] = roc_auc_score(y_test, y_score_test)
         metrics_test['PR-AUC'] = average_precision_score(y_test, y_score_test)
+        
+        tpr, fpr, thresholds = roc_curve(y_test, y_score_test)
         precisions, recalls, _ = precision_recall_curve(y_test, y_score_test)
     else:
+        metrics_test['ROC-AUC'] = np.nan
         metrics_test['PR-AUC'] = np.nan
         precisions, recalls = None, None
     
@@ -356,10 +374,8 @@ def optimize_model_random_search(pipeline,
     print("Training and evaluation completed!")
 
     return (best_model, 
-            metrics_train_mean, 
-            metrics_train_std, 
-            metrics_val_mean, 
-            metrics_val_std, 
+            metrics_train_mean, metrics_train_std, 
+            metrics_val_mean, metrics_val_std, 
             metrics_test, 
-            precisions, 
-            recalls)
+            tpr, fpr,
+            precisions, recalls)

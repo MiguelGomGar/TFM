@@ -1,65 +1,171 @@
 import numpy as np
 import pandas as pd
-from sklearn.pipeline import Pipeline
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler, OrdinalEncoder
+from sklearn.impute import SimpleImputer
 
-def get_clinical_preprocessor(X: pd.DataFrame) -> ColumnTransformer:
+def get_regres_preprocessor(X: pd.DataFrame) -> ColumnTransformer:
     """
-    Creates and returns a scikit-learn ColumnTransformer tailored for clinical data.
-    Automatically separates numeric features (imputed via median and standardized) 
-    from categorical features (encoded via One-Hot Encoding).
-    
-    Parameters:
-    -----------
-    X : pd.DataFrame
-        The input feature matrix used to dynamically extract column names by data type.
-        
-    Returns:
-    --------
-    ColumnTransformer
-        A preconfigured, non-fitted preprocessing pipeline stage.
+    Creates a scikit-learn ColumnTransformer tailored for Logistic Regression models
+    using R-generated Parquet files. Imputes numerical features with the median and
+    applies StandardScaler, which is strictly mandatory for proper convergence and
+    unbiased regularization (such as Elastic Net). Encodes all categorical variables
+    ordinally using embedded Parquet metadata.
     """
-    # 1. Dynamically extract feature groups based on current data types
-    numeric_features = X.select_dtypes(include=[np.number]).columns
-    categorical_features = X.select_dtypes(include=['category', 'object', 'bool']).columns
+    # 1. Dynamically isolate numerical and categorical features
+    numeric_features = X.select_dtypes(include=[np.number]).columns.tolist()
+    categorical_features = X.select_dtypes(include=['category']).columns.tolist()
     
-    # 2. Define the numerical transformation workflow
+    # 2. Define the standardized pipeline for continuous variables
     numeric_transformer = Pipeline(steps=[
         ('imputer', SimpleImputer(strategy='median')),
         ('scaler', StandardScaler())
     ])
     
-    # 3. Define the categorical transformation workflow
-    # Note: sparse_output=False is recommended in modern sklearn to easily inspect arrays
-    categorical_transformer = Pipeline(steps=[
-        ('cat', OneHotEncoder(handle_unknown='ignore', sparse_output=False))
-    ])
+    # 3. Harvest embedded hierarchies and build customized OrdinalEncoders per feature
+    transformers_list = [
+        ('num', numeric_transformer, numeric_features)
+    ]
     
-    # 4. Assemble the final unified structural preprocessor
+    # Loop over every single factor (both binary and multi-class ordinals)
+    for col in categorical_features:
+        # Pull the pre-sorted levels array directly from the Parquet metadata slot
+        extracted_order = list(X[col].dtype.categories)
+        
+        categorical_pipeline = Pipeline(steps=[
+            ('encoder', OrdinalEncoder(categories=[extracted_order]))
+        ])
+        
+        # Append as a clean, localized and independent processing lane
+        transformers_list.append((f'ord_{col}', categorical_pipeline, [col]))
+        
+    # 4. Assemble the final unified two-lane preprocessor structural framework
     preprocessor = ColumnTransformer(
-        transformers=[
-            ('num', numeric_transformer, numeric_features),
-            ('cat', categorical_transformer, categorical_features)
-        ],
-        remainder='drop' # Safely drop any missed tracking columns (like IDs)
+        transformers=transformers_list,
+        remainder='drop'
     )
     
     return preprocessor
 
-def get_svm_preprocessor(X: pd.DataFrame) -> ColumnTransformer:
+
+def get_geom_preprocessor(X: pd.DataFrame) -> ColumnTransformer:
     """
-    Creates and returns a scikit-learn ColumnTransformer specifically designed for SVM models.
+    Creates a scikit-learn ColumnTransformer tailored for distance-based geometric 
+    models like Support Vector Machines (SVM). Imputes numerical features with the 
+    median and scales them using StandardScaler, which is essential since geometry-driven 
+    algorithms are highly sensitive to feature magnitudes when computing hyperplanes. 
+    Encodes all categorical variables ordinally using embedded Parquet metadata.
+    """
+    # 1. Dynamically isolate numerical and categorical features
+    numeric_features = X.select_dtypes(include=[np.number]).columns.tolist()
+    categorical_features = X.select_dtypes(include=['category']).columns.tolist()
     
-    Parameters:
-    -----------
-    X : pd.DataFrame
-        The input feature matrix used to dynamically extract column names by data type.
+    # 2. Define the standardized pipeline for continuous variables
+    numeric_transformer = Pipeline(steps=[
+        ('imputer', SimpleImputer(strategy='median')),
+        ('scaler', StandardScaler())
+    ])
+    
+    # 3. Harvest embedded hierarchies and build customized OrdinalEncoders per feature
+    transformers_list = [
+        ('num', numeric_transformer, numeric_features)
+    ]
+    
+    # Loop over every single factor (both binary and multi-class ordinals)
+    for col in categorical_features:
+        # Pull the pre-sorted levels array directly from the Parquet metadata slot
+        extracted_order = list(X[col].dtype.categories)
         
-    Returns:
-    --------
-    ColumnTransformer
-        A preconfigured, non-fitted preprocessing pipeline stage suitable for SVM models.
-    """
+        categorical_pipeline = Pipeline(steps=[
+            ('encoder', OrdinalEncoder(categories=[extracted_order]))
+        ])
+        
+        # Append as a clean, localized and independent processing lane
+        transformers_list.append((f'ord_{col}', categorical_pipeline, [col]))
+        
+    # 4. Assemble the final unified two-lane preprocessor structural framework
+    preprocessor = ColumnTransformer(
+        transformers=transformers_list,
+        remainder='drop'
+    )
     
+    return preprocessor
+
+
+def get_bagg_preprocessor(X: pd.DataFrame) -> ColumnTransformer:
+    """
+    Creates a scikit-learn ColumnTransformer tailored for tree-based bagging ensembles
+    such as Random Forest. Imputes numerical features with the median to satisfy 
+    scikit-learn's structural constraints against NaNs, but skips scaling since tree
+    splits are invariant to monotonic transformations. Encodes all categorical 
+    variables ordinally using embedded Parquet metadata.
+    """
+    # 1. Dynamically isolate numerical and categorical features
+    numeric_features = X.select_dtypes(include=[np.number]).columns.tolist()
+    categorical_features = X.select_dtypes(include=['category']).columns.tolist()
+    
+    # 2. Define the standardized pipeline for continuous variables
+    numeric_transformer = Pipeline(steps=[
+        ('imputer', SimpleImputer(strategy='median'))
+    ])
+    
+    # 3. Harvest embedded hierarchies and build customized OrdinalEncoders per feature
+    transformers_list = [
+        ('num', numeric_transformer, numeric_features)
+    ]
+    
+    # Loop over every single factor (both binary and multi-class ordinals)
+    for col in categorical_features:
+        # Pull the pre-sorted levels array directly from the Parquet metadata slot
+        extracted_order = list(X[col].dtype.categories)
+        
+        categorical_pipeline = Pipeline(steps=[
+            ('encoder', OrdinalEncoder(categories=[extracted_order]))
+        ])
+        
+        # Append as a clean, localized and independent processing lane
+        transformers_list.append((f'ord_{col}', categorical_pipeline, [col]))
+        
+    # 4. Assemble the final unified two-lane preprocessor structural framework
+    preprocessor = ColumnTransformer(
+        transformers=transformers_list,
+        remainder='drop'
+    )
+    
+    return preprocessor
+
+
+def get_boost_preprocessor(X: pd.DataFrame) -> ColumnTransformer:
+    """
+    Creates a scikit-learn ColumnTransformer tailored for gradient boosting via XGBoost. 
+    It routes all categorical features through an automated metadata-driven OrdinalEncoder 
+    while setting remainder='passthrough'. This allows numerical features to bypass 
+    imputation and scaling, retaining their missing values (NaNs) so XGBoost can natively 
+    exploit them using its internal sparsity-aware split finding mechanism.
+    """
+    # 1. Dynamically isolate categorical features
+    categorical_features = X.select_dtypes(include=['category']).columns.tolist()
+    
+    # 2. Harvest embedded hierarchies and build customized OrdinalEncoders per feature
+    transformers_list = []
+    
+    # Loop over every single factor (both binary and multi-class ordinals)
+    for col in categorical_features:
+        # Pull the pre-sorted levels array directly from the Parquet metadata slot
+        extracted_order = list(X[col].dtype.categories)
+        
+        categorical_pipeline = Pipeline(steps=[
+            ('encoder', OrdinalEncoder(categories=[extracted_order]))
+        ])
+        
+        # Append as a clean, localized and independent processing lane
+        transformers_list.append((f'ord_{col}', categorical_pipeline, [col]))
+        
+    # 3. Assemble the final unified structural framework
+    preprocessor = ColumnTransformer(
+        transformers=transformers_list,
+        remainder='passthrough'
+    )
+    
+    return preprocessor

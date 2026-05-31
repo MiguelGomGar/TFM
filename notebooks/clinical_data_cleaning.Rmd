@@ -152,7 +152,7 @@ clinical_data_modified <- clinical_data_selected |>
             sexo, 
             levels = c(0, 1), 
             labels = c("male", "female"),
-            ordered = FALSE
+            ordered = TRUE
         ),
         
         fum_0m = factor(
@@ -169,13 +169,15 @@ clinical_data_modified <- clinical_data_selected |>
         nodo = factor(
             nodo,
             levels = c(1, 2, 3, 4),
-            labels = c("Pamplona", "Madrid", "Granada", "Alicante")
+            labels = c("Pamplona", "Madrid", "Granada", "Alicante"),
+            ordered = FALSE
         ),
         
         interv = factor(
             interv,
             levels = c(0, 1),
-            labels = c("control", "intervention")
+            labels = c("control", "intervention"),
+            ordered  = TRUE
         ),
 
         # Lifestyle & General Comorbidities
@@ -224,7 +226,8 @@ clinical_data_modified <- clinical_data_selected |>
         hta_0m = factor(
             hta_0m,
             levels = c(0, 1),
-            labels = c("no", "yes")
+            labels = c("no", "yes"),
+            ordered = TRUE
         ),
         
         epoc_0m = factor(
@@ -290,7 +293,8 @@ clinical_data_modified <- clinical_data_selected |>
         ablacion_previa = factor(
             ablacion_previa,
             levels = c(0, 1),
-            labels = c("no", "yes")
+            labels = c("no", "yes"),
+            ordered = TRUE
         ),
         
         event_blank = factor(
@@ -304,12 +308,19 @@ clinical_data_modified <- clinical_data_selected |>
         event18m_conkardia = factor(
             event18m_conkardia,
             levels = c(0, 1),
-            labels = c("no", "yes")
+            labels = c("no", "yes"),
+            ordered = TRUE
         )
+    ) |> 
+    
+    # Reorder the factor levels appropriately
+    mutate(
+        tipofa = fct_relevel(tipofa, "paroxysmal")
     )
 
 head(clinical_data_modified)
 ```
+
 Display the current names of the columns:
 
 ```{r}

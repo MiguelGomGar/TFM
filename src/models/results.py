@@ -3,9 +3,7 @@ from pathlib import Path
 import joblib
 
 def save_scores(model_names, 
-                    test_metrics, 
-                    train_metrics=None, 
-                    validation_metrics=None, 
+                    test_metrics, train_metrics=None, validation_metrics=None, 
                     results_path=None,
                     prefix="scores"):
     """
