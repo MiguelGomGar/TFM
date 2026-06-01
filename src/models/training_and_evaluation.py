@@ -19,7 +19,7 @@ from sklearn.model_selection import cross_validate, RandomizedSearchCV
 def optimize_model_optuna_search(pipeline, 
                     param_distributions, 
                     X_train, y_train, X_test, y_test, 
-                    scoring='recall', 
+                    aim='average_precision', 
                     cv=5, 
                     n_startup_trials=30,
                     n_iter=100, 
@@ -39,7 +39,7 @@ def optimize_model_optuna_search(pipeline,
         Training data.
     - X_test, y_test : array-like
         Test data.
-    - scoring : str, default="recall"
+    - aim : str, default="average_precision"
         Metric to optimize in the Optuna search.
     - cv : int, default=5
         Number of partitions (folds) for cross-validation.
@@ -80,9 +80,9 @@ def optimize_model_optuna_search(pipeline,
         param_distributions=param_distributions,
         n_trials=n_iter,
         study=custom_study,
-        scoring=scoring,
+        scoring=aim,
         cv=cv,
-        random_state=seed 
+        random_state=seed , n_jobs=-1
     )
     
     # Fit the OptunaSearchCV to find the best hyperparameters
@@ -210,7 +210,7 @@ def optimize_model_optuna_search(pipeline,
 def optimize_model_random_search(pipeline, 
                     param_distributions, 
                     X_train, y_train, X_test, y_test, 
-                    scoring='recall', 
+                    scoring='PR-AUC', 
                     cv=5, 
                     n_trials=100, 
                     seed=42):

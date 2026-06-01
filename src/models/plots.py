@@ -166,6 +166,123 @@ def plot_overfitting_bars(metrics_train_mean,
     plt.tight_layout()
     plt.show()
 
+def plot_metric_comparison(df, metric_name='Accuracy', color_palette='viridis'):
+    """
+    Plots a bar chart comparing a specific metric across multiple models.
+
+    Parameters:
+    ----------
+    - df : pandas.DataFrame
+        DataFrame with models as index and metrics as columns.
+    - metric_name : str
+        The exact name of the column containing the metric to plot (e.g., 'PR-AUC').
+    - color_palette : str, default='viridis'
+        Color palette for seaborn.
+    """
+    # 1. Check if the metric exists
+    if metric_name not in df.columns:
+        print(f"Error: The metric does not exist in the DataFrame.")
+        return
+    
+    # 2. Set up the figure and theme
+    plt.figure(figsize=(8, 6))
+    sns.set_theme(style="whitegrid")
+    
+    # 3. Plot the bar chart
+    ax = sns.barplot(
+        x=df.index, 
+        y=df[metric_name], 
+        hue=df.index,
+        palette=color_palette,
+        edgecolor='black',
+        linewidth=1.5,
+        legend=False
+    )
+    
+    # 4. Customizations
+    plt.title(f'Models comparison: {metric_name} (Test)', fontsize=16, weight='bold', pad=20)
+    plt.xlabel('Model', fontsize=14, weight='bold')
+    plt.ylabel(metric_name, fontsize=14, weight='bold')
+    
+    # Fix the y-axis limits to better visualize differences
+    plt.ylim(0, 1.05)
+    
+    # Add value labels on top of the bars
+    autolabel(ax.patches, ax)
+        
+    plt.tight_layout()
+    plt.show()
+
+def plot_all_metrics_comparison(df, 
+                                metrics=['Accuracy'], 
+                                color_palette='viridis'):
+    """
+    Plots a grid of bar charts comparing multiple metrics across different models.
+
+    Parameters:
+    ----------
+    - df : pandas.DataFrame
+        DataFrame with models as index and metrics as columns.
+    - metrics : list
+        List with the exact names of the metric columns to plot.
+    - color_palette : str, default='viridis'
+        Color palette for seaborn.
+    """
+    # 1. Determine the grid size based on the number of metrics
+    n_metrics = len(metrics)
+    cols = 3
+    rows = int(np.ceil(n_metrics / cols)) 
+    
+    # 2. Set up the figure and axes
+    fig, axes = plt.subplots(rows, cols, figsize=(5 * cols, 5 * rows))
+    axes = axes.flatten() 
+    sns.set_theme(style="whitegrid")
+    
+    # 3. Iterate over the metrics and plot each one in its respective subplot
+    for i, metric in enumerate(metrics):
+        if metric not in df.columns:
+            print(f"Warning: The '{metric}' metric does not exist in the DataFrame. It will be skipped.")
+            continue
+            
+        ax = axes[i]
+        
+        # Plot the bar chart
+        sns.barplot(
+            x=df.index, 
+            y=df[metric], 
+            hue=df.index,
+            palette=color_palette,
+            edgecolor='black',
+            linewidth=1.5,
+            legend=False,
+            ax=ax 
+        )
+        
+        # Customizations
+        ax.set_title(metric, fontsize=14, weight='bold')
+        ax.set_xlabel('')
+        ax.set_ylabel('', fontsize=12)
+        ax.set_ylim(0, 1.05)
+        
+        # Rotate x-axis labels for better readability
+        ax.set_xticks(range(len(df.index)))
+        ax.set_xticklabels(df.index, fontsize=12, weight='bold', rotation=45, ha='right')
+        
+        # Add value labels on top of the bars
+        autolabel(ax.patches, ax)
+    
+    # 4. Delete any unused subplots (in case the number of metrics is less than rows*cols)
+    for j in range(i + 1, len(axes)):
+        fig.delaxes(axes[j])
+        
+    # 5. Global title for the entire figure
+    plt.suptitle('Comparison of Metrics Across Models', 
+                fontsize=18, weight='bold', y=1.02)
+    
+    # Adjusts the layout to prevent overlap and show the plot
+    plt.tight_layout()
+    plt.show()
+
 def plot_combined_roc_curves(df_long, title='ROC Curves'):
     """
     Plots multiple ROC curves on the same axes.
@@ -263,120 +380,4 @@ def plot_combined_pr_curves(df_long, title='Precision-Recall Curves'):
     
     plt.tight_layout()
     plt.show()
-
-def plot_metric_comparison(df, metric_name, color_palette='viridis'):
-    """
-    Plots a bar chart comparing a specific metric across multiple models.
-
-    Parameters:
-    ----------
-    - df : pandas.DataFrame
-        DataFrame with models as index and metrics as columns.
-    - metric_name : str
-        The exact name of the column containing the metric to plot (e.g., 'PR-AUC').
-    - color_palette : str, default='viridis'
-        Color palette for seaborn.
-    """
-    # 1. Check if the metric exists
-    if metric_name not in df.columns:
-        print(f"Error: The metric does not exist in the DataFrame.")
-        return
     
-    # 2. Set up the figure and theme
-    plt.figure(figsize=(8, 6))
-    sns.set_theme(style="whitegrid")
-    
-    # 3. Plot the bar chart
-    ax = sns.barplot(
-        x=df.index, 
-        y=df[metric_name], 
-        hue=df.index,
-        palette=color_palette,
-        edgecolor='black',
-        linewidth=1.5,
-        legend=False
-    )
-    
-    # 4. Customizations
-    plt.title(f'Models comparison: {metric_name} (Test)', fontsize=16, weight='bold', pad=20)
-    plt.xlabel('Model', fontsize=14, weight='bold')
-    plt.ylabel(metric_name, fontsize=14, weight='bold')
-    
-    # Fix the y-axis limits to better visualize differences
-    plt.ylim(0, 1.05)
-    
-    # Add value labels on top of the bars
-    autolabel(ax.patches, ax)
-        
-    plt.tight_layout()
-    plt.show()
-
-def plot_all_metrics_comparison(df, 
-                                metrics=['Accuracy', 'Precision', 'Recall', 'Specificity', 'F1-Score', 'PR-AUC'], 
-                                color_palette='viridis'):
-    """
-    Plots a grid of bar charts comparing multiple metrics across different models.
-
-    Parameters:
-    ----------
-    - df : pandas.DataFrame
-        DataFrame with models as index and metrics as columns.
-    - metrics : list
-        List with the exact names of the metric columns to plot.
-    - color_palette : str, default='viridis'
-        Color palette for seaborn.
-    """
-    # 1. Determine the grid size based on the number of metrics
-    n_metrics = len(metrics)
-    cols = 3
-    rows = int(np.ceil(n_metrics / cols)) 
-    
-    # 2. Set up the figure and axes
-    fig, axes = plt.subplots(rows, cols, figsize=(5 * cols, 5 * rows))
-    axes = axes.flatten() 
-    sns.set_theme(style="whitegrid")
-    
-    # 3. Iterate over the metrics and plot each one in its respective subplot
-    for i, metric in enumerate(metrics):
-        if metric not in df.columns:
-            print(f"Warning: The '{metric}' metric does not exist in the DataFrame. It will be skipped.")
-            continue
-            
-        ax = axes[i]
-        
-        # Plot the bar chart
-        sns.barplot(
-            x=df.index, 
-            y=df[metric], 
-            hue=df.index,
-            palette=color_palette,
-            edgecolor='black',
-            linewidth=1.5,
-            legend=False,
-            ax=ax 
-        )
-        
-        # Customizations
-        ax.set_title(metric, fontsize=14, weight='bold')
-        ax.set_xlabel('')
-        ax.set_ylabel('', fontsize=12)
-        ax.set_ylim(0, 1.05)
-        
-        # Rotate x-axis labels for better readability
-        ax.set_xticks(range(len(df.index)))
-        ax.set_xticklabels(df.index, fontsize=12, weight='bold', rotation=45, ha='right')
-        
-        # Add value labels on top of the bars
-        autolabel(ax.patches, ax)
-    
-    # 4. Delete any unused subplots (in case the number of metrics is less than rows*cols)
-    for j in range(i + 1, len(axes)):
-        fig.delaxes(axes[j])
-        
-    # 5. Global title for the entire figure
-    plt.suptitle('Comparison of Metrics Across Models', 
-                fontsize=18, weight='bold', y=1.02)
-    
-    # Adjusts the layout to prevent overlap and show the plot
-    plt.tight_layout()
-    plt.show()

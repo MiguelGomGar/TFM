@@ -2,6 +2,48 @@ import pandas as pd
 from pathlib import Path
 import joblib
 
+def save_model(fitted_pipeline, results_path, filename_prefix="best_model"):
+    """
+    Saves the entire fitted pipeline as a binary file (.joblib), displays its 
+    hyperparameters as a formatted pandas DataFrame, and returns that DataFrame.
+
+    Parameters:
+    ----------
+    - fitted_pipeline : sklearn.pipeline.Pipeline
+        The fully trained pipeline object to be serialized and saved.
+    - results_path : str or pathlib.Path
+        The directory path where the binary file will be stored.
+    - filename_prefix : str, default="best_model"
+        The prefix used for the output file name.
+
+    Returns:
+    -------
+    - df_display : pandas.DataFrame
+        A DataFrame containing the final hyperparameters for notebook visualization.
+    """
+    # 1. Extract hyperparameters from the specific estimator step ('clf')
+    fitted_model_params = fitted_pipeline['clf'].get_params()
+
+    # 2. Serialize and save the entire pipeline object to disk using joblib
+    output_dir = Path(results_path)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Extract the classifier class name dynamically for a precise filename
+    model_class_name = type(fitted_pipeline['clf']).__name__
+    file_path = output_dir / f"{filename_prefix}_{model_class_name}.joblib"
+    
+    # Save the binary object (contains preprocessing states, weights, and params)
+    joblib.dump(fitted_pipeline, file_path)
+
+    # 3. Convert parameters to a DataFrame for clean notebook rendering
+    df_display = pd.DataFrame(
+        list(fitted_model_params.items()), 
+        columns=["Hyperparameter", "Optimal Value"]
+    )
+    df_display.index = df_display.index + 1
+
+    return df_display
+
 def save_scores(model_names, 
                     test_metrics, train_metrics=None, validation_metrics=None, 
                     results_path=None,
@@ -109,45 +151,52 @@ def save_pr_curves_long_format(model_names,
         
     return df_pr_long
 
-def save_model(fitted_pipeline, results_path, filename_prefix="best_model"):
+def save_roc_curves_long_format(model_names, 
+                            fprs_list, tprs_list, results_path=None, prefix="roc_curves"):
     """
-    Saves the entire fitted pipeline as a binary file (.joblib), displays its 
-    hyperparameters as a formatted pandas DataFrame, and returns that DataFrame.
+    Builds a data frame in long format with the ROC curve data for multiple models and saves it to a CSV file.
 
     Parameters:
     ----------
-    - fitted_pipeline : sklearn.pipeline.Pipeline
-        The fully trained pipeline object to be serialized and saved.
-    - results_path : str or pathlib.Path
-        The directory path where the binary file will be stored.
-    - filename_prefix : str, default="best_model"
-        The prefix used for the output file name.
+    - model_names : list
+        List of strings with the names of the models.
+    - fprs_list : list of arrays/lists
+        List that contains the lists of False Positive Rate values for each model.
+    - tprs_list : list of arrays/lists
+        List that contains the lists of True Positive Rate values for each model.
+    - results_path : str or pathlib.Path, optional
+        Directory where the CSV file will be saved.
 
     Returns:
     -------
-    - df_display : pandas.DataFrame
-        A DataFrame containing the final hyperparameters for notebook visualization.
+    - df_roc_long : DataFrame
+        Unified DataFrame in long format.
     """
-    # 1. Extract hyperparameters from the specific estimator step ('clf')
-    fitted_model_params = fitted_pipeline['clf'].get_params()
-
-    # 2. Serialize and save the entire pipeline object to disk using joblib
-    output_dir = Path(results_path)
-    output_dir.mkdir(parents=True, exist_ok=True)
     
-    # Extract the classifier class name dynamically for a precise filename
-    model_class_name = type(fitted_pipeline['clf']).__name__
-    file_path = output_dir / f"{filename_prefix}_{model_class_name}.joblib"
+    # 1. List to hold the individual DataFrames for each model
+    individuals_df= []
     
-    # Save the binary object (contains preprocessing states, weights, and params)
-    joblib.dump(fitted_pipeline, file_path)
-
-    # 3. Convert parameters to a DataFrame for clean notebook rendering
-    df_display = pd.DataFrame(
-        list(fitted_model_params.items()), 
-        columns=["Hyperparameter", "Optimal Value"]
-    )
-    df_display.index = df_display.index + 1
-
-    # 4. Return the DataFrame so Jupyter can display it natively
-    return df_display
+    # 2. Iterate over the models to create individual DataFrames
+    for model, fprs, tprs in zip(model_names, fprs_list, tprs_list):
+        df_temp = pd.DataFrame({
+            'False Positive Rate': fprs,
+            'True Positive Rate': tprs,
+            'Model': model
+        })
+        # Add it to the list of DataFrames
+        individuals_df.append(df_temp)
+        
+    # 3. Concatenate all individual DataFrames into a single long format DataFrame
+    df_roc_long = pd.concat(individuals_df, ignore_index=True)
+    
+    # 4. Save the DataFrame if a path is provided
+    if results_path is not None:
+        path = Path(results_path)
+        
+        # Create the file name
+        file_path = path / f"{prefix}_roc_curves_long.csv"
+        
+        # Save it
+        df_roc_long.to_csv(file_path, index=False)
+        
+    return df_roc_long

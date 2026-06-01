@@ -128,9 +128,9 @@ clinical_data_selected <- original_clinical_data |>
         
         #=======================================================================
         # NUTRITIONAL DATA
-        #=======================================================================
-        p14_tot_0m,
-        alcoholg_0m,
+        # #=======================================================================
+        # p14_tot_0m,
+        # alcoholg_0m,
         
         # Target class
         event18m_conkardia
@@ -333,12 +333,13 @@ Let's modify them:
 new_names <- c(
     "sex", "age", "smoking_status", "code", "center", "intervention", "BMI", 
     "waist_circumference", "height", "Met", "glucose", "type1_diabetes", 
-    "type2_diabetes", "HDL", 
-    "triglicerides", "hypercholesterolemia", "hypolipidemic_meds", "OSA", 
-    "renal_insuf", "hypertension", "COPD", "stroke", "heart_failure", "cardiomyopathy", 
-    "antirrythmic_meds", "LA_enlargment", "LAD", "LAA", "LAV", "LVEF", "AF_type", 
-    "AF_ablation_time", "previous_ablation", "ERAF", "p14_score", 
-    "alcohol_intake", "AF_recurrence"
+    "type2_diabetes", "HDL", "triglicerides", "hypercholesterolemia", 
+    "hypolipidemic_meds", "OSA", "renal_insuf", "hypertension", "COPD", 
+    "stroke", "heart_failure", "cardiomyopathy", "antirrythmic_meds", 
+    "LA_enlargment", "LAD", "LAA", "LAV", "LVEF", "AF_type", 
+    "AF_ablation_time", "previous_ablation", "ERAF", 
+    # "p14_score", "alcohol_intake", 
+    "AF_recurrence"
     )
 
 clinical_data_processed <- clinical_data_modified |> setnames(

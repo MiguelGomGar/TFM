@@ -7,27 +7,28 @@ output: html_document
 
 ```{r echo = FALSE, warning=FALSE, message=FALSE}
 library(tidyverse)
-library(readxl)
+
+output_dir <- "results/feature_selection/"
 ```
 
 Draw plot:
 
 ```{r, fig.width=9, fig.height=7}
 # 1. Load your selection data
-clinical_variables <- read_excel(
-    path = "results/features_selection/clinical_variables_selection.xlsx",
-    range = "A1:C30"
-)
+clinical_variables <- read.csv(
+    file = "data/clean/clinical_variables_selection.csv",
+    sep = ";"
+    )
 
 # 2. Preprocess factor levels and implement the hierarchical dual-sorting algorithm
 prepared_variables <- clinical_variables |> 
     mutate(
         # Helper factor to handle the technical bottom-to-top plotting order of ggplot Y-axis
         # We want "no" at the absolute bottom of the canvas and "yes" at the absolute top
-        Predimar_sort = factor(Predimar, levels = c("no", "modified", "categorized", "yes")),
+        Predimar_sort = factor(Predimar, levels = c("no", "categorized", "related", "yes")),
         
         # Original factor preservation with the desired academic legend layout flow
-        Predimar = factor(Predimar, levels = c("yes", "categorized", "modified", "no"))
+        Predimar = factor(Predimar, levels = c("yes", "related", "categorized", "no"))
     ) |> 
     # Dual sort: from the bottom-of-the-chart to the top-of-the-chart
     # This places "no" values with small scores first, rising up to "yes" values with high scores
@@ -63,16 +64,10 @@ p <- ggplot(prepared_variables, aes(x = Variable, y = Scores, fill = Predimar)) 
     # Professional, high-contrast palette mapped to clinical translation categories
     scale_fill_manual(
         values = c(
-            "yes"         = "#10b981",   # Solid emerald green (Directly Available)
-            "categorized" = "#f59e0b",   # Warm amber/orange (Derivable)
-            "modified"    = "#3b82f6",   # Clinical blue proxy (Related)
-            "no"          = "#ef4444"    # Deep coral red (Not Available)
-        ),
-        labels = c(
-            "yes"         = "Directly Available",
-            "categorized" = "Derivable",
-            "modified"    = "Related",
-            "no"          = "Not Available"
+            "yes"         = "#10b981",
+            "related"     = "#3b82f6",
+            "categorized" = "#f59e0b",
+            "no"          = "#ef4444"
         )
     ) +
     
@@ -106,7 +101,10 @@ Save results:
 
 ```{r}
 ggsave(
-    filename = "results/features_selection/clinical_variables_selection_plot.png",
+    filename = paste0(
+        output_dir,
+        "clinical_variables_selection_plot.png"
+        ),
     plot = p,
     width = 9,
     height = 7,
