@@ -24,3 +24,10 @@ __pycache__/
 .vscode/
 Thumbs.db
 .positai
+
+# ========================
+# CODESPACES & ORYX
+# ========================
+venv/
+oryx-build-commands.txt
+.oryx/
