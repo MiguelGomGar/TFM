@@ -1,0 +1,27 @@
+name: tfm
+channels:
+  - defaults
+  - conda-forge
+  - anaconda
+  - bioconda
+  - menpo
+  - pytorch
+  - rdkit
+dependencies:
+  - python=3.11
+  - pandas
+  - jupyter
+  - numpy
+  - scikit-learn
+  - seaborn
+  - matplotlib
+  - scikit-image
+  - pyarrow
+  - optuna
+  - shap
+  - lightgbm
+  - catboost
+  - xgboost
+  - imbalanced-learn
+  - optuna-integration
+prefix: C:\Users\Miguel\miniconda3\envs\tfm
