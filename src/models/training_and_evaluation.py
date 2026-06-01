@@ -210,9 +210,9 @@ def optimize_model_optuna_search(pipeline,
 def optimize_model_random_search(pipeline, 
                     param_distributions, 
                     X_train, y_train, X_test, y_test, 
-                    scoring='PR-AUC', 
+                    scoring='average_precision', 
                     cv=5, 
-                    n_trials=100, 
+                    n_trials=1000, 
                     seed=42):
     """
     Optimizes a model using Bayesian optimization, trains it, and returns 

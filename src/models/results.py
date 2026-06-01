@@ -5,7 +5,8 @@ import joblib
 def save_model(fitted_pipeline, results_path, filename_prefix="best_model"):
     """
     Saves the entire fitted pipeline as a binary file (.joblib), displays its 
-    hyperparameters as a formatted pandas DataFrame, and returns that DataFrame.
+    hyperparameters as a formatted pandas DataFrame (excluding default/None values), 
+    and returns that DataFrame.
 
     Parameters:
     ----------
@@ -19,7 +20,7 @@ def save_model(fitted_pipeline, results_path, filename_prefix="best_model"):
     Returns:
     -------
     - df_display : pandas.DataFrame
-        A DataFrame containing the final hyperparameters for notebook visualization.
+        A DataFrame containing only the explicit optimal hyperparameters for notebook visualization.
     """
     # 1. Extract hyperparameters from the specific estimator step ('clf')
     fitted_model_params = fitted_pipeline['clf'].get_params()
@@ -40,6 +41,12 @@ def save_model(fitted_pipeline, results_path, filename_prefix="best_model"):
         list(fitted_model_params.items()), 
         columns=["Hyperparameter", "Optimal Value"]
     )
+    
+    # Filter out parameters that are None or have default values
+    df_display = df_display.dropna(subset=["Optimal Value"])
+    
+    # Reset the index to make it sequential after removing rows
+    df_display = df_display.reset_index(drop=True)
     df_display.index = df_display.index + 1
 
     return df_display
