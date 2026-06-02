@@ -1,12 +1,13 @@
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from pathlib import Path
 import matplotlib.pyplot as plt
 from optuna import visualization as vis
 from sklearn.metrics import confusion_matrix
 
 #%% OPTIMIZATION HISTORY
-def plot_optimization_history(study):
+def plot_optimization_history(study, output_dir=None):
     """
     Creates and customizes an optimization history plot for a given study and model.
         
@@ -19,16 +20,16 @@ def plot_optimization_history(study):
     - fig : plotly.graph_objects.Figure
         The optimization history plot.
     """
-    # Get the plotly graph objects from the figure
+    # 1. Get the plotly graph objects from the figure
     fig = vis.plot_optimization_history(study)
     
-    # Get the model's name
-    best_model = study.best_trial.user_attrs.get('model_name', 'Best Model')
+    # 2. Get the model's name
+    model = study.best_trial.user_attrs.get('model_name', 'Best Model')
     
-    # Customization
+    # 3. Customization
     fig.update_layout(
         title={
-            'text': f"{best_model} Optimization History",
+            'text': f"{model} Optimization History",
             'y': 0.95,
             'x': 0.5,
             'xanchor': 'center',
@@ -58,13 +59,22 @@ def plot_optimization_history(study):
         plot_bgcolor="white"
     )
     
-    return fig
+    # 4. Save the plot as a PNG file if output_dir is provided
+    if output_dir is not None:
+        file_path = output_dir / f"{model}_optimization_history.png"
+        fig.write_image(str(file_path), engine="kaleido")
+    
+    # 5. Show the plot
+    fig.show()
+    
     
 #%% CONFUSION MATRIX
-def plot_cm(y_true, y_pred, 
+def plot_confusion_matrix(y_true, y_pred, 
             class_names=None, 
             title='Confusion Matrix', 
-            cmap='Blues'):
+            cmap='Blues',
+            output_dir=None,
+            file_prefix=None):
     """
     Plots a confusion matrix with absolute counts and relative percentages as text, 
     but strictly uses the relative percentages to drive the color scale.
@@ -81,6 +91,13 @@ def plot_cm(y_true, y_pred,
         Title of the plot.
     - cmap : str, default='Blues'
         Color palette.
+    - output_dir : str, optional
+        Directory where the plot will be saved.
+    - file_prefix : str, optional
+        Prefix for the filename when saving the plot.
+    
+    Returns:
+    - None
     """
     
     # 1. Compute the absolute confusion matrix
@@ -97,8 +114,6 @@ def plot_cm(y_true, y_pred,
     plt.figure(figsize=(8, 6))
     
     # 5. Draw the heatmap
-    # CRITICAL FIX: Pass 'cm_percentages' as the data so the color scale 
-    # uses relative values, while keeping 'annot=labels' for the dual text.
     ax = sns.heatmap(cm_percentages, 
                     annot=labels, 
                     fmt='', 
@@ -120,8 +135,14 @@ def plot_cm(y_true, y_pred,
     if class_names is not None:
         ax.set_xticklabels(class_names, fontsize=12)
         ax.set_yticklabels(class_names, fontsize=12, rotation=0)
-        
-    # 8. Adjust layout and show the plot
+    
+    # 8. Save the plot as a PNG file if output_dir is provided
+    if output_dir is not None:
+        path = Path(output_dir)
+        file_path = path / f'{file_prefix}_confusion_matrix.png'
+        plt.savefig(str(file_path), dpi=300, bbox_inches='tight')
+    
+    # 9. Adjust layout and show the plot
     plt.tight_layout()
     plt.show()
 
@@ -148,7 +169,7 @@ def autolabel(rects, ax):
                         textcoords="offset points",
                         ha='center', va='bottom', fontsize=10, weight='bold')
 
-def plot_overfitting_bars(df_cv_results, model_name="Model"):
+def plot_overfitting_bars(df_cv_results, model_name, output_dir=None):
     """
     Plots a grouped bar chart directly from raw CV fold data using Seaborn,
     automatically computing means and standard deviation error bars.
@@ -157,40 +178,55 @@ def plot_overfitting_bars(df_cv_results, model_name="Model"):
     ----------
     - df_cv_results : pandas.DataFrame
         DataFrame in long format with columns: 'Metric', 'Dataset', 'Score'.
-    - model_name : str, default="Model"
+    - model_name : str
         Name of the model to display in the title.
+    - output_dir : str, optional
+        Directory where the plot will be saved as a PNG file.
+    - file_prefix : str, optional
+        Prefix for the filename when saving the plot.
+    
+    Returns:
+    - None
     """
+    # 1. Set up the figure size and theme
     plt.figure(figsize=(11, 6))
     sns.set_theme(style="whitegrid")
     
-    # Filter out the test results if they are present, since we only want to compare train vs val
+    # 2. Filter out the test results if they are present, since we only want to compare train vs val
     df_cv_results = df_cv_results[df_cv_results['Dataset'].isin(['Train', 'Validation'])]
     
-    # Plot the grouped bar chart with automatic error bars (standard deviation)
+    # 3. Plot the grouped bar chart with automatic error bars (standard deviation)
     ax = sns.barplot(
         data=df_cv_results,
         x='Metric',
         y='Score',
         hue='Dataset',
         errorbar='sd', 
-        palette=['#4C72B0', '#DD8452', '#55A868'], 
+        palette=['#4C72B0', '#DD8452'], 
         edgecolor='black',
         linewidth=1.2,
         alpha=0.9
     )
     
-    # Customizations
+    # 4. Customize the plot aesthetics
     plt.title(f'Overfitting Analysis: {model_name}', fontsize=16, weight='bold', pad=20)
     plt.ylabel('Score Value', fontsize=12, weight='bold')
     plt.xlabel('', fontsize=12)
     plt.ylim(0, 1.1)
-    
     plt.legend(title='Dataset', loc='upper right', bbox_to_anchor=(1.02, 1))
+    
+    # 5. Save the plot as a PNG file if output_dir is provided
+    if output_dir is not None:
+        path = Path(output_dir)
+        file_path = path / f'{model_name}_internal_validation.png'
+        plt.savefig(str(file_path), dpi=300, bbox_inches='tight')
+    
+    # 6. Adjust layout and show the plot
     plt.tight_layout()
     plt.show()
 
 #%% METRICS COMPARISON
-def plot_all_metrics_comparison(df, metrics, color_palette='viridis'):
+def plot_metrics_bars(df, metrics, color_palette='viridis', output_dir=None):
     """
     Plots a grid of bar charts comparing multiple Test metrics across different models
     using a long-format (tidy) DataFrame.
@@ -203,6 +239,11 @@ def plot_all_metrics_comparison(df, metrics, color_palette='viridis'):
         List with the exact names of the metrics to plot (e.g., ['Accuracy', 'Precision', 'ROC-AUC']).
     - color_palette : str, default='viridis'
         Color palette for seaborn.
+    - output_dir : str, optional
+        Directory where the plot will be saved as a PNG file.
+    
+    Returns:
+    - None
     """
     # 1. Filter the DataFrame to keep only the 'Test' dataset
     df_test = df[df['Dataset'] == 'Test']
@@ -271,13 +312,19 @@ def plot_all_metrics_comparison(df, metrics, color_palette='viridis'):
     plt.suptitle('Comparison of Test Metrics Across Models', 
                 fontsize=18, weight='bold', y=1.02)
     
-    # Adjust the geometric layout of the figure
+    # 7. Save the entire figure as a PNG file if output_dir is provided
+    if output_dir is not None:
+        path = Path(output_dir)
+        file_path = path / 'test_metrics_comparison.png'
+        plt.savefig(str(file_path), dpi=300, bbox_inches='tight')
+    
+    # 8. Adjust the layout and show the plot
     plt.tight_layout()
     plt.show()
     
 #%% CURVES COMPARISON
 def plot_model_curves(df, x_col, y_col, model_col='Model', 
-                    curve_type='roc', prevalence=0.5, title=None):
+                    curve_type='roc', prevalence=0.5, title=None, output_dir=None):
     """
     Plots multiple ROC or Precision-Recall curves from a single long-format DataFrame
     and includes the appropriate random classifier baseline.
@@ -298,6 +345,11 @@ def plot_model_curves(df, x_col, y_col, model_col='Model',
         The proportion of positive samples in the dataset (used as baseline for PR curve).
     - title : str, optional
         Custom title for the plot.
+    - output_dir : str, optional
+        Directory where the plot will be saved.
+    
+    Returns:
+    - None
     """
     plt.figure(figsize=(8, 6))
     sns.set_theme(style="whitegrid")
@@ -305,16 +357,16 @@ def plot_model_curves(df, x_col, y_col, model_col='Model',
     # 1. Group the DataFrame by model and plot each curve
     for model_name, group in df.groupby(model_col):
         group_sorted = group.sort_values(by=x_col)
-        plt.plot(group_sorted[x_col], group_sorted[y_col], label=model_name, linewidth=2)
+        plt.step(group_sorted[x_col], group_sorted[y_col], label=model_name, linewidth=2)
     
     # 2. Configure axes and the baseline for the random classifier
     if curve_type.lower() == 'roc':
-        # Random classifier: Diagonal y = X
+        # Random classifier: diagonal line from (0,0) to (1,1)
         plt.plot([0, 1], [0, 1], linestyle='--', color='gray', label='Random Classifier (AUC = 0.5)')
         
         plt.xlabel('False Positive Rate', fontsize=11, weight='bold')
         plt.ylabel('True Positive Rate', fontsize=11, weight='bold')
-        default_title = 'Receiver Operating Characteristic (ROC) Curve'
+        default_title = 'ROC curves'
         legend_loc = 'lower right'
         
     elif curve_type.lower() == 'pr':
@@ -323,11 +375,11 @@ def plot_model_curves(df, x_col, y_col, model_col='Model',
         
         plt.xlabel('Recall', fontsize=11, weight='bold')
         plt.ylabel('Precision', fontsize=11, weight='bold')
-        default_title = 'PR Curve'
-        legend_loc = 'top right'
+        default_title = 'Precision-Recall curves'
+        legend_loc = 'upper right'
         
     else:
-        raise ValueError("curve_type debe ser estrictamente 'roc' o 'pr'")
+        raise ValueError("curve_type must be either 'roc' or 'pr'")
         
     # 3. Customize the plot
     plt.xlim([-0.02, 1.02])
@@ -335,4 +387,11 @@ def plot_model_curves(df, x_col, y_col, model_col='Model',
     plt.title(title if title else default_title, fontsize=13, weight='bold', pad=15)
     plt.legend(loc=legend_loc, frameon=True)
     plt.tight_layout()
+    
+    # 4. Save the plot as a PNG file if output_dir is provided
+    if output_dir is not None:
+        path = Path(output_dir)
+        file_path = path / f'{curve_type}_curves.png'
+        plt.savefig(str(file_path), dpi=300, bbox_inches='tight')
+    
     plt.show()

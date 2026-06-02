@@ -99,9 +99,8 @@ def optimize_model_optuna_search(pipeline, param_distributions,
     # Get the study
     study = optuna_search.study_
 
-    # Get the optimization history plot and customize it
-    fig = plot_optimization_history(study)
-    fig.show()
+    # Get the optimization history plot
+    plot_optimization_history(study)
     
     # ---------------------------------------------------------
     # 2. EVALUATION OF THE BEST MODEL ON TRAINING (REFACTORED)

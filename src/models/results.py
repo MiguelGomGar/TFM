@@ -2,7 +2,7 @@ import pandas as pd
 from pathlib import Path
 import joblib
 
-def save_model(fitted_pipeline, output_dir=None, filename_prefix="best_model"):
+def save_model(fitted_pipeline, output_dir=None):
     """
     Saves the entire fitted pipeline as a binary file (.joblib), displays its 
     hyperparameters as a formatted pandas DataFrame (excluding default/None values), 
@@ -14,8 +14,6 @@ def save_model(fitted_pipeline, output_dir=None, filename_prefix="best_model"):
         The fully trained pipeline object to be serialized and saved.
     - output_dir : str or pathlib.Path, optional
         The directory path where the binary file will be stored.
-    - filename_prefix : str, default="best_model"
-        The prefix used for the output file name.
 
     Returns:
     -------
@@ -31,7 +29,7 @@ def save_model(fitted_pipeline, output_dir=None, filename_prefix="best_model"):
         model_class_name = type(fitted_pipeline['clf']).__name__
     
         # Save the model object
-        file_path = output_dir / f"{filename_prefix}_{model_class_name}.joblib"
+        file_path = output_dir / f"{model_class_name}.joblib"
     
         # Save the model object (contains preprocessing states, weights, and params)
         joblib.dump(fitted_pipeline, file_path)
@@ -100,12 +98,13 @@ def save_metrics_results(models_dict, output_dir=None):
 
     # 3. Save the master DataFrame to a CSV file if an output directory is provided
     if output_dir is not None:
-        output_path = Path(output_dir) / "unified_results.csv"
+        output_path = Path(output_dir) / "metrics_results.csv"
         df_master.to_csv(output_path, index=False)
         
     return df_master
 
-def save_curves_results(model_names, x_list, y_list, curve_type='roc', output_dir=None, prefix=None):
+def save_curves_results(model_names, x_list, y_list, curve_type='roc', 
+                        output_dir=None, filename=None):
     """
     Builds a unified long-format DataFrame containing evaluation curve coordinates (ROC or PR)
     for multiple models and saves it to a CSV file.
@@ -122,8 +121,8 @@ def save_curves_results(model_names, x_list, y_list, curve_type='roc', output_di
         The type of evaluation curve data to build. Options are 'roc' or 'pr'.
     - output_dir : str or pathlib.Path, optional
         The directory path where the CSV file will be stored.
-    - prefix : str, optional
-        The prefix used for the output filename. If None, it dynamically defaults
+    - filename : str, optional
+        The name of the output CSV file. If None, it dynamically defaults
         to 'roc_curves' or 'pr_curves' based on curve_type.
 
     Returns:
@@ -145,8 +144,8 @@ def save_curves_results(model_names, x_list, y_list, curve_type='roc', output_di
         y_label = 'Precision'
         default_prefix = "pr_curves"
         
-    # Use the provided user prefix or fall back to the dynamic default
-    file_prefix = prefix if prefix is not None else default_prefix
+    # Use the provided user filename or fall back to the dynamic default
+    filename = filename if filename is not None else f"{default_prefix}.csv"
 
     # 2. Iterate over models to build individual DataFrames
     individual_dfs = []
@@ -164,7 +163,7 @@ def save_curves_results(model_names, x_list, y_list, curve_type='roc', output_di
     # 4. Serialize and save the DataFrame to disk if a path is provided
     if output_dir is not None:
         path = Path(output_dir)        
-        file_path = path / f"{file_prefix}.csv"
+        file_path = path / f"{filename}"
         df_curve.to_csv(file_path, index=False)
         
     return df_curve
