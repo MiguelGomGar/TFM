@@ -4,6 +4,7 @@ import optuna
 from optuna.integration import OptunaSearchCV
 from optuna.samplers import TPESampler
 from optuna import visualization as vis
+from src.models.plots import plot_optimization_history
 from sklearn.metrics import (
     accuracy_score, 
     precision_score, 
@@ -98,8 +99,8 @@ def optimize_model_optuna_search(pipeline, param_distributions,
     # Get the study
     study = optuna_search.study_
 
-    # Display the optimization history plot
-    fig = vis.plot_optimization_history(study)
+    # Get the optimization history plot and customize it
+    fig = plot_optimization_history(study)
     fig.show()
     
     # ---------------------------------------------------------

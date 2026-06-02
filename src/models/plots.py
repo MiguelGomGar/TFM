@@ -2,8 +2,64 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from optuna import visualization as vis
 from sklearn.metrics import confusion_matrix
 
+#%% OPTIMIZATION HISTORY
+def plot_optimization_history(study):
+    """
+    Creates and customizes an optimization history plot for a given study and model.
+        
+    Parameters:
+    ----------
+    - study : optuna.study.Study
+        The Optuna study object containing the optimization results.
+        
+    Returns:
+    - fig : plotly.graph_objects.Figure
+        The optimization history plot.
+    """
+    # Get the plotly graph objects from the figure
+    fig = vis.plot_optimization_history(study)
+    
+    # Get the model's name
+    best_model = study.best_trial.user_attrs.get('model_name', 'Best Model')
+    
+    # Customization
+    fig.update_layout(
+        title={
+            'text': f"{best_model} Optimization History",
+            'y': 0.95,
+            'x': 0.5,
+            'xanchor': 'center',
+            'yanchor': 'top',
+            'font': {'size': 16, 'color': '#1e293b'}
+        },
+        
+        xaxis=dict(
+            title="Number of Trials",
+            showgrid=True,
+            gridcolor="#e2e8f0",
+            linecolor="#cbd5e1",
+            linewidth=1.2,
+            mirror=True
+        ),
+        
+        yaxis=dict(
+            title="Metric Score Value",
+            showgrid=True,
+            gridcolor="#e2e8f0",
+            linecolor="#cbd5e1",
+            linewidth=1.2,
+            mirror=True,
+            range=[-0.02, 1.02]
+        )
+        ,
+        plot_bgcolor="white"
+    )
+    
+    return fig
+    
 #%% CONFUSION MATRIX
 def plot_cm(y_true, y_pred, 
             class_names=None, 
@@ -134,11 +190,6 @@ def plot_overfitting_bars(df_cv_results, model_name="Model"):
     plt.show()
 
 #%% METRICS COMPARISON
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
-
 def plot_all_metrics_comparison(df, metrics, color_palette='viridis'):
     """
     Plots a grid of bar charts comparing multiple Test metrics across different models

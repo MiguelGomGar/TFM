@@ -2,7 +2,7 @@ import pandas as pd
 from pathlib import Path
 import joblib
 
-def save_model(fitted_pipeline, output_dir, filename_prefix="best_model"):
+def save_model(fitted_pipeline, output_dir=None, filename_prefix="best_model"):
     """
     Saves the entire fitted pipeline as a binary file (.joblib), displays its 
     hyperparameters as a formatted pandas DataFrame (excluding default/None values), 
@@ -12,7 +12,7 @@ def save_model(fitted_pipeline, output_dir, filename_prefix="best_model"):
     ----------
     - fitted_pipeline : sklearn.pipeline.Pipeline
         The fully trained pipeline object to be serialized and saved.
-    - output_dir : str or pathlib.Path
+    - output_dir : str or pathlib.Path, optional
         The directory path where the binary file will be stored.
     - filename_prefix : str, default="best_model"
         The prefix used for the output file name.
@@ -25,12 +25,16 @@ def save_model(fitted_pipeline, output_dir, filename_prefix="best_model"):
     #===============================================================================
     # 1. Save the entire fitted pipeline
     #===============================================================================
-    # Extract the classifier class name dynamically for a precise filename
-    model_class_name = type(fitted_pipeline['clf']).__name__
-    file_path = output_dir / f"{filename_prefix}_{model_class_name}.joblib"
     
-    # Save the model object (contains preprocessing states, weights, and params)
-    joblib.dump(fitted_pipeline, file_path)
+    if output_dir is not None:
+        # Extract the classifier class name dynamically for a precise filename
+        model_class_name = type(fitted_pipeline['clf']).__name__
+    
+        # Save the model object
+        file_path = output_dir / f"{filename_prefix}_{model_class_name}.joblib"
+    
+        # Save the model object (contains preprocessing states, weights, and params)
+        joblib.dump(fitted_pipeline, file_path)
     
     #===============================================================================
     # 2. Extract and display only the explicitly set optimal hyperparameters
@@ -53,10 +57,7 @@ def save_model(fitted_pipeline, output_dir, filename_prefix="best_model"):
 
     return df_display
 
-import pandas as pd
-from pathlib import Path
-
-def join_and_save_results(models_dict, output_dir):
+def save_metrics_results(models_dict, output_dir=None):
     """
     Unifies multiple long-format model result DataFrames into a single master 
     DataFrame, adds a 'Model' column, removes the 'Fold' column, and saves it as a CSV.
@@ -97,108 +98,73 @@ def join_and_save_results(models_dict, output_dir):
     desired_order = ['Model', 'Metric', 'Dataset', 'Score']
     df_master = df_master[[col for col in desired_order if col in df_master.columns]]
 
-    # 3. Guardar el archivo en formato CSV
-    output_path = Path(output_dir) / "unified_results.csv"
-    
-    df_master.to_csv(output_path, index=False)
+    # 3. Save the master DataFrame to a CSV file if an output directory is provided
+    if output_dir is not None:
+        output_path = Path(output_dir) / "unified_results.csv"
+        df_master.to_csv(output_path, index=False)
         
     return df_master
 
-def save_roc_curves(model_names, fprs_list, tprs_list, output_dir=None, prefix="roc_curves"):
+def save_curves_results(model_names, x_list, y_list, curve_type='roc', output_dir=None, prefix=None):
     """
-    Builds a data frame in long format with the ROC curve data for multiple models and saves it to a CSV file.
+    Builds a unified long-format DataFrame containing evaluation curve coordinates (ROC or PR)
+    for multiple models and saves it to a CSV file.
 
     Parameters:
     ----------
-    - model_names : list
-        List of strings with the names of the models.
-    - fprs_list : list of arrays/lists
-        List that contains the lists of False Positive Rate values for each model.
-    - tprs_list : list of arrays/lists
-        List that contains the lists of True Positive Rate values for each model.
+    - model_names : list of str
+        List containing the names of the models.
+    - x_list : list of arrays/lists
+        List containing the X-axis values for each model (FPR for ROC, Recall for PR).
+    - y_list : list of arrays/lists
+        List containing the Y-axis values for each model (TPR for ROC, Precision for PR).
+    - curve_type : str, default='roc'
+        The type of evaluation curve data to build. Options are 'roc' or 'pr'.
     - output_dir : str or pathlib.Path, optional
-        Directory where the CSV file will be saved.
+        The directory path where the CSV file will be stored.
+    - prefix : str, optional
+        The prefix used for the output filename. If None, it dynamically defaults
+        to 'roc_curves' or 'pr_curves' based on curve_type.
 
     Returns:
     -------
-    - df_roc_long : DataFrame
-        Unified DataFrame in long format.
+    - df_curve : pandas.DataFrame
+        Unified DataFrame in long format containing the curve coordinates.
     """
+    # Validate the curve type input parameter
+    if curve_type.lower() not in ['roc', 'pr']:
+        raise ValueError("curve_type must be strictly 'roc' or 'pr'")
     
-    # 1. List to hold the individual DataFrames for each model
-    individuals_df= []
-    
-    # 2. Iterate over the models to create individual DataFrames
-    for model, fprs, tprs in zip(model_names, fprs_list, tprs_list):
+    # 1. Dynamically set column labels and file prefixes based on the curve category
+    if curve_type.lower() == 'roc':
+        x_label = 'False Positive Rate'
+        y_label = 'True Positive Rate'
+        default_prefix = "roc_curves"
+    else:
+        x_label = 'Recall'
+        y_label = 'Precision'
+        default_prefix = "pr_curves"
+        
+    # Use the provided user prefix or fall back to the dynamic default
+    file_prefix = prefix if prefix is not None else default_prefix
+
+    # 2. Iterate over models to build individual DataFrames
+    individual_dfs = []
+    for model, x_vals, y_vals in zip(model_names, x_list, y_list):
         df_temp = pd.DataFrame({
-            'False Positive Rate': fprs,
-            'True Positive Rate': tprs,
+            x_label: x_vals,
+            y_label: y_vals,
             'Model': model
         })
-        # Add it to the list of DataFrames
-        individuals_df.append(df_temp)
+        individual_dfs.append(df_temp)
         
-    # 3. Concatenate all individual DataFrames into a single long format DataFrame
-    df_roc_long = pd.concat(individuals_df, ignore_index=True)
+    # 3. Concatenate all individual records into a single master long-format DataFrame
+    df_curve = pd.concat(individual_dfs, ignore_index=True)
     
-    # 4. Save the DataFrame if a path is provided
+    # 4. Serialize and save the DataFrame to disk if a path is provided
     if output_dir is not None:
-        path = Path(output_dir)
+        path = Path(output_dir)        
+        file_path = path / f"{file_prefix}.csv"
+        df_curve.to_csv(file_path, index=False)
         
-        # Create the file name
-        file_path = path / f"{prefix}_.csv"
-        
-        # Save it
-        df_roc_long.to_csv(file_path, index=False)
-        
-    return df_roc_long
-
-
-def save_pr_curves(model_names, precisions_list, recalls_list, output_dir=None, prefix="pr_curves"):
-    """
-    Builds a data frame in long format with the PR curve data for multiple models and saves it to a CSV file.
-
-    Parameters:
-    ----------
-    - model_names : list
-        List of strings with the names of the models.
-    - precisions_list : list of arrays/lists
-        List that contains the lists of Precision values for each model.
-    - recalls_list : list of arrays/lists
-        List that contains the lists of Recall values for each model.
-    - output_dir : str or pathlib.Path, optional
-        Directory where the CSV file will be saved.
-
-    Returns:
-    -------
-    - df_pr_long : DataFrame
-        Unified DataFrame in long format.
-    """
-    
-    # 1. List to hold the individual DataFrames for each model
-    individuals_df= []
-    
-    # 2. Iterate over the models to create individual DataFrames
-    for model, precs, recs in zip(model_names, precisions_list, recalls_list):
-        df_temp = pd.DataFrame({
-            'Precision': precs,
-            'Recall': recs,
-            'Model': model
-        })
-        # Add it to the list of DataFrames
-        individuals_df.append(df_temp)
-        
-    # 3. Concatenate all individual DataFrames into a single long format DataFrame
-    df_pr_long = pd.concat(individuals_df, ignore_index=True)
-    
-    # 4. Save the DataFrame if a path is provided
-    if output_dir is not None:
-        path = Path(output_dir)
-        
-        # Create the file name
-        file_path = path / f"{prefix}_.csv"
-        
-        # Save it
-        df_pr_long.to_csv(file_path, index=False)
-        
-    return df_pr_long
+    return df_curve

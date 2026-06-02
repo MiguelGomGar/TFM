@@ -1,0 +1,309 @@
+Model,Metric,Dataset,Score
+Elastic Net,Accuracy,Train,0.6391304347826087
+Elastic Net,Accuracy,Validation,0.6637931034482759
+Elastic Net,Accuracy,Train,0.6334056399132321
+Elastic Net,Accuracy,Validation,0.6521739130434783
+Elastic Net,Accuracy,Train,0.6420824295010846
+Elastic Net,Accuracy,Validation,0.6347826086956522
+Elastic Net,Accuracy,Train,0.6377440347071583
+Elastic Net,Accuracy,Validation,0.6347826086956522
+Elastic Net,Accuracy,Train,0.6442516268980477
+Elastic Net,Accuracy,Validation,0.6260869565217392
+Elastic Net,Precision,Train,0.5454545454545454
+Elastic Net,Precision,Validation,0.7142857142857143
+Elastic Net,Precision,Train,0.4
+Elastic Net,Precision,Validation,1.0
+Elastic Net,Precision,Train,1.0
+Elastic Net,Precision,Validation,0.0
+Elastic Net,Precision,Train,0.0
+Elastic Net,Precision,Validation,0.0
+Elastic Net,Precision,Train,1.0
+Elastic Net,Precision,Validation,0.0
+Elastic Net,Recall,Train,0.03592814371257485
+Elastic Net,Recall,Validation,0.11904761904761904
+Elastic Net,Recall,Train,0.011904761904761904
+Elastic Net,Recall,Validation,0.024390243902439025
+Elastic Net,Recall,Train,0.011976047904191617
+Elastic Net,Recall,Validation,0.0
+Elastic Net,Recall,Train,0.0
+Elastic Net,Recall,Validation,0.0
+Elastic Net,Recall,Train,0.017964071856287425
+Elastic Net,Recall,Validation,0.0
+Elastic Net,Specificity,Train,0.9829351535836177
+Elastic Net,Specificity,Validation,0.972972972972973
+Elastic Net,Specificity,Train,0.9897610921501706
+Elastic Net,Specificity,Validation,1.0
+Elastic Net,Specificity,Train,1.0
+Elastic Net,Specificity,Validation,1.0
+Elastic Net,Specificity,Train,1.0
+Elastic Net,Specificity,Validation,1.0
+Elastic Net,Specificity,Train,1.0
+Elastic Net,Specificity,Validation,0.9863013698630136
+Elastic Net,F1-Score,Train,0.06741573033707865
+Elastic Net,F1-Score,Validation,0.20408163265306123
+Elastic Net,F1-Score,Train,0.023121387283236993
+Elastic Net,F1-Score,Validation,0.047619047619047616
+Elastic Net,F1-Score,Train,0.023668639053254437
+Elastic Net,F1-Score,Validation,0.0
+Elastic Net,F1-Score,Train,0.0
+Elastic Net,F1-Score,Validation,0.0
+Elastic Net,F1-Score,Train,0.03529411764705882
+Elastic Net,F1-Score,Validation,0.0
+Elastic Net,ROC-AUC,Train,0.6102368641556477
+Elastic Net,ROC-AUC,Validation,0.5768983268983269
+Elastic Net,ROC-AUC,Train,0.6017288314643263
+Elastic Net,ROC-AUC,Validation,0.5784442979564931
+Elastic Net,ROC-AUC,Train,0.5935475986801907
+Elastic Net,ROC-AUC,Validation,0.5932811480756687
+Elastic Net,ROC-AUC,Train,0.5847794207503361
+Elastic Net,ROC-AUC,Validation,0.6369863013698631
+Elastic Net,ROC-AUC,Train,0.6113589148234144
+Elastic Net,ROC-AUC,Validation,0.5505544683626875
+Elastic Net,PR-AUC,Train,0.4585382962815222
+Elastic Net,PR-AUC,Validation,0.5085831123533402
+Elastic Net,PR-AUC,Train,0.4550802677215329
+Elastic Net,PR-AUC,Validation,0.507980079101262
+Elastic Net,PR-AUC,Train,0.47488370073531516
+Elastic Net,PR-AUC,Validation,0.42582266869643876
+Elastic Net,PR-AUC,Train,0.4602493345748688
+Elastic Net,PR-AUC,Validation,0.4878976478718414
+Elastic Net,PR-AUC,Train,0.4819298277336437
+Elastic Net,PR-AUC,Validation,0.41196715694409985
+Elastic Net,Accuracy,Test,0.6388888888888888
+Elastic Net,Precision,Test,0.0
+Elastic Net,Recall,Test,0.0
+Elastic Net,Specificity,Test,1.0
+Elastic Net,F1-Score,Test,0.0
+Elastic Net,ROC-AUC,Test,0.5836120401337793
+Elastic Net,PR-AUC,Test,0.48341507090860764
+SVM,Accuracy,Train,0.3630434782608696
+SVM,Accuracy,Validation,0.3620689655172414
+SVM,Accuracy,Train,0.6355748373101953
+SVM,Accuracy,Validation,0.6434782608695652
+SVM,Accuracy,Train,0.6377440347071583
+SVM,Accuracy,Validation,0.6347826086956522
+SVM,Accuracy,Train,0.6377440347071583
+SVM,Accuracy,Validation,0.6347826086956522
+SVM,Accuracy,Train,0.6377440347071583
+SVM,Accuracy,Validation,0.6347826086956522
+SVM,Precision,Train,0.3630434782608696
+SVM,Precision,Validation,0.3620689655172414
+SVM,Precision,Train,0.0
+SVM,Precision,Validation,0.0
+SVM,Precision,Train,0.0
+SVM,Precision,Validation,0.0
+SVM,Precision,Train,0.0
+SVM,Precision,Validation,0.0
+SVM,Precision,Train,0.0
+SVM,Precision,Validation,0.0
+SVM,Recall,Train,1.0
+SVM,Recall,Validation,1.0
+SVM,Recall,Train,0.0
+SVM,Recall,Validation,0.0
+SVM,Recall,Train,0.0
+SVM,Recall,Validation,0.0
+SVM,Recall,Train,0.0
+SVM,Recall,Validation,0.0
+SVM,Recall,Train,0.0
+SVM,Recall,Validation,0.0
+SVM,Specificity,Train,0.0
+SVM,Specificity,Validation,0.0
+SVM,Specificity,Train,1.0
+SVM,Specificity,Validation,1.0
+SVM,Specificity,Train,1.0
+SVM,Specificity,Validation,1.0
+SVM,Specificity,Train,1.0
+SVM,Specificity,Validation,1.0
+SVM,Specificity,Train,1.0
+SVM,Specificity,Validation,1.0
+SVM,F1-Score,Train,0.532695374800638
+SVM,F1-Score,Validation,0.5316455696202531
+SVM,F1-Score,Train,0.0
+SVM,F1-Score,Validation,0.0
+SVM,F1-Score,Train,0.0
+SVM,F1-Score,Validation,0.0
+SVM,F1-Score,Train,0.0
+SVM,F1-Score,Validation,0.0
+SVM,F1-Score,Train,0.0
+SVM,F1-Score,Validation,0.0
+SVM,ROC-AUC,Train,0.5923954139502565
+SVM,ROC-AUC,Validation,0.5765765765765765
+SVM,ROC-AUC,Train,0.5890622460588331
+SVM,ROC-AUC,Validation,0.560646011865524
+SVM,ROC-AUC,Train,0.585482097030429
+SVM,ROC-AUC,Validation,0.571102413568167
+SVM,ROC-AUC,Train,0.5758890382500306
+SVM,ROC-AUC,Validation,0.6268754076973255
+SVM,ROC-AUC,Train,0.5931708012546335
+SVM,ROC-AUC,Validation,0.5583822570123941
+SVM,PR-AUC,Train,0.44184969393499623
+SVM,PR-AUC,Validation,0.5175848073505903
+SVM,PR-AUC,Train,0.4482139981464619
+SVM,PR-AUC,Validation,0.5034351269710483
+SVM,PR-AUC,Train,0.4785942435689357
+SVM,PR-AUC,Validation,0.4082578246235292
+SVM,PR-AUC,Train,0.45565135479517166
+SVM,PR-AUC,Validation,0.4761476838278482
+SVM,PR-AUC,Train,0.4680256624757599
+SVM,PR-AUC,Validation,0.4385667972894074
+SVM,Accuracy,Test,0.6388888888888888
+SVM,Precision,Test,0.0
+SVM,Recall,Test,0.0
+SVM,Specificity,Test,1.0
+SVM,F1-Score,Test,0.0
+SVM,ROC-AUC,Test,0.5666806020066889
+SVM,PR-AUC,Test,0.467920912274486
+Random Forest,Accuracy,Train,0.7304347826086957
+Random Forest,Accuracy,Validation,0.5603448275862069
+Random Forest,Accuracy,Train,0.7245119305856833
+Random Forest,Accuracy,Validation,0.7130434782608696
+Random Forest,Accuracy,Train,0.754880694143167
+Random Forest,Accuracy,Validation,0.5826086956521739
+Random Forest,Accuracy,Train,0.7180043383947939
+Random Forest,Accuracy,Validation,0.5565217391304348
+Random Forest,Accuracy,Train,0.754880694143167
+Random Forest,Accuracy,Validation,0.591304347826087
+Random Forest,Precision,Train,0.6091370558375635
+Random Forest,Precision,Validation,0.42105263157894735
+Random Forest,Precision,Train,0.6257668711656442
+Random Forest,Precision,Validation,0.6333333333333333
+Random Forest,Precision,Train,0.684931506849315
+Random Forest,Precision,Validation,0.4117647058823529
+Random Forest,Precision,Train,0.6081871345029239
+Random Forest,Precision,Validation,0.38461538461538464
+Random Forest,Precision,Train,0.6753246753246753
+Random Forest,Precision,Validation,0.42857142857142855
+Random Forest,Recall,Train,0.718562874251497
+Random Forest,Recall,Validation,0.5714285714285714
+Random Forest,Recall,Train,0.6071428571428571
+Random Forest,Recall,Validation,0.4634146341463415
+Random Forest,Recall,Train,0.5988023952095808
+Random Forest,Recall,Validation,0.3333333333333333
+Random Forest,Recall,Train,0.6227544910179641
+Random Forest,Recall,Validation,0.35714285714285715
+Random Forest,Recall,Train,0.6227544910179641
+Random Forest,Recall,Validation,0.35714285714285715
+Random Forest,Specificity,Train,0.7372013651877133
+Random Forest,Specificity,Validation,0.5540540540540541
+Random Forest,Specificity,Train,0.7918088737201365
+Random Forest,Specificity,Validation,0.8513513513513513
+Random Forest,Specificity,Train,0.8435374149659864
+Random Forest,Specificity,Validation,0.726027397260274
+Random Forest,Specificity,Train,0.7721088435374149
+Random Forest,Specificity,Validation,0.6712328767123288
+Random Forest,Specificity,Train,0.8299319727891157
+Random Forest,Specificity,Validation,0.726027397260274
+Random Forest,F1-Score,Train,0.6593406593406593
+Random Forest,F1-Score,Validation,0.48484848484848486
+Random Forest,F1-Score,Train,0.6163141993957704
+Random Forest,F1-Score,Validation,0.5352112676056338
+Random Forest,F1-Score,Train,0.6389776357827476
+Random Forest,F1-Score,Validation,0.3684210526315789
+Random Forest,F1-Score,Train,0.6153846153846154
+Random Forest,F1-Score,Validation,0.37037037037037035
+Random Forest,F1-Score,Train,0.6479750778816199
+Random Forest,F1-Score,Validation,0.38961038961038963
+Random Forest,ROC-AUC,Train,0.7976947129631522
+Random Forest,ROC-AUC,Validation,0.5546975546975547
+Random Forest,ROC-AUC,Train,0.8022509345034942
+Random Forest,ROC-AUC,Validation,0.6501318391562294
+Random Forest,ROC-AUC,Train,0.823740274552935
+Random Forest,ROC-AUC,Validation,0.5817025440313112
+Random Forest,ROC-AUC,Train,0.8049105869892867
+Random Forest,ROC-AUC,Validation,0.5290280495759949
+Random Forest,ROC-AUC,Train,0.8064686952625362
+Random Forest,ROC-AUC,Validation,0.6263861709067189
+Random Forest,PR-AUC,Train,0.6573921718432986
+Random Forest,PR-AUC,Validation,0.4727223164031582
+Random Forest,PR-AUC,Train,0.662944129986935
+Random Forest,PR-AUC,Validation,0.5137139126541108
+Random Forest,PR-AUC,Train,0.703845532802172
+Random Forest,PR-AUC,Validation,0.4282177597591954
+Random Forest,PR-AUC,Train,0.6685061452459758
+Random Forest,PR-AUC,Validation,0.40112598436768643
+Random Forest,PR-AUC,Train,0.676144013025027
+Random Forest,PR-AUC,Validation,0.48921636217381126
+Random Forest,Accuracy,Test,0.5625
+Random Forest,Precision,Test,0.3829787234042553
+Random Forest,Recall,Test,0.34615384615384615
+Random Forest,Specificity,Test,0.6847826086956522
+Random Forest,F1-Score,Test,0.36363636363636365
+Random Forest,ROC-AUC,Test,0.5344899665551839
+Random Forest,PR-AUC,Test,0.453392228826057
+XGBoost,Accuracy,Train,0.6717391304347826
+XGBoost,Accuracy,Validation,0.5517241379310345
+XGBoost,Accuracy,Train,0.6442516268980477
+XGBoost,Accuracy,Validation,0.6869565217391305
+XGBoost,Accuracy,Train,0.6854663774403471
+XGBoost,Accuracy,Validation,0.5565217391304348
+XGBoost,Accuracy,Train,0.6984815618221258
+XGBoost,Accuracy,Validation,0.5565217391304348
+XGBoost,Accuracy,Train,0.6811279826464208
+XGBoost,Accuracy,Validation,0.5826086956521739
+XGBoost,Precision,Train,0.5357142857142857
+XGBoost,Precision,Validation,0.421875
+XGBoost,Precision,Train,0.5097087378640777
+XGBoost,Precision,Validation,0.5862068965517241
+XGBoost,Precision,Train,0.5597826086956522
+XGBoost,Precision,Validation,0.40425531914893614
+XGBoost,Precision,Train,0.5679611650485437
+XGBoost,Precision,Validation,0.4117647058823529
+XGBoost,Precision,Train,0.5574712643678161
+XGBoost,Precision,Validation,0.4318181818181818
+XGBoost,Recall,Train,0.718562874251497
+XGBoost,Recall,Validation,0.6428571428571429
+XGBoost,Recall,Train,0.625
+XGBoost,Recall,Validation,0.4146341463414634
+XGBoost,Recall,Train,0.6167664670658682
+XGBoost,Recall,Validation,0.4523809523809524
+XGBoost,Recall,Train,0.7005988023952096
+XGBoost,Recall,Validation,0.5
+XGBoost,Recall,Train,0.5808383233532934
+XGBoost,Recall,Validation,0.4523809523809524
+XGBoost,Specificity,Train,0.6450511945392492
+XGBoost,Specificity,Validation,0.5
+XGBoost,Specificity,Train,0.6552901023890785
+XGBoost,Specificity,Validation,0.8378378378378378
+XGBoost,Specificity,Train,0.7244897959183674
+XGBoost,Specificity,Validation,0.6164383561643836
+XGBoost,Specificity,Train,0.6972789115646258
+XGBoost,Specificity,Validation,0.589041095890411
+XGBoost,Specificity,Train,0.7380952380952381
+XGBoost,Specificity,Validation,0.6575342465753424
+XGBoost,F1-Score,Train,0.6138107416879796
+XGBoost,F1-Score,Validation,0.5094339622641509
+XGBoost,F1-Score,Train,0.5614973262032086
+XGBoost,F1-Score,Validation,0.4857142857142857
+XGBoost,F1-Score,Train,0.5868945868945868
+XGBoost,F1-Score,Validation,0.42696629213483145
+XGBoost,F1-Score,Train,0.6273458445040214
+XGBoost,F1-Score,Validation,0.45161290322580644
+XGBoost,F1-Score,Train,0.5689149560117303
+XGBoost,F1-Score,Validation,0.4418604651162791
+XGBoost,ROC-AUC,Train,0.725470560585314
+XGBoost,ROC-AUC,Validation,0.5781853281853281
+XGBoost,ROC-AUC,Train,0.7172009588818461
+XGBoost,ROC-AUC,Validation,0.6448582729070533
+XGBoost,ROC-AUC,Train,0.7318424375738319
+XGBoost,ROC-AUC,Validation,0.5507175472928898
+XGBoost,ROC-AUC,Train,0.7287873233125586
+XGBoost,ROC-AUC,Validation,0.5627853881278538
+XGBoost,ROC-AUC,Train,0.7192859179599984
+XGBoost,ROC-AUC,Validation,0.5921395955642531
+XGBoost,PR-AUC,Train,0.5626867631530681
+XGBoost,PR-AUC,Validation,0.47674613401365445
+XGBoost,PR-AUC,Train,0.561904650807596
+XGBoost,PR-AUC,Validation,0.5248470422598193
+XGBoost,PR-AUC,Train,0.5761484832086846
+XGBoost,PR-AUC,Validation,0.4201745537974937
+XGBoost,PR-AUC,Train,0.5727353525299828
+XGBoost,PR-AUC,Validation,0.44410931391664965
+XGBoost,PR-AUC,Train,0.5748030120883526
+XGBoost,PR-AUC,Validation,0.451108955890248
+XGBoost,Accuracy,Test,0.5138888888888888
+XGBoost,Precision,Test,0.35
+XGBoost,Recall,Test,0.40384615384615385
+XGBoost,Specificity,Test,0.5760869565217391
+XGBoost,F1-Score,Test,0.375
+XGBoost,ROC-AUC,Test,0.5212165551839465
+XGBoost,PR-AUC,Test,0.4323930999155514
