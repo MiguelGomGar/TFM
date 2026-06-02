@@ -4,6 +4,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
 
+#%% CONFUSION MATRIX
 def plot_cm(y_true, y_pred, 
             class_names=None, 
             title='Confusion Matrix', 
@@ -68,6 +69,7 @@ def plot_cm(y_true, y_pred,
     plt.tight_layout()
     plt.show()
 
+#%% OVERFITTING ANALYSIS
 def autolabel(rects, ax):
         """
         Add labels on top of the bars.
@@ -90,167 +92,105 @@ def autolabel(rects, ax):
                         textcoords="offset points",
                         ha='center', va='bottom', fontsize=10, weight='bold')
 
-def plot_overfitting_bars(metrics_train_mean, 
-                        metrics_val_mean, 
-                        metrics_train_std=None,
-                        metrics_val_std=None,
-                        model_name="Model"):
+def plot_overfitting_bars(df_cv_results, model_name="Model"):
     """
-    Plots a grouped bar chart to compare training and validation metrics, facilitating the 
-    detection of overfitting.
-
+    Plots a grouped bar chart directly from raw CV fold data using Seaborn,
+    automatically computing means and standard deviation error bars.
+    
     Parameters:
     ----------
-    - metrics_train_mean : dict
-        Dictionary with the means of the metrics in the training set.
-    - metrics_val_mean : dict
-        Dictionary with the means of the metrics in the validation set.
-    - metrics_train_std : dict, optional
-        Dictionary with the standard deviations of the training set.
-    - metrics_val_std : dict, optional
-        Dictionary with the standard deviations of the validation set.
-    - model_name : str
-        Name of the model for the chart title.
+    - df_cv_results : pandas.DataFrame
+        DataFrame in long format with columns: 'Metric', 'Dataset', 'Score'.
+    - model_name : str, default="Model"
+        Name of the model to display in the title.
     """
-    
-    # 1. Retrieve the metric names and their corresponding mean values for train and test
-    labels = list(metrics_train_mean.keys())
-    
-    train_scores = [metrics_train_mean[label] for label in labels]
-    validation_scores = [metrics_val_mean[label] for label in labels]
-    
-    # Retrieve standard deviations if provided (for error bars)
-    if metrics_train_std is not None:
-        train_errors = [metrics_train_std[label] for label in labels]
-    else:
-        train_errors = None
-
-    if metrics_val_std is not None:
-        validation_errors = [metrics_val_std[label] for label in labels]
-    else:
-        validation_errors = None
-
-    # 2. Set up the positions for the bars on the X-axis
-    x = np.arange(len(labels))
-    width = 0.35
-
-    # 3. Set up the figure and axis
-    fig, ax = plt.subplots(figsize=(10, 6))
-    
-    # 4. Barplot
-    rects1 = ax.bar(x - width/2, train_scores, width, 
-                    label='Train', 
-                    yerr=train_errors, capsize=5, 
-                    color='#4C72B0', edgecolor='black', alpha=0.9)
-    
-    rects2 = ax.bar(x + width/2, validation_scores, width, 
-                    label='Validation', 
-                    yerr=validation_errors, capsize=5,
-                    color='#DD8452', edgecolor='black', alpha=0.9)
-
-    # 5. Customization
-    ax.set_ylabel('Score', fontsize=12, weight='bold')
-    ax.set_title(f'Overfitting Analysis: {model_name}', fontsize=16, weight='bold', pad=20)
-    ax.set_xticks(x)
-    ax.set_xticklabels(labels, fontsize=12, weight='bold')
-    ax.set_ylim(0, 1.1)
-    ax.legend(loc='upper right', fontsize=11, bbox_to_anchor=(1.02, 1))
-    
-    ax.grid(axis='y', linestyle='--', alpha=0.6)
-
-    # Add labels on top of the bars
-    # autolabel(rects1, ax)
-    # autolabel(rects2, ax)
-
-    # Adjust layout and show the plot
-    plt.tight_layout()
-    plt.show()
-
-def plot_metric_comparison(df, metric_name='Accuracy', color_palette='viridis'):
-    """
-    Plots a bar chart comparing a specific metric across multiple models.
-
-    Parameters:
-    ----------
-    - df : pandas.DataFrame
-        DataFrame with models as index and metrics as columns.
-    - metric_name : str
-        The exact name of the column containing the metric to plot (e.g., 'PR-AUC').
-    - color_palette : str, default='viridis'
-        Color palette for seaborn.
-    """
-    # 1. Check if the metric exists
-    if metric_name not in df.columns:
-        print(f"Error: The metric does not exist in the DataFrame.")
-        return
-    
-    # 2. Set up the figure and theme
-    plt.figure(figsize=(8, 6))
+    plt.figure(figsize=(11, 6))
     sns.set_theme(style="whitegrid")
     
-    # 3. Plot the bar chart
+    # Filter out the test results if they are present, since we only want to compare train vs val
+    df_cv_results = df_cv_results[df_cv_results['Dataset'].isin(['Train', 'Validation'])]
+    
+    # Plot the grouped bar chart with automatic error bars (standard deviation)
     ax = sns.barplot(
-        x=df.index, 
-        y=df[metric_name], 
-        hue=df.index,
-        palette=color_palette,
+        data=df_cv_results,
+        x='Metric',
+        y='Score',
+        hue='Dataset',
+        errorbar='sd', 
+        palette=['#4C72B0', '#DD8452', '#55A868'], 
         edgecolor='black',
-        linewidth=1.5,
-        legend=False
+        linewidth=1.2,
+        alpha=0.9
     )
     
-    # 4. Customizations
-    plt.title(f'Models comparison: {metric_name} (Test)', fontsize=16, weight='bold', pad=20)
-    plt.xlabel('Model', fontsize=14, weight='bold')
-    plt.ylabel(metric_name, fontsize=14, weight='bold')
+    # Customizations
+    plt.title(f'Overfitting Analysis: {model_name}', fontsize=16, weight='bold', pad=20)
+    plt.ylabel('Score Value', fontsize=12, weight='bold')
+    plt.xlabel('', fontsize=12)
+    plt.ylim(0, 1.1)
     
-    # Fix the y-axis limits to better visualize differences
-    plt.ylim(0, 1.05)
-    
-    # Add value labels on top of the bars
-    autolabel(ax.patches, ax)
-        
+    plt.legend(title='Dataset', loc='upper right', bbox_to_anchor=(1.02, 1))
     plt.tight_layout()
     plt.show()
 
-def plot_all_metrics_comparison(df, 
-                                metrics=['Accuracy'], 
-                                color_palette='viridis'):
+#%% METRICS COMPARISON
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+
+def plot_all_metrics_comparison(df, metrics, color_palette='viridis'):
     """
-    Plots a grid of bar charts comparing multiple metrics across different models.
+    Plots a grid of bar charts comparing multiple Test metrics across different models
+    using a long-format (tidy) DataFrame.
 
     Parameters:
     ----------
     - df : pandas.DataFrame
-        DataFrame with models as index and metrics as columns.
+        Long-format DataFrame containing columns: 'Metric', 'Dataset', 'Score', and 'Model'.
     - metrics : list
-        List with the exact names of the metric columns to plot.
+        List with the exact names of the metrics to plot (e.g., ['Accuracy', 'Precision', 'ROC-AUC']).
     - color_palette : str, default='viridis'
         Color palette for seaborn.
     """
-    # 1. Determine the grid size based on the number of metrics
+    # 1. Filter the DataFrame to keep only the 'Test' dataset
+    df_test = df[df['Dataset'] == 'Test']
+    
+    if df_test.empty:
+        print("Warning: No 'Test' data found in the 'Dataset' column. Please check your DataFrame.")
+        return
+
+    # 2. Determine the grid size based on the number of requested metrics
     n_metrics = len(metrics)
     cols = 3
     rows = int(np.ceil(n_metrics / cols)) 
     
-    # 2. Set up the figure and axes
+    # 3. Set up the figure and axes for matplotlib
     fig, axes = plt.subplots(rows, cols, figsize=(5 * cols, 5 * rows))
     axes = axes.flatten() 
     sns.set_theme(style="whitegrid")
     
-    # 3. Iterate over the metrics and plot each one in its respective subplot
+    # Initialize the index variable to handle removing empty axes later
+    i = 0
+    
+    # 4. Iterate over the metrics and plot each one in its respective subplot
     for i, metric in enumerate(metrics):
-        if metric not in df.columns:
-            print(f"Warning: The '{metric}' metric does not exist in the DataFrame. It will be skipped.")
+        # Check if the requested metric exists in the test data
+        if metric not in df_test['Metric'].values:
+            print(f"Warning: The '{metric}' metric does not exist in the Test data. It will be skipped.")
             continue
             
         ax = axes[i]
         
-        # Plot the bar chart
+        # Filter the specific subset of data for the current metric
+        df_metric = df_test[df_test['Metric'] == metric]
+        
+        # Plot the bar chart interacting with the long-format columns
         sns.barplot(
-            x=df.index, 
-            y=df[metric], 
-            hue=df.index,
+            data=df_metric,
+            x='Model', 
+            y='Score', 
+            hue='Model',
             palette=color_palette,
             edgecolor='black',
             linewidth=1.5,
@@ -258,126 +198,90 @@ def plot_all_metrics_comparison(df,
             ax=ax 
         )
         
-        # Customizations
+        # Aesthetic customizations for each subplot
         ax.set_title(metric, fontsize=14, weight='bold')
         ax.set_xlabel('')
         ax.set_ylabel('', fontsize=12)
         ax.set_ylim(0, 1.05)
         
-        # Rotate x-axis labels for better readability
-        ax.set_xticks(range(len(df.index)))
-        ax.set_xticklabels(df.index, fontsize=12, weight='bold', rotation=45, ha='right')
+        # Adjust and rotate the model labels on the X-axis to prevent overlapping
+        models_list = df_metric['Model'].unique()
+        ax.set_xticks(range(len(models_list)))
+        ax.set_xticklabels(models_list, fontsize=11, weight='bold', rotation=45, ha='right')
         
-        # Add value labels on top of the bars
+        # Keep your helper function to add numerical labels on top of the bars
         autolabel(ax.patches, ax)
     
-    # 4. Delete any unused subplots (in case the number of metrics is less than rows*cols)
+    # 5. Delete any remaining empty subplots in the grid
     for j in range(i + 1, len(axes)):
         fig.delaxes(axes[j])
         
-    # 5. Global title for the entire figure
-    plt.suptitle('Comparison of Metrics Across Models', 
+    # 6. Global title for the entire figure layout
+    plt.suptitle('Comparison of Test Metrics Across Models', 
                 fontsize=18, weight='bold', y=1.02)
     
-    # Adjusts the layout to prevent overlap and show the plot
+    # Adjust the geometric layout of the figure
     plt.tight_layout()
     plt.show()
+    
+#%% CURVES COMPARISON
+def plot_model_curves(df, x_col, y_col, model_col='Model', 
+                    curve_type='roc', prevalence=0.5, title=None):
+    """
+    Plots multiple ROC or Precision-Recall curves from a single long-format DataFrame
+    and includes the appropriate random classifier baseline.
 
-def plot_combined_roc_curves(df_long, title='ROC Curves'):
-    """
-    Plots multiple ROC curves on the same axes.
-    
     Parameters:
-    - df_long : pandas.DataFrame
-        DataFrame in long format with three columns:
-            - model's names.
-            - false positive rate values.
-            - true positive rate values.
+    ----------
+    - df : pandas.DataFrame
+        The long-format DataFrame containing the curve coordinates.
+    - x_col : str
+        Name of the column for the X-axis (e.g., 'fpr' or 'recall').
+    - y_col : str
+        Name of the column for the Y-axis (e.g., 'tpr' or 'precision').
+    - model_col : str, default='Model'
+        Name of the column that identifies each model.
+    - curve_type : str, default='roc'
+        The type of curve to plot. Options are 'roc' or 'pr'.
+    - prevalence : float, default=0.5
+        The proportion of positive samples in the dataset (used as baseline for PR curve).
+    - title : str, optional
+        Custom title for the plot.
     """
-    
-    # Create the figure and set the theme
-    plt.figure(figsize=(10, 7))
+    plt.figure(figsize=(8, 6))
     sns.set_theme(style="whitegrid")
     
-    # Plot the ROC curves for each model
-    sns.lineplot(
-        data=df_long,
-        x='False Positive Rate',
-        y='True Positive Rate',
-        hue='Model',
-        drawstyle='steps-post',
-        linewidth=2.5,
-        alpha=0.8,
-        errorbar=None
-    )
+    # 1. Group the DataFrame by model and plot each curve
+    for model_name, group in df.groupby(model_col):
+        group_sorted = group.sort_values(by=x_col)
+        plt.plot(group_sorted[x_col], group_sorted[y_col], label=model_name, linewidth=2)
     
-    # Add a diagonal line for the baseline
-    plt.plot([0, 1], [0, 1], 
-            color='black', linestyle='--', linewidth=1.5, 
-            label='Random Classifier')
-    
-    # Title and labels
-    plt.title(title, fontsize=16, weight='bold', pad=20)
-    plt.xlabel('False Positive Rate', fontsize=14, weight='bold')
-    plt.ylabel('True Positive Rate', fontsize=14, weight='bold')
-    
-    # Limits of the axes
+    # 2. Configure axes and the baseline for the random classifier
+    if curve_type.lower() == 'roc':
+        # Random classifier: Diagonal y = X
+        plt.plot([0, 1], [0, 1], linestyle='--', color='gray', label='Random Classifier (AUC = 0.5)')
+        
+        plt.xlabel('False Positive Rate', fontsize=11, weight='bold')
+        plt.ylabel('True Positive Rate', fontsize=11, weight='bold')
+        default_title = 'Receiver Operating Characteristic (ROC) Curve'
+        legend_loc = 'lower right'
+        
+    elif curve_type.lower() == 'pr':
+        # Random classifier: horizontal line at the prevalence value
+        plt.axhline(y=prevalence, linestyle='--', color='gray', label=f'Random Classifier (Baseline = {prevalence:.2f})')
+        
+        plt.xlabel('Recall', fontsize=11, weight='bold')
+        plt.ylabel('Precision', fontsize=11, weight='bold')
+        default_title = 'PR Curve'
+        legend_loc = 'top right'
+        
+    else:
+        raise ValueError("curve_type debe ser estrictamente 'roc' o 'pr'")
+        
+    # 3. Customize the plot
     plt.xlim([-0.02, 1.02])
-    plt.ylim([-0.02, 1.05])
-    
-    # Legend outside the plot (the trick we saw before)
-    plt.legend(title='Models', title_fontsize='12', fontsize='11', 
-            loc='upper left', bbox_to_anchor=(1.02, 1))
-    
+    plt.ylim([-0.02, 1.02])
+    plt.title(title if title else default_title, fontsize=13, weight='bold', pad=15)
+    plt.legend(loc=legend_loc, frameon=True)
     plt.tight_layout()
     plt.show()
-
-def plot_combined_pr_curves(df_long, title='Precision-Recall Curves'):
-    """
-    Plots multiple Precision-Recall curves on the same axes.
-    
-    Parameters:
-    - df_long : pandas.DataFrame
-        DataFrame in long format with three columns:
-            * model's names.
-            * recall values.
-            * precision values.
-    """
-    
-    # Create the figure and set the theme
-    plt.figure(figsize=(10, 7))
-    sns.set_theme(style="whitegrid")
-    
-    # Plot the Precision-Recall curves for each model
-    sns.lineplot(
-        data=df_long,
-        x='Recall',
-        y='Precision',
-        hue='Model',
-        drawstyle='steps-post',
-        linewidth=2.5,
-        alpha=0.8,
-        errorbar=None
-    )
-    
-    # Add a horizontal line for the baseline
-    plt.axhline(y=0.36, 
-                color='black', linestyle='--', linewidth=1.5, 
-                label='Random Classifier')
-    
-    # Title and labels
-    plt.title(title, fontsize=16, weight='bold', pad=20)
-    plt.xlabel('Recall', fontsize=14, weight='bold')
-    plt.ylabel('Precision', fontsize=14, weight='bold')
-    
-    # Limits of the axes
-    plt.xlim([-0.02, 1.02])
-    plt.ylim([-0.02, 1.05])
-    
-    # Legend outside the plot (the trick we saw before)
-    plt.legend(title='Models', title_fontsize='12', fontsize='11', 
-            loc='upper left', bbox_to_anchor=(1.02, 1))
-    
-    plt.tight_layout()
-    plt.show()
-    
