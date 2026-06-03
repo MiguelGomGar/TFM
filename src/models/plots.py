@@ -4,10 +4,11 @@ import seaborn as sns
 from pathlib import Path
 import matplotlib.pyplot as plt
 from optuna import visualization as vis
+from optuna.visualization import matplotlib as vis_plt
 from sklearn.metrics import confusion_matrix
 
 #%% OPTIMIZATION HISTORY
-def plot_optimization_history(study, output_dir=None):
+def plot_optimization_history(study, model_name=None, output_dir=None, identifier=None):
     """
     Creates and customizes an optimization history plot for a given study and model.
         
@@ -15,57 +16,42 @@ def plot_optimization_history(study, output_dir=None):
     ----------
     - study : optuna.study.Study
         The Optuna study object containing the optimization results.
-        
+    - model_name : str, optional
+        The name of the model to display in the title. If None, it tries to get it 
+        from the study's or the best trial's user attributes.
+    - output_dir : str or pathlib.Path, optional
+        The directory path where the plot will be saved as a PNG file.
+    - identifier : str, optional
+        Identifier for the plot file.
+
     Returns:
-    - fig : plotly.graph_objects.Figure
-        The optimization history plot.
+    - None
     """
-    # 1. Get the plotly graph objects from the figure
-    fig = vis.plot_optimization_history(study)
-    
-    # 2. Get the model's name
-    model = study.best_trial.user_attrs.get('model_name', 'Best Model')
+    # 1. Get the model's name
+    if model_name is None:
+        model_name = study.user_attrs.get('model_name', 
+                        study.best_trial.user_attrs.get('model_name', 'Model'))
+
+    # 2. Generate the plot using the matplotlib backend to avoid kaleido/browser dependencies
+    ax = vis_plt.plot_optimization_history(study)
+    fig = ax.figure
     
     # 3. Customization
-    fig.update_layout(
-        title={
-            'text': f"{model} Optimization History",
-            'y': 0.95,
-            'x': 0.5,
-            'xanchor': 'center',
-            'yanchor': 'top',
-            'font': {'size': 16, 'color': '#1e293b'}
-        },
-        
-        xaxis=dict(
-            title="Number of Trials",
-            showgrid=True,
-            gridcolor="#e2e8f0",
-            linecolor="#cbd5e1",
-            linewidth=1.2,
-            mirror=True
-        ),
-        
-        yaxis=dict(
-            title="Metric Score Value",
-            showgrid=True,
-            gridcolor="#e2e8f0",
-            linecolor="#cbd5e1",
-            linewidth=1.2,
-            mirror=True,
-            range=[-0.02, 1.02]
-        )
-        ,
-        plot_bgcolor="white"
-    )
+    ax.set_title(f"{model_name} Optimization History", fontsize=16, weight='bold', pad=20)
+    ax.set_xlabel("Number of Trials", fontsize=12, weight='bold')
+    ax.set_ylabel("Metric Score Value", fontsize=12, weight='bold')
+    ax.set_ylim(-0.02, 1.02)
+    ax.grid(True, linestyle='--', alpha=0.7)
+    ax.legend(loc='lower right', frameon=True, facecolor='#f8f9fa', edgecolor='gray', framealpha=0.9)
     
     # 4. Save the plot as a PNG file if output_dir is provided
     if output_dir is not None:
-        file_path = output_dir / f"{model}_optimization_history.png"
-        fig.write_image(str(file_path), engine="kaleido")
+        file_path = output_dir / f"optimization_history_{identifier}.png"
+        plt.savefig(str(file_path), dpi=300, bbox_inches='tight')
     
     # 5. Show the plot
-    fig.show()
+    plt.tight_layout()
+    plt.show()
     
     
 #%% CONFUSION MATRIX
@@ -74,7 +60,7 @@ def plot_confusion_matrix(y_true, y_pred,
             title='Confusion Matrix', 
             cmap='Blues',
             output_dir=None,
-            file_prefix=None):
+            identifier=None):
     """
     Plots a confusion matrix with absolute counts and relative percentages as text, 
     but strictly uses the relative percentages to drive the color scale.
@@ -93,13 +79,12 @@ def plot_confusion_matrix(y_true, y_pred,
         Color palette.
     - output_dir : str, optional
         Directory where the plot will be saved.
-    - file_prefix : str, optional
-        Prefix for the filename when saving the plot.
+    - identifier : str, optional
+        Identifier for the plot file.
     
     Returns:
     - None
     """
-    
     # 1. Compute the absolute confusion matrix
     cm = confusion_matrix(y_true, y_pred)
     
@@ -133,13 +118,13 @@ def plot_confusion_matrix(y_true, y_pred,
     
     # 7. Set class names if provided
     if class_names is not None:
-        ax.set_xticklabels(class_names, fontsize=12)
+        ax.set_xticklabels(class_names, fontsize=12, rotation=45, ha='right')
         ax.set_yticklabels(class_names, fontsize=12, rotation=0)
     
     # 8. Save the plot as a PNG file if output_dir is provided
     if output_dir is not None:
         path = Path(output_dir)
-        file_path = path / f'{file_prefix}_confusion_matrix.png'
+        file_path = path / f'confusion_matrix_{identifier}.png'
         plt.savefig(str(file_path), dpi=300, bbox_inches='tight')
     
     # 9. Adjust layout and show the plot
@@ -169,7 +154,7 @@ def autolabel(rects, ax):
                         textcoords="offset points",
                         ha='center', va='bottom', fontsize=10, weight='bold')
 
-def plot_overfitting_bars(df_cv_results, model_name, output_dir=None):
+def plot_overfitting_bars(df_cv_results, title, output_dir=None, identifier=None):
     """
     Plots a grouped bar chart directly from raw CV fold data using Seaborn,
     automatically computing means and standard deviation error bars.
@@ -178,12 +163,12 @@ def plot_overfitting_bars(df_cv_results, model_name, output_dir=None):
     ----------
     - df_cv_results : pandas.DataFrame
         DataFrame in long format with columns: 'Metric', 'Dataset', 'Score'.
-    - model_name : str
-        Name of the model to display in the title.
+    - title : str
+        Title for the plot.
     - output_dir : str, optional
         Directory where the plot will be saved as a PNG file.
-    - file_prefix : str, optional
-        Prefix for the filename when saving the plot.
+    - identifier : str, optional
+        Identifier for the plot file.
     
     Returns:
     - None
@@ -209,16 +194,17 @@ def plot_overfitting_bars(df_cv_results, model_name, output_dir=None):
     )
     
     # 4. Customize the plot aesthetics
-    plt.title(f'Overfitting Analysis: {model_name}', fontsize=16, weight='bold', pad=20)
+    plt.title(f'Overfitting Analysis: {title}', fontsize=16, weight='bold', pad=20)
     plt.ylabel('Score Value', fontsize=12, weight='bold')
     plt.xlabel('', fontsize=12)
+    plt.xticks(rotation=45, ha='right')
     plt.ylim(0, 1.1)
     plt.legend(title='Dataset', loc='upper right', bbox_to_anchor=(1.02, 1))
     
     # 5. Save the plot as a PNG file if output_dir is provided
     if output_dir is not None:
         path = Path(output_dir)
-        file_path = path / f'{model_name}_internal_validation.png'
+        file_path = path / f'overfitting_analysis_{identifier}.png'
         plt.savefig(str(file_path), dpi=300, bbox_inches='tight')
     
     # 6. Adjust layout and show the plot

@@ -45,7 +45,7 @@ def get_regres_preprocessor(X: pd.DataFrame) -> ColumnTransformer:
         transformers=transformers_list,
         remainder='drop'
     )
-    
+
     return preprocessor
 
 
@@ -55,7 +55,8 @@ def get_geom_preprocessor(X: pd.DataFrame) -> ColumnTransformer:
     models like Support Vector Machines (SVM). Imputes numerical features with the 
     median and scales them using StandardScaler, which is essential since geometry-driven 
     algorithms are highly sensitive to feature magnitudes when computing hyperplanes. 
-    Encodes all categorical variables ordinally using embedded Parquet metadata.
+    Encodes all categorical variables ordinally using embedded Parquet metadata and 
+    scales them with StandardScaler to ensure uniform distance weighting.
     """
     # 1. Dynamically isolate numerical and categorical features
     numeric_features = X.select_dtypes(include=[np.number]).columns.tolist()
@@ -78,7 +79,8 @@ def get_geom_preprocessor(X: pd.DataFrame) -> ColumnTransformer:
         extracted_order = list(X[col].dtype.categories)
         
         categorical_pipeline = Pipeline(steps=[
-            ('encoder', OrdinalEncoder(categories=[extracted_order]))
+            ('encoder', OrdinalEncoder(categories=[extracted_order])),
+            ('scaler', StandardScaler())
         ])
         
         # Append as a clean, localized and independent processing lane

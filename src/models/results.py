@@ -2,7 +2,7 @@ import pandas as pd
 from pathlib import Path
 import joblib
 
-def save_model(fitted_pipeline, output_dir=None):
+def save_model(fitted_pipeline, output_dir=None, identifier=None):
     """
     Saves the entire fitted pipeline as a binary file (.joblib), displays its 
     hyperparameters as a formatted pandas DataFrame (excluding default/None values), 
@@ -14,6 +14,8 @@ def save_model(fitted_pipeline, output_dir=None):
         The fully trained pipeline object to be serialized and saved.
     - output_dir : str or pathlib.Path, optional
         The directory path where the binary file will be stored.
+    - identifier : str, optional
+        An optional string to uniquely identify the saved model file (e.g., "RF" or "XGB").
 
     Returns:
     -------
@@ -29,7 +31,10 @@ def save_model(fitted_pipeline, output_dir=None):
         model_class_name = type(fitted_pipeline['clf']).__name__
     
         # Save the model object
-        file_path = output_dir / f"{model_class_name}.joblib"
+        if identifier is not None:
+            file_path = output_dir / f"optimized_{identifier}.joblib"
+        else:
+            file_path = output_dir / f"optimized_{model_class_name}.joblib"
     
         # Save the model object (contains preprocessing states, weights, and params)
         joblib.dump(fitted_pipeline, file_path)
@@ -98,7 +103,7 @@ def save_metrics_results(models_dict, output_dir=None):
 
     # 3. Save the master DataFrame to a CSV file if an output directory is provided
     if output_dir is not None:
-        output_path = Path(output_dir) / "metrics_results.csv"
+        output_path = Path(output_dir) / "metrics.csv"
         df_master.to_csv(output_path, index=False)
         
     return df_master
@@ -138,11 +143,11 @@ def save_curves_results(model_names, x_list, y_list, curve_type='roc',
     if curve_type.lower() == 'roc':
         x_label = 'False Positive Rate'
         y_label = 'True Positive Rate'
-        default_prefix = "roc_curves"
+        default_prefix = "curves_roc"
     else:
         x_label = 'Recall'
         y_label = 'Precision'
-        default_prefix = "pr_curves"
+        default_prefix = "curves_pr"
         
     # Use the provided user filename or fall back to the dynamic default
     filename = filename if filename is not None else f"{default_prefix}.csv"

@@ -88,7 +88,9 @@ def optimize_model_optuna_search(pipeline, param_distributions,
         study=custom_study,
         scoring=aim,
         cv=cv,
-        random_state=seed, n_jobs=-1
+        random_state=seed, 
+        n_jobs=1,
+        verbose=2
     )
     
     # Fit the OptunaSearchCV to find the best hyperparameters
