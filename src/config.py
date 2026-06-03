@@ -14,7 +14,14 @@ CLEAN_DATA_DIR = DATA_DIR / "clean"
 RAW_DATA_DIR = DATA_DIR / "raw"
 MODELS_RESULTS_DIR = RESULTS_DIR / "models"
 
-# 4. Specific data files
+# 4. Get specific data files
+def get_data_path(file: str = "clinical_data.parquet") -> Path:
+    """
+    Returns the path to the data directory for a specific subfolder.
+    """
+    path = CLEAN_DATA_DIR / file
+    return path
+
 CLINICAL_DATA_PATH = CLEAN_DATA_DIR / "clinical_data.parquet"
 
 def get_results_path(subfolder: str = "whole_data") -> Path:

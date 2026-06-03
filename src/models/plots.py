@@ -5,7 +5,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from optuna import visualization as vis
 from optuna.visualization import matplotlib as vis_plt
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, auc
 
 #%% OPTIMIZATION HISTORY
 def plot_optimization_history(study, model_name=None, output_dir=None, identifier=None):
@@ -343,7 +343,12 @@ def plot_model_curves(df, x_col, y_col, model_col='Model',
     # 1. Group the DataFrame by model and plot each curve
     for model_name, group in df.groupby(model_col):
         group_sorted = group.sort_values(by=x_col)
-        plt.step(group_sorted[x_col], group_sorted[y_col], label=model_name, linewidth=2)
+        
+        # Calculate AUC for the legend
+        area = auc(group_sorted[x_col], group_sorted[y_col])
+        label_with_auc = f"{model_name} (AUC = {area:.3f})"
+        
+        plt.step(group_sorted[x_col], group_sorted[y_col], label=label_with_auc, linewidth=2)
     
     # 2. Configure axes and the baseline for the random classifier
     if curve_type.lower() == 'roc':
