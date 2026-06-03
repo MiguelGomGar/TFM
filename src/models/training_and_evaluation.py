@@ -65,6 +65,7 @@ def optimize_model_optuna_search(pipeline, param_distributions,
     - metrics_test : dict (metrics from the final evaluation on the test set)
     - precisions : array (precision values for the test PR curve)
     - recalls : array (recall values for the test PR curve)
+    - study : optuna.study.Study (the Optuna study object)
     """
     
     # ---------------------------------------------------------
@@ -99,9 +100,6 @@ def optimize_model_optuna_search(pipeline, param_distributions,
     # Get the study
     study = optuna_search.study_
 
-    # Get the optimization history plot
-    plot_optimization_history(study)
-    
     # ---------------------------------------------------------
     # 2. EVALUATION OF THE BEST MODEL ON TRAINING (REFACTORED)
     # ---------------------------------------------------------
@@ -167,4 +165,4 @@ def optimize_model_optuna_search(pipeline, param_distributions,
     df_results_complete = pd.DataFrame(cv_rows)
 
     # Retornamos una estructura limpia con el DataFrame unificado
-    return (best_model, df_results_complete, fpr, tpr, precisions, recalls)
+    return (best_model, df_results_complete, fpr, tpr, precisions, recalls, study)
