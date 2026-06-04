@@ -2,6 +2,76 @@ import pandas as pd
 from pathlib import Path
 import joblib
 
+def clean_feature_names(feature_list):
+    """
+    Limpia una lista de nombres de características transformadas por scikit-learn,
+    quedándose únicamente con el texto a la derecha del doble guion bajo (__).
+    
+    Parameters:
+    ----------
+    feature_list : list of str
+        Lista con los nombres originales preprocesados (ej. 'num__age').
+        
+    Returns:
+    -------
+    list of str
+        Lista con los nombres limpios.
+    """
+    
+    clean_names = [name.split('__')[-1] for name in feature_list]
+    
+    return clean_names
+
+def extract_relevant_features(regularized_model_pipeline):
+    """
+    Extracts and returns a DataFrame of non-zero coefficients from a regularized linear model.
+    
+    Parameters:
+    ----------
+    - regularized_model_pipeline : sklearn.pipeline.Pipeline
+        A fitted pipeline containing a regularized linear model.
+    
+    Returns:
+    -------
+    - relevant_cols : list
+        A list of feature names corresponding to non-zero coefficients in the model.
+    - irrelevant_cols : list
+        A list of feature names corresponding to zero coefficients in the model.
+    """
+    # Get the feature names from the model's preprocessing step (if available)
+    if hasattr(regularized_model_pipeline, 'named_steps') and 'preprocessor' in regularized_model_pipeline.named_steps:
+        preprocessor = regularized_model_pipeline.named_steps['preprocessor']
+        feature_names = preprocessor.get_feature_names_out()
+    else:
+        raise ValueError("The provided model does not contain a 'preprocessor' step with feature names.")
+    
+    # Get the coefficients from the fitted model
+    coefficients = regularized_model_pipeline.named_steps['clf'].coef_[0]
+    
+    # Create a DataFrame of features and their corresponding coefficients
+    df_coefficients = pd.DataFrame({
+        'Feature': feature_names,
+        'Coefficient': coefficients
+    })
+    
+    # Separate out features with zero coefficients from features with non-zero coefficients
+    df_relevant = df_coefficients[df_coefficients['Coefficient'] != 0]
+    df_irrelevant = df_coefficients[df_coefficients['Coefficient'] == 0]
+    
+    # Extract the list of irrelevant feature names
+    irrelevant_cols = df_irrelevant['Feature'].tolist()
+    irrelevant_cols = clean_feature_names(irrelevant_cols)
+    
+    # Sort by absolute value of coefficients in descending order
+    df_relevant['Abs_Coefficient'] = df_relevant['Coefficient'].abs()
+    df_relevant = df_relevant.sort_values(by='Abs_Coefficient', ascending=False).drop(columns='Abs_Coefficient')
+    
+    # Extract the list of relevant feature names
+    relevant_cols = df_relevant['Feature'].tolist()
+    relevant_cols = clean_feature_names(relevant_cols)
+    
+    return relevant_cols, irrelevant_cols
+
 def save_model(fitted_pipeline, output_dir=None, identifier=None):
     """
     Saves the entire fitted pipeline as a binary file (.joblib), displays its 
