@@ -250,7 +250,7 @@ def optimize_model_random_search(pipeline, param_distributions,
         scoring=aim,
         cv=cv,
         random_state=seed, 
-        n_jobs=1,
+        n_jobs=-1,
         verbose=1
     )
     
