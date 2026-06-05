@@ -251,7 +251,7 @@ def optimize_model_random_search(pipeline, param_distributions,
         cv=cv,
         random_state=seed, 
         n_jobs=1,
-        verbose=2
+        verbose=1
     )
     
     # Fit the RandomizedSearchCV to find the best hyperparameters
