@@ -22,7 +22,7 @@ def clean_feature_names(feature_list):
     
     return clean_names
 
-def extract_relevant_features(regularized_model_pipeline):
+def get_relevant_features(regularized_model_pipeline):
     """
     Extracts and returns a DataFrame of non-zero coefficients from a regularized linear model.
     

@@ -1,6 +1,10 @@
 import numpy as np
 import pandas as pd
 import optuna
+
+import logging
+import warnings
+
 from optuna.integration import OptunaSearchCV
 from optuna.samplers import TPESampler
 from optuna import visualization as vis
@@ -68,6 +72,15 @@ def optimize_model_optuna_search(pipeline, param_distributions,
     
     print("Starting hyperparameter optimization...")
     
+    # 1. Silencia los logs de información y advertencias generales de Optuna
+    optuna.logging.set_verbosity(optuna.logging.ERROR)
+
+    # 2. Silences specific warnings from Optuna
+    warnings.filterwarnings(
+    "ignore", 
+    category=optuna.exceptions.ExperimentalWarning
+)
+        
     # ---------------------------------------------------------
     # 1. SET UP OPTUNA SEARCH
     # ---------------------------------------------------------
@@ -80,7 +93,7 @@ def optimize_model_optuna_search(pipeline, param_distributions,
         n_startup_trials = 3*D
     
     if n_iter is None:
-        n_iter = max(100, 3*D)
+        n_iter = max(250, 3*D)
     
     # Instantiate a custom sampler
     custom_sampler = TPESampler(n_startup_trials=n_startup_trials, seed=seed)
@@ -100,7 +113,7 @@ def optimize_model_optuna_search(pipeline, param_distributions,
         cv=cv,
         random_state=seed, 
         n_jobs=1,
-        verbose=2
+        verbose=0
     )
     
     # Fit the OptunaSearchCV to find the best hyperparameters
