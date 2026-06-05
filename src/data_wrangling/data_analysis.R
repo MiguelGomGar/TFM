@@ -12,9 +12,9 @@ format_axis_labels = function(x) {
     # - x: A numeric vector representing the x-axis tick values.
     # 
     # Returns:
-    # - A character vector of formatted labels, where integers are shown without 
-    # decimal places and non-integers are formatted with standard numeric 
-    # formatting.
+    # - A character vector of formatted labels, where integers are shown without
+    #   decimal places and non-integers are formatted with standard numeric 
+    #   formatting.
 
     x_clean <- x[!is.na(x)]
     if (length(x_clean) > 0 && all(x_clean == round(x_clean))) {
@@ -160,9 +160,10 @@ plot_stratified_numeric_distribution <- function(
             na.rm = TRUE
         ) +
         
+        # Scale fill with a high-contrast palette for clinical stratification
+        scale_fill_manual(values = c("#16A085", "#2C3E50")) +
+        
         # Apply the pseudo-log transformation to safely handle wide clinical ranges
-        # scale_y_continuous(trans = scales::pseudo_log_trans(base = 10)) +
-        # scale_fill_viridis_d(option = "D", begin = 0.3, end = 0.8) +
         facet_wrap(~ feature, scales = "free", ncol = 4) +
         
         # Apply your customized medical theme configuration

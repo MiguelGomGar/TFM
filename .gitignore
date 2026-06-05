@@ -19,7 +19,7 @@ __pycache__/
 *.pyc
 
 # ========================
-# IDE & SISTEMA OPERATIVO
+# IDE & OS
 # ========================
 .vscode/
 Thumbs.db
@@ -31,3 +31,8 @@ Thumbs.db
 venv/
 oryx-build-commands.txt
 .oryx/
+
+# ========================
+# DOCUMENTS
+# ========================
+*.docx

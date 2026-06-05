@@ -126,12 +126,6 @@ clinical_data_selected <- original_clinical_data |>
         ablacion_previa,
         event_blank,
         
-        #=======================================================================
-        # NUTRITIONAL DATA
-        # #=======================================================================
-        p14_tot_0m,
-        alcoholg_0m,
-        
         # Target class
         event18m_conkardia
     )
@@ -338,7 +332,6 @@ new_names <- c(
     "stroke", "heart_failure", "cardiomyopathy", "antirrythmic_meds", 
     "LA_enlargment", "LAD", "LAA", "LAV", "LVEF", "AF_type", 
     "AF_ablation_time", "previous_ablation", "ERAF", 
-    "p14_score", "alcohol_intake",
     "AF_recurrence"
     )
 
@@ -361,23 +354,19 @@ clinical_data_processed <- clinical_data_processed |>
 ```
 
 # Save data
-This is the entire data set. Lets save it:
+Save the data::
 
 ```{r}
-# Save it into the project's data directory
+# Full data set
 write_parquet(
     clinical_data_processed, 
-    "data/intermediate/clinical_data.parquet"
+    "data/intermediate/clinical_data_full.parquet"
     )
 
-head(clinical_data_processed)
-```
-
-Save specific subset for scores:
-
-```{r}
-# Save specific subset for scores
+# Subset for hatch score
 clinical_data_processed |> 
     select(AF_recurrence, age, heart_failure, hypertension, COPD, stroke, OSA) |> 
-    write_parquet("data/clean/HATCH_clinical_data.parquet")
+    write_parquet("data/clean/clinical_data_hatch.parquet")
+
+head(clinical_data_processed)
 ```

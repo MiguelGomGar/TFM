@@ -21,7 +21,7 @@ output_dir <- "results/eda/"
 # Load the data
 
 ```{r}
-clinical_data <- read_parquet("data/intermediate/clinical_data.parquet")
+clinical_data <- read_parquet("data/intermediate/clinical_data_full.parquet")
 head(clinical_data)
 ```
 
@@ -33,13 +33,6 @@ skim(clinical_data) |> summary()
 ```
 
 There are $720$ rows and $36$ columns: $22$ categorical (the target class can be found among these) and $14$ numeric features. Let's check each type separately.
-```{r}
-clinical_data |> 
-  select(-code) |> 
-  skim() |> 
-  yank("numeric") |> 
-  names()
-```
 
 ## Numeric features
 Let's sum up the data:
@@ -172,17 +165,6 @@ clinical_data |>
     )
 ```
 
-Numeric features distribution stratified by the center variable:
-
-```{r, fig.width=10, fig.height=8}
-clinical_data |> 
-  select(-code) |> 
-  plot_stratified_numeric_distribution(
-    target_var = "center",
-    output = output_dir
-    )
-```
-
 ## Categorical features
 
 Categorical features distribution:
@@ -213,17 +195,6 @@ clinical_data |>
     )
 ```
 
-Categorical features distribution stratified by the center variable:
-
-```{r, fig.width=10, fig.height=16}
-clinical_data |> 
-  select(-code) |> 
-  plot_stratified_categorical_distribution(
-    target_var = "center", 
-    output = output_dir
-    )
-```
-
 ## Multicolinearity
 Let's check the correlation between features.
 
@@ -235,11 +206,11 @@ clinical_data |> select(-code) |>
   plot_corr_matrix(threshold = 0.5, output = output_dir)
 ```
 
-Since the waist to height ratio is significantly better as an obesity indicator (see the numeric distribution stratified by AF recurrence), which is also a risk factor for AF recurrence, we will drop the `BMI` feature:
+Although the waist to height ratio is slightly better as an obesity indicator (check the numeric distribution stratified by AF recurrence), which is also a risk factor for AF recurrence, the `BMI` feature does not have missing values. Therefore, we will drop the `waist_height` feature:
 
 ```{r}
 clinical_data <- clinical_data |> 
-  select(-BMI)
+  select(-waist_height_ratio)
 ```
 
 
@@ -278,12 +249,12 @@ plot_vif(output = output_dir)
 Since $VIF < 5$ for all of the features, there is no more multicollinearity.
 
 # Saving the data
-Since there are some machine learning models that deal with NA values, we will save the global data set to use it later on.
 
 ```{r}
+# Full data set
 write_parquet(
     clinical_data, 
-    "data/clean/clinical_data.parquet"
+    "data/clean/clinical_data_full.parquet"
     )
 
 head(clinical_data)
