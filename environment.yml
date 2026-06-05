@@ -12,7 +12,7 @@ dependencies:
   - pandas
   - jupyter
   - numpy
-  - scikit-learn
+  - scikit-learn<1.6.0
   - seaborn
   - matplotlib
   - scikit-image
