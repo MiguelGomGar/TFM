@@ -21,3 +21,20 @@ reformat_visit <- function(old_column_name){
     
     return(new_column_name)
 }
+
+compute_hatch_score <- function(df){
+    # Computes the HATCH score for each patient
+    
+    df <- df |> 
+        mutate(
+            hatch_score = 
+                (if_else(age > 75, 1, 0)) +
+                (if_else(hypertension == "yes", 1, 0)) +
+                if_else(OSA == "yes", 1, 0) +
+                (if_else(COPD == "yes", 1, 0)) +
+                (if_else(stroke == "yes", 2, 0)) +
+                (if_else(heart_failure == "yes", 2, 0))
+        )
+    
+    return(df)
+}

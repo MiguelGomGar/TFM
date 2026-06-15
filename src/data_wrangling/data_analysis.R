@@ -994,7 +994,7 @@ plot_row_missingness <- function(
             plot.subtitle = element_text(color = "#64748b", size = 9, margin = margin(b = 15)),
             axis.title = element_text(face = "bold", color = "#1e293b"),
             axis.text.y = element_text(color = "#475569", face = "bold"),
-            axis.text.x = element_text(color = "#475569", face = "bold", angle = 45, hjust = 1),
+            axis.text.x = element_text(color = "#475569", face = "bold", hjust = 1),
             axis.line.x = element_line(color = "#bdc3c7", linewidth = 0.6),
             panel.grid.minor = element_blank(),
             panel.grid.major.x = element_blank(), 

@@ -11,6 +11,8 @@ library(haven)
 library(labelled)
 library(arrow)
 library(data.table)
+
+source("src/data_wrangling/data_cleaning.R")
 ```
 
 # Load the data
@@ -353,6 +355,12 @@ clinical_data_processed <- clinical_data_processed |>
     select(-c(waist_circumference, height))
 ```
 
+We can compute the HATCH score for each patient:
+```{r}
+clinical_data_processed <- compute_hatch_score(clinical_data_processed)
+```
+
+
 # Save data
 Save the data:
 
@@ -365,7 +373,7 @@ write_parquet(
 
 # Subset for hatch score
 clinical_data_processed |> 
-    select(AF_recurrence, age, heart_failure, hypertension, COPD, stroke, OSA) |> 
+    select(AF_recurrence, hatch_score, age, heart_failure, hypertension, COPD, stroke, OSA) |> 
     write_parquet("data/clean/clinical_data_hatch.parquet")
 
 head(clinical_data_processed)
