@@ -240,8 +240,8 @@ def plot_metrics_bars(df, metrics, color_palette='viridis', output_dir=None):
 
     # 2. Determine the grid size based on the number of requested metrics
     n_metrics = len(metrics)
-    cols = 3
-    rows = int(np.ceil(n_metrics / cols)) 
+    cols = min(n_metrics, 3) # <-- El cambio clave: usar máximo 3, pero menos si hay pocas métricas
+    rows = int(np.ceil(n_metrics / cols))
     
     # 3. Set up the figure and axes for matplotlib
     fig, axes = plt.subplots(rows, cols, figsize=(5 * cols, 5 * rows))
