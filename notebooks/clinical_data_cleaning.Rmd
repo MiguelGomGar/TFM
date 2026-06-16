@@ -356,21 +356,36 @@ clinical_data_processed <- clinical_data_processed |>
     select(-c(waist_circumference, height))
 ```
 
-We can compute the HATCH score for each patient:
+We can also compute the HATCH score for each patient:
+
 ```{r}
 clinical_data_processed <- compute_hatch_score(clinical_data_processed)
 ```
 
 
 # Save data
-Save the data:
+Save the whole data set:
 
 ```{r}
-# Full data set
 write_parquet(
     clinical_data_processed, 
-    "data/intermediate/clinical_data_full.parquet"
+    "data/intermediate/whole_clinical_data.parquet"
     )
 
 head(clinical_data_processed)
+```
+
+Save a subset with only the features used for the HATCH score:
+
+```{r}
+hatch_data <- clinical_data_processed |> 
+    select(
+        code, age, hypertension, COPD, stroke, heart_failure, AF_type, hatch_score, AF_recurrence
+        )
+write_parquet(
+    hatch_data, 
+    "data/clean/hatch_data.parquet"
+    )
+
+head(hatch_data)
 ```

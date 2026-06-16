@@ -11,7 +11,6 @@ SRC_DIR = PROJECT_ROOT / "src"
 
 # 3. Defining specific paths
 CLEAN_DATA_DIR = DATA_DIR / "clean"
-RAW_DATA_DIR = DATA_DIR / "raw"
 MODELS_RESULTS_DIR = RESULTS_DIR / "models"
 
 # 4. Get specific data files

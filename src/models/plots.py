@@ -212,7 +212,7 @@ def plot_overfitting_bars(df_cv_results, title, output_dir=None, identifier=None
     plt.show()
 
 #%% METRICS COMPARISON
-def plot_metrics_bars(df, metrics, color_palette='viridis', output_dir=None):
+def plot_metrics_bars(df, metrics, color_palette='viridis', baselines=None, output_dir=None):
     """
     Plots a grid of bar charts comparing multiple Test metrics across different models
     using a long-format (tidy) DataFrame.
@@ -225,6 +225,8 @@ def plot_metrics_bars(df, metrics, color_palette='viridis', output_dir=None):
         List with the exact names of the metrics to plot (e.g., ['Accuracy', 'Precision', 'ROC-AUC']).
     - color_palette : str, default='viridis'
         Color palette for seaborn.
+    - baselines : float or list, optional
+        Horizontal line(s) to indicate reference value(s) (one for each metric).
     - output_dir : str, optional
         Directory where the plot will be saved as a PNG file.
     
@@ -255,7 +257,7 @@ def plot_metrics_bars(df, metrics, color_palette='viridis', output_dir=None):
     for i, metric in enumerate(metrics):
         # Check if the requested metric exists in the test data
         if metric not in df_test['Metric'].values:
-            print(f"Warning: The '{metric}' metric does not exist in the Test data. It will be skipped.")
+            print(f"Warning: '{metric}' metric does not exist in the Test data. It will be skipped.")
             continue
             
         ax = axes[i]
@@ -276,6 +278,22 @@ def plot_metrics_bars(df, metrics, color_palette='viridis', output_dir=None):
             ax=ax 
         )
         
+        # Add the horizontal baseline at a reference value
+        if baselines is not None:
+            # Determine the baseline value for the current metric
+            if isinstance(baselines, list):
+                baseline_val = baselines[i] if i < len(baselines) else None
+                
+            elif isinstance(baselines, (int, float)):
+                baseline_val = baselines
+                
+            else:
+                baseline_val = None
+
+            # Plot the line only if a valid baseline value is provided
+            if baseline_val is not None:
+                ax.axhline(y=baseline_val, color='red', linestyle='--', linewidth=1.5, alpha=0.8)
+            
         # Aesthetic customizations for each subplot
         ax.set_title(metric, fontsize=14, weight='bold')
         ax.set_xlabel('')

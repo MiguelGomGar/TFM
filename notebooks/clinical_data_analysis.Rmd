@@ -21,7 +21,7 @@ output_dir <- "results/eda/"
 # Load the data
 
 ```{r}
-clinical_data <- read_parquet("data/intermediate/clinical_data_full.parquet")
+clinical_data <- read_parquet("data/intermediate/whole_clinical_data.parquet")
 head(clinical_data)
 ```
 
@@ -195,14 +195,6 @@ clinical_data |>
 ```
 
 ## Multicolinearity
-Before diving into complex relationships among features, let' save a subset of the original data with the HATCH score variables:
-
-```{r}
-clinical_data |> 
-    select(AF_recurrence, hatch_score, age, heart_failure, hypertension, COPD, stroke) |> 
-    write_parquet("data/clean/clinical_data_hatch.parquet")
-```
-
 Now, let's check the correlation between features.
 
 ### Numeric features
@@ -213,7 +205,7 @@ clinical_data |> select(-code) |>
   plot_corr_matrix(threshold = 0.5, output = output_dir)
 ```
 
-Although the waist to height ratio is slightly better as an obesity indicator (check the numeric distribution stratified by AF recurrence), which is also a risk factor for AF recurrence, the `BMI` feature does not have missing values. Therefore, we will drop the `waist_height` feature:
+Although the waist to height ratio might perform better as an obesity indicator (check the numeric distribution stratified by AF recurrence), the `BMI` feature's missing rate is $0$. Therefore, we will drop the `waist_height` feature:
 
 ```{r}
 clinical_data <- clinical_data |> 
@@ -230,7 +222,7 @@ clinical_data |>
   suppressWarnings()
 ```
 
-There is a perfect correlation between `heart_failure`-`LVEF` and a significant correlation between `hypolipidemic_meds`-`hypercholesterolemia`. Since the latter ones are more informative, we will drop `heart_failure` and `hypolipidemic_meds` feature:
+There is a perfect correlation between `heart_failure`-`LVEF` and a significant correlation between `hypolipidemic_meds`-`hypercholesterolemia`. Since the latter ones are more informative, we will drop `heart_failure` and `hypolipidemic_meds` feature.
 
 ```{r}
 clinical_data <- clinical_data |> 
@@ -261,7 +253,7 @@ Since $VIF < 5$ for all of the features, there is no more multicollinearity.
 # Full data set
 write_parquet(
     clinical_data, 
-    "data/clean/clinical_data_full.parquet"
+    "data/clean/whole_clinical_data.parquet"
     )
 
 head(clinical_data)
