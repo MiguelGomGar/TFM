@@ -668,7 +668,7 @@ plot_vif <- function(
         df, 
         output,
         target_var="AF_recurrence",
-        title = "Variance Inflation Factor (VIF) Diagnostics",
+        title = "VIF Diagnostics",
         x_label = "VIF / GVIF^2",
         y_label = NULL) {
     # Computes the Generalized Variance Inflation Factor (GVIF) for a mixed dataset,
@@ -753,13 +753,7 @@ plot_vif <- function(
         ) +
         
         # Establish clinical collinearity reference lines
-        geom_hline(yintercept = 5, linetype = "dashed", color = "#f59f00", linewidth = 0.7) +
         geom_hline(yintercept = 10, linetype = "dashed", color = "#ef4444", linewidth = 0.7) +
-        
-        # Label thresholds directly within the canvas layout
-        annotate("text", x = 1.5, y = 5.2, 
-                 color = "#b45309", size = 3, fontface = "italic", hjust = 0,
-                 label = "Moderate collinearity") +
         annotate("text", x = 0.7, y = 10.2, 
                  color = "#b91c1c", size = 3, fontface = "italic", hjust = 0,
                  label = "Severe collinearity") +

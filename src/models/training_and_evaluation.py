@@ -5,7 +5,7 @@ import optuna
 import logging
 import warnings
 
-from optuna.integration import OptunaSearchCV
+from optuna_integration import OptunaSearchCV
 from optuna.samplers import TPESampler
 from optuna import visualization as vis
 from src.models.plots import plot_optimization_history

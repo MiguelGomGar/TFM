@@ -138,7 +138,7 @@ Numeric features distribution:
 
 ```{r, fig.width=10, fig.height=8}
 clinical_data |> 
-  select(-code) |> 
+  select(-c(code, hatch_score)) |> 
   plot_global_numeric_distribution(output = output_dir)
 ```
 
@@ -146,7 +146,7 @@ Numeric features distribution stratified by the target class:
 
 ```{r, fig.width=10, fig.height=8}
 clinical_data |> 
-  select(-code) |> 
+  select(-c(code, hatch_score)) |> 
   plot_stratified_numeric_distribution(
     target_var = "AF_recurrence", 
     output = output_dir
@@ -158,7 +158,7 @@ Numeric features distribution stratified by the intervention feature:
 
 ```{r, fig.width=10, fig.height=8}
 clinical_data |> 
-  select(-code) |> 
+  select(-c(code, hatch_score)) |> 
   plot_stratified_numeric_distribution(
     target_var = "intervention", 
     output = output_dir
@@ -170,14 +170,14 @@ clinical_data |>
 Categorical features distribution:
 
 ```{r, fig.width=16, fig.height=12}
-clinical_data |> select(-code) |> 
+clinical_data |> 
   plot_global_categorical_distribution(output = output_dir)
 ```
 
 Categorical features distribution stratified by the target class:
 
 ```{r, fig.width=10, fig.height=16}
-clinical_data |> select(-code) |> 
+clinical_data |> 
   plot_stratified_categorical_distribution(
     target_var = "AF_recurrence",
     output = output_dir
@@ -188,7 +188,6 @@ Categorical features distribution stratified by the intervention variable:
 
 ```{r, fig.width=10, fig.height=16}
 clinical_data |> 
-  select(-code) |> 
   plot_stratified_categorical_distribution(
     target_var = "intervention", 
     output = output_dir
@@ -196,7 +195,15 @@ clinical_data |>
 ```
 
 ## Multicolinearity
-Let's check the correlation between features.
+Before diving into complex relationships among features, let' save a subset of the original data with the HATCH score variables:
+
+```{r}
+clinical_data |> 
+    select(AF_recurrence, hatch_score, age, heart_failure, hypertension, COPD, stroke) |> 
+    write_parquet("data/clean/clinical_data_hatch.parquet")
+```
+
+Now, let's check the correlation between features.
 
 ### Numeric features
 Correlation matrix of numeric features:
