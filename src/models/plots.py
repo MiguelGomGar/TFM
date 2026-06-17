@@ -52,8 +52,7 @@ def plot_optimization_history(study, model_name=None, output_dir=None, identifie
     # 5. Show the plot
     plt.tight_layout()
     plt.show()
-    
-    
+
 #%% CONFUSION MATRIX
 def plot_confusion_matrix(y_true, y_pred, 
             class_names=None, 
@@ -197,7 +196,7 @@ def plot_overfitting_bars(df_cv_results, title, output_dir=None, identifier=None
     plt.title(f'Overfitting Analysis: {title}', fontsize=16, weight='bold', pad=20)
     plt.ylabel('Score Value', fontsize=12, weight='bold')
     plt.xlabel('', fontsize=12)
-    plt.xticks(rotation=45, ha='right')
+    plt.xticks(ha='right')
     plt.ylim(0, 1.1)
     plt.legend(title='Dataset', loc='upper right', bbox_to_anchor=(1.02, 1))
     
@@ -292,7 +291,7 @@ def plot_metrics_bars(df, metrics, color_palette='viridis', baselines=None, outp
 
             # Plot the line only if a valid baseline value is provided
             if baseline_val is not None:
-                ax.axhline(y=baseline_val, color='red', linestyle='--', linewidth=1.5, alpha=0.8)
+                ax.axhline(y=baseline_val, color='red', linestyle='--', linewidth=1.5, alpha=0.8, label=f'HATCH score (AUC = {baseline_val:.2f})')
             
         # Aesthetic customizations for each subplot
         ax.set_title(metric, fontsize=14, weight='bold')
@@ -305,8 +304,12 @@ def plot_metrics_bars(df, metrics, color_palette='viridis', baselines=None, outp
         ax.set_xticks(range(len(models_list)))
         ax.set_xticklabels(models_list, fontsize=11, weight='bold', rotation=45, ha='right')
         
-        # Keep your helper function to add numerical labels on top of the bars
+        # Use helper function to add numerical labels on top of the bars
         autolabel(ax.patches, ax)
+        
+        # Add legend
+        if baselines is not None and baseline_val is not None:
+            ax.legend(loc='upper right', frameon=True, facecolor='#f8f9fa', edgecolor='gray', framealpha=0.9)
     
     # 5. Delete any remaining empty subplots in the grid
     for j in range(i + 1, len(axes)):
@@ -401,6 +404,77 @@ def plot_model_curves(df, x_col, y_col, model_col='Model',
     if output_dir is not None:
         path = Path(output_dir)
         file_path = path / f'{curve_type}_curves.png'
+        plt.savefig(str(file_path), dpi=300, bbox_inches='tight')
+    
+    plt.show()
+
+def plot_risk_score_curves(fpr, tpr, recalls, precisions, title=None, prevalence=None, output_dir=None):
+    """
+    Plots both the ROC and Precision-Recall curves for risk scores in a single figure.
+
+    Parameters:
+    ----------
+    - fpr : array-like
+        False Positive Rates for the ROC curve.
+    - tpr : array-like
+        True Positive Rates for the ROC curve.
+    - recalls : array-like
+        Recall values for the Precision-Recall curve.
+    - precisions : array-like
+        Precision values for the Precision-Recall curve.
+    - title : str, optional
+        Title for the overall figure.
+    - prevalence : float, optional
+        The proportion of positive samples in the dataset (used as baseline for PR curve).
+    - output_dir : str, optional
+        Directory where the plot will be saved as a PNG file.
+
+    Returns:
+    - None
+    """
+    
+    # Calculate AUC for both curves
+    roc_auc_ = auc(fpr, tpr)
+    pr_auc_ = auc(recalls, precisions)
+    
+    # Set up the figure
+    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Plot ROC Curve
+    ax[0].step(fpr, tpr, color='blue', lw=2, label=f'Risk score (AUC = {roc_auc_:.4f})')
+    ax[0].plot([0, 1], [0, 1], color='black', lw=2, linestyle='--', label='Random Classifier (AUC = 0.5)')
+    ax[0].set_xlim([0.0, 1.0])
+    ax[0].set_ylim([0.0, 1.05])
+    ax[0].set_xlabel('False Positive Rate')
+    ax[0].set_ylabel('True Positive Rate')
+    ax[0].set_title('ROC Curve')
+    ax[0].legend(loc='lower right')
+
+    # Plot Precision-Recall Curve
+    ax[1].step(recalls, precisions, color='blue', lw=2, label=f'Risk score (AUC = {pr_auc_:.4f})')
+    
+    # Add horizontal line for random classifier baseline if prevalence is provided
+    if prevalence is not None:
+        ax[1].axhline(y=prevalence, color='black', lw=2, linestyle='--', label=f'Random Classifier (AUC = {prevalence:.4f})')
+        
+    ax[1].set_xlim([0.0, 1.0])
+    ax[1].set_ylim([0.0, 1.05])
+    ax[1].set_xlabel('Recall')
+    ax[1].set_ylabel('Precision')
+    ax[1].set_title('Precision-Recall Curve')
+    ax[1].legend(loc='upper right')
+    
+    # Add grid
+    for axis in ax:
+        axis.grid(True)
+
+    # Set the overall title for the figure
+    fig.suptitle(title if title else 'Risk Score Performance', fontsize=16)
+    
+    # Save the figure as a PNG file if output_dir is provided
+    if output_dir is not None:
+        path = Path(output_dir)
+        file_path = path / 'risk_scores_curves.png'
         plt.savefig(str(file_path), dpi=300, bbox_inches='tight')
     
     plt.show()

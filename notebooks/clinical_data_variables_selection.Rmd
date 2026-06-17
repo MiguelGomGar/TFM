@@ -43,15 +43,6 @@ p <- ggplot(prepared_variables, aes(x = Variable, y = Scores, fill = Predimar)) 
     # Grid bars with subtle medical-themed dark slate borders
     geom_col(color = "#2c3e50", width = 0.75, linewidth = 0.4, alpha = 0.85) +
     
-    # Add precise numerical counts to the tip of each bar
-    geom_text(
-        aes(label = Scores),
-        hjust = -0.4,
-        size = 3.2,
-        fontface = "bold",
-        color = "#1e293b"
-    ) +
-    
     # Invert coordinates to maintain textbook readability for long clinical terms
     coord_flip(clip = "off") +
     
@@ -111,4 +102,3 @@ ggsave(
     dpi = 300
 )
 ```
-
