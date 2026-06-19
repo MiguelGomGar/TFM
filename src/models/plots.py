@@ -369,7 +369,7 @@ def plot_model_curves(df, x_col, y_col, model_col='Model',
         area = auc(group_sorted[x_col], group_sorted[y_col])
         label_with_auc = f"{model_name} (AUC = {area:.3f})"
         
-        plt.step(group_sorted[x_col], group_sorted[y_col], label=label_with_auc, linewidth=2)
+        plt.plot(group_sorted[x_col], group_sorted[y_col], label=label_with_auc, linewidth=2)
     
     # 2. Configure axes and the baseline for the random classifier
     if curve_type.lower() == 'roc':
@@ -441,7 +441,7 @@ def plot_risk_score_curves(fpr, tpr, recalls, precisions, title=None, prevalence
     fig, ax = plt.subplots(1, 2, figsize=(12, 5))
 
     # Plot ROC Curve
-    ax[0].step(fpr, tpr, color='blue', lw=2, label=f'Risk score (AUC = {roc_auc_:.4f})')
+    ax[0].plot(fpr, tpr, color='blue', lw=2, label=f'Risk score (AUC = {roc_auc_:.4f})')
     ax[0].plot([0, 1], [0, 1], color='black', lw=2, linestyle='--', label='Random Classifier (AUC = 0.5)')
     ax[0].set_xlim([0.0, 1.0])
     ax[0].set_ylim([0.0, 1.05])
@@ -451,7 +451,7 @@ def plot_risk_score_curves(fpr, tpr, recalls, precisions, title=None, prevalence
     ax[0].legend(loc='lower right')
 
     # Plot Precision-Recall Curve
-    ax[1].step(recalls, precisions, color='blue', lw=2, label=f'Risk score (AUC = {pr_auc_:.4f})')
+    ax[1].plot(recalls, precisions, color='blue', lw=2, label=f'Risk score (AUC = {pr_auc_:.4f})')
     
     # Add horizontal line for random classifier baseline if prevalence is provided
     if prevalence is not None:
