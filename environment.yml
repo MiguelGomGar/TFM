@@ -17,4 +17,3 @@ dependencies:
   - fastparquet
   - r-base
   - r-essentials
-  - rstudio
