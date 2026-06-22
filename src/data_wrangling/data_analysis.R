@@ -1,3 +1,291 @@
+# ---- Save plots ----
+
+#' Save ggplot2 object to file
+#' 
+#' Saves a ggplot2 object to a specified file path with the given dimensions and 
+#' resolution.
+#' 
+#' @param plot A ggplot2 object to be saved.
+#' @param file_name Name of the file to save the plot to.
+#' @param width Width of the saved plot.
+#' @param height Height of the saved plot.
+#' @param dpi DPI of the saved plot.
+#' 
+#' @return NULL. The function saves the plot to the specified file path.
+save_plot <- function(plot, file_name, width = 12, height = 5, dpi = 300) {
+    
+    file_path <- here::here("results", "eda", file_name)
+
+    ggplot2::ggsave(
+        filename = file_path,
+        plot = plot,
+        width = width,
+        height = height,
+        dpi = dpi
+    )
+}
+
+# ---- Missing values ----
+
+#' Plot stratified missingness rate
+#'
+#' Renders a bar chart analyzing the proportion and absolute count of missing 
+#' values (NAs) stratified by a target class. Safely handles mixed data types 
+#' (factors and numerics) during the pivoting phase.
+#'
+#' @param df A data frame containing clinical features.
+#' @param target_var Character string specifying the categorical variable to 
+#' stratify by. Default is "AF_recurrence".
+#' @param title Character string for the plot title. Default is "Missing Data 
+#' Diagnostic".
+#' @param subtitle Character string for the plot subtitle.
+#' @param x_label Character string for the horizontal axis title.
+#' @param y_label Character string for the vertical axis title. Default matches 
+#' target_var.
+#'
+#' @return A ggplot2 object representing the faceted missingness grid.
+plot_stratified_missingness <- function(
+        df, 
+        target_var = "AF_recurrence",
+        title = "Missing Data Diagnostic",
+        subtitle = "Proportion and absolute count of missing values evaluated 
+        within each patient record",
+        x_label = "Missingness Rate within Stratum (%)",
+        y_label = target_var) {
+    
+    # 1. Isolate the target column and any predictors containing at least one NA
+    df_missing_analysis <- df |> 
+        dplyr::select(
+            tidyselect::all_of(target_var), tidyselect::where(~ any(is.na(.)))
+            ) |> 
+        tidyr::pivot_longer(
+            cols = -tidyselect::all_of(target_var),
+            names_to = "feature",
+            values_to = "value",
+            values_transform = list(value = as.character)
+        ) |> 
+        
+        # Calculate the missingness rate inside each stratum dynamically
+        dplyr::group_by(feature, .data[[target_var]]) |> 
+        dplyr::summarise(
+            na_count = sum(is.na(value)),
+            group_total = dplyr::n(),
+            na_rate = na_count / group_total,
+            .groups = "drop"
+        )
+    
+    # Safety check in case no columns contain missing values
+    if (nrow(df_missing_analysis) == 0) {
+        stop("The provided dataframe does not contain any missing values (NAs) 
+        to analyze.")
+    }
+    
+    # 2. Render the faceted bar chart
+    p <- ggplot2::ggplot(
+        df_missing_analysis, 
+        ggplot2::aes(
+            x = na_rate, 
+            y = .data[[target_var]], 
+            fill = .data[[target_var]]
+            )
+        ) +
+        ggplot2::geom_col(
+            color = "#2c3e50", 
+            alpha = 0.85, 
+            width = 0.6, 
+            linewidth = 0.5
+            ) +
+        
+        # Add text labels
+        ggplot2::geom_text(
+            ggplot2::aes(label = sprintf("%.1f%%", na_rate * 100)),
+            hjust = -0.1,
+            size = 2.8,
+            fontface = "bold",
+            color = "#1e293b",
+            lineheight = 0.85
+        ) +
+        
+        # Format vertical axis as standard percentage with safety overhead space
+        ggplot2::scale_x_continuous(
+            labels = scales::label_percent(),
+            expand = ggplot2::expansion(mult = c(0, 0.25))
+        ) +
+        
+        # High-contrast medical palette
+        ggplot2::scale_fill_viridis_d(option = "D", begin = 0.3, end = 0.8) +
+        
+        # Facet grid
+        ggplot2::facet_wrap(~ feature, ncol = 3) +
+        
+        # Set labels
+        ggplot2::labs(
+            title = title,
+            subtitle = paste(subtitle, target_var, "stratum"),
+            x = x_label,
+            y = y_label
+        ) +
+        
+        # Customize
+        ggplot2::theme_minimal(base_size = 11) +
+        ggplot2::theme(
+            legend.position = "none",
+            panel.grid.minor = ggplot2::element_blank(),
+            panel.grid.major.x = ggplot2::element_blank(),
+            panel.grid.major.y = ggplot2::element_line(
+                color = "#eaeded", 
+                linewidth = 0.5
+            ),
+            strip.background = ggplot2::element_rect(
+                fill = "#f8f9f9", 
+                color = "#d5dbdb", 
+                linewidth = 0.5
+            ),
+            strip.text = ggplot2::element_text(
+                face = "bold", 
+                color = "#2c3e50", 
+                size = 9
+            ),
+            axis.line.x = ggplot2::element_line(
+                color = "#bdc3c7", 
+                linewidth = 0.6
+            ),
+            axis.text = ggplot2::element_text(
+                color = "#34495e", 
+                face = "bold"
+            ),
+            axis.title = ggplot2::element_text(
+                face = "bold", 
+                color = "#2c3e50"
+            ),
+            panel.spacing = ggplot2::unit(1.5, "lines")
+        )
+
+    return(p)
+}
+
+#' Plot row-wise missingness distribution
+#'
+#' Computes the total number of missing values (NAs) per row (patient),
+#' aggregates their frequency counts, and renders a professional distribution 
+#' plot.
+#' Y-axis displays absolute counts for sample-size transparency, while 
+#' bar labels dynamically show relative percentages for clinical impact 
+#' assessment.
+#'
+#' @param df A data frame containing clinical features.
+#' @param title Plot title string. Default is "Distribution of Missing Values 
+#' per Patient".
+#' @param subtitle Plot subtitle string.
+#' @param x_label Character string for the horizontal axis title. Default is 
+#' "Number of missing values".
+#' @param y_label Character string for the vertical axis title. Default is 
+#' "Number of Records".
+#'
+#' @return A ggplot2 object representing the publication-ready missingness 
+#' distribution.
+plot_row_missingness <- function(
+        df,
+        title = "Distribution of Missing Values per Patient",
+        subtitle = "Analysis of row-wise missingness patterns across the 
+        PREDIMAR cohort",
+        x_label = "Number of missing values",
+        y_label = "Number of Records"
+) {
+    
+    # 1. Compute missing values per row and aggregate metrics cleanly
+    na_summary <- df |> 
+        dplyr::mutate(row_na_count = rowSums(is.na(df))) |> 
+        dplyr::count(row_na_count, name = "n_records") |>
+        dplyr::mutate(
+            pct_label = scales::percent(
+                n_records / sum(n_records), accuracy = 0.1
+                )
+            ) |> 
+        dplyr::arrange(row_na_count)
+    
+    # 2. Build the distribution chart
+    p <- ggplot2::ggplot(
+        na_summary, 
+        ggplot2::aes(x = row_na_count, y = n_records)
+        ) +
+        
+        # Main vertical bar layer
+        ggplot2::geom_col(
+            fill = "#2563eb", 
+            color = "#1e3a8a", 
+            alpha = 0.85, 
+            width = 0.75, 
+            linewidth = 0.4
+            ) +
+        
+        # Add the percentage text on top of the columns
+        ggplot2::geom_text(
+            ggplot2::aes(label = pct_label),
+            vjust = -0.6,
+            size = 3.0,         
+            fontface = "bold",  
+            color = "#1e293b"   
+        ) +
+        
+        # Format vertical axis to eliminate lower floating and add safety room 
+        # for text strings
+        ggplot2::scale_y_continuous(
+            expand = ggplot2::expansion(mult = c(0, 0.18))
+            ) +
+        ggplot2::scale_x_continuous(
+            expand = ggplot2::expansion(mult = c(0.02, 0.02))
+            ) +
+        
+        # Customize titles and labels
+        ggplot2::labs(
+            title = title, 
+            subtitle = subtitle, 
+            x = x_label, 
+            y = y_label
+            ) +
+        
+        # Customize theme
+        ggplot2::theme_minimal(base_size = 11) +
+        ggplot2::theme(
+            plot.title = ggplot2::element_text(
+                face = "bold", 
+                size = 13, 
+                margin = ggplot2::margin(b = 4)
+                ),
+            plot.subtitle = ggplot2::element_text(
+                color = "#64748b", 
+                size = 9, 
+                margin = margin(b = 15)
+                ),
+            axis.title = ggplot2::element_text(
+                face = "bold", 
+                color = "#1e293b"
+                ),
+            axis.text.y = ggplot2::element_text(
+                color = "#475569", 
+                face = "bold"
+                ),
+            axis.text.x = ggplot2::element_text(
+                color = "#475569", 
+                face = "bold", 
+                hjust = 1
+                ),
+            axis.line.x = ggplot2::element_line(
+                color = "#bdc3c7", 
+                linewidth = 0.6
+                ),
+            panel.grid.minor = ggplot2::element_blank(),
+            panel.grid.major.x = ggplot2::element_blank(), 
+            panel.grid.major.y = ggplot2::element_line(
+                color = "#f1f5f9", 
+                linewidth = 0.5
+                )
+        )
+        
+    return(p)
+}
+
 #---- Distributions ----
 
 #' Custom x-axis label formatting function
@@ -64,7 +352,7 @@ plot_global_numeric_distribution <- function(
         ) +
         
         # Custom x-axis label formatting to safely handle decimals and integers 
-        dynamically
+        # dynamically
         ggplot2::scale_x_continuous(labels = format_axis_labels) +
         
         # Multi-panel wrapping with independent free axes
@@ -150,8 +438,8 @@ plot_stratified_numeric_distribution <- function(
         df_long, 
         ggplot2::aes(
             x = value, 
-            y = rlang::.data[[target_var]], 
-            fill = rlang::.data[[target_var]]
+            y = .data[[target_var]], 
+            fill = .data[[target_var]]
             )) +
         ggplot2::geom_boxplot(
             alpha = 0.75, 
@@ -166,8 +454,8 @@ plot_stratified_numeric_distribution <- function(
         ggplot2::scale_fill_manual(values = c("#16A085", "#2C3E50")) +
         
         # Apply the pseudo-log transformation to safely handle wide clinical 
-        ranges
-        ggplot2::facet_wrap(~ feature, scales = "free", ncol = 4) +
+        # ranges
+        ggplot2::facet_wrap(~ feature, scales = "free", ncol = 3) +
         
         # Apply your customized medical theme configuration
         ggplot2::theme_minimal(base_size = 11) +
@@ -346,11 +634,11 @@ plot_stratified_categorical_distribution <- function(
         legend_title = NULL) {
     
     # Set the legend title to match the variable name if no custom label is 
-    provided
+    # provided
     if (is.null(legend_title)) {legend_title <- target_var}
     
     # 1. Isolate target and factors, compute absolute counts and within-bar 
-    percentages
+    # percentages
     df_long <- df |> 
         dplyr::select(
             tidyselect::any_of(target_var), 
@@ -358,7 +646,7 @@ plot_stratified_categorical_distribution <- function(
             ) |> 
         
         # Pivot all columns to long format EXCEPT the target stratification 
-        variable
+        # variable
         tidyr::pivot_longer(
             cols = -tidyselect::any_of(target_var),
             names_to = "feature",
@@ -373,7 +661,7 @@ plot_stratified_categorical_distribution <- function(
         dplyr::mutate(value = forcats::fct_infreq(value)) |> 
         
         # Pre-aggregate frequencies and compute localized percentage strings
-        dplyr::group_by(feature, value, rlang::.data[[target_var]]) |> 
+        dplyr::group_by(feature, value, .data[[target_var]]) |> 
         dplyr::summarise(n_records = dplyr::n(), .groups = "drop_last") |> 
         dplyr::mutate(
             pct = n_records / sum(n_records),
@@ -393,7 +681,7 @@ plot_stratified_categorical_distribution <- function(
         ggplot2::aes(
             x = value, 
             y = n_records, 
-            fill = rlang::.data[[target_var]]
+            fill = .data[[target_var]]
             )
             ) +
         
@@ -676,7 +964,7 @@ plot_corr_matrix <- function(
         ) +
         
         # Ensures text is white on dark cells and dark-blue on light cells for 
-        reading safety
+        # reading safety
         ggplot2::scale_color_manual(
             values = c("TRUE" = "white", "FALSE" = "#2c3e50")
             ) +
@@ -877,267 +1165,5 @@ plot_vif <- function(
                 )
         )
 
-    return(p)
-}
-
-# ---- Missing values ----
-
-#' Plot stratified missingness rate
-#'
-#' Renders a bar chart analyzing the proportion and absolute count of missing 
-#' values (NAs) stratified by a target class. Safely handles mixed data types 
-#' (factors and numerics) during the pivoting phase.
-#'
-#' @param df A data frame containing clinical features.
-#' @param target_var Character string specifying the categorical variable to 
-#' stratify by. Default is "AF_recurrence".
-#' @param title Character string for the plot title. Default is "Missing Data 
-#' Diagnostic".
-#' @param subtitle Character string for the plot subtitle.
-#' @param x_label Character string for the horizontal axis title.
-#' @param y_label Character string for the vertical axis title. Default matches 
-#' target_var.
-#'
-#' @return A ggplot2 object representing the faceted missingness grid.
-plot_stratified_missingness <- function(
-        df, 
-        output,
-        target_var = "AF_recurrence",
-        title = "Missing Data Diagnostic",
-        subtitle = "Proportion and absolute count of missing values evaluated 
-        within each patient record",
-        x_label = "Missingness Rate within Stratum (%)",
-        y_label = target_var) {
-    
-    # 1. Isolate the target column and any predictors containing at least one NA
-    df_missing_analysis <- df |> 
-        dplyr::select(
-            tidyselect::all_of(target_var), tidyselect::where(~ any(is.na(.)))
-            ) |> 
-        tidyr::pivot_longer(
-            cols = -tidyselect::all_of(target_var),
-            names_to = "feature",
-            values_to = "value",
-            values_transform = list(value = as.character)
-        ) |> 
-        
-        # Calculate the missingness rate inside each stratum dynamically
-        dplyr::group_by(feature, rlang::.data[[target_var]]) |> 
-        dplyr::summarise(
-            na_count = sum(is.na(value)),
-            group_total = dplyr::n(),
-            na_rate = na_count / group_total,
-            .groups = "drop"
-        )
-    
-    # Safety check in case no columns contain missing values
-    if (nrow(df_missing_analysis) == 0) {
-        stop("The provided dataframe does not contain any missing values (NAs) 
-        to analyze.")
-    }
-    
-    # 2. Render the faceted bar chart
-    p <- ggplot2::ggplot(
-        df_missing_analysis, 
-        ggplot2::aes(
-            x = na_rate, 
-            y = rlang::.data[[target_var]], 
-            fill = rlang::.data[[target_var]]
-            )
-        ) +
-        ggplot2::geom_col(
-            color = "#2c3e50", 
-            alpha = 0.85, 
-            width = 0.6, 
-            linewidth = 0.5
-            ) +
-        
-        # Add text labels
-        ggplot2::geom_text(
-            ggplot2::aes(label = sprintf("%.1f%%", na_rate * 100)),
-            hjust = -0.1,
-            size = 2.8,
-            fontface = "bold",
-            color = "#1e293b",
-            lineheight = 0.85
-        ) +
-        
-        # Format vertical axis as standard percentage with safety overhead space
-        ggplot2::scale_x_continuous(
-            labels = scales::label_percent(),
-            expand = ggplot2::expansion(mult = c(0, 0.25))
-        ) +
-        
-        # High-contrast medical palette
-        ggplot2::scale_fill_viridis_d(option = "D", begin = 0.3, end = 0.8) +
-        
-        # Facet grid
-        ggplot2::facet_wrap(~ feature, ncol = 3) +
-        
-        # Set labels
-        ggplot2::labs(
-            title = title,
-            subtitle = paste(subtitle, target_var, "stratum"),
-            x = x_label,
-            y = y_label
-        ) +
-        
-        # Customize
-        ggplot2::theme_minimal(base_size = 11) +
-        ggplot2::theme(
-            legend.position = "none",
-            panel.grid.minor = ggplot2::element_blank(),
-            panel.grid.major.x = ggplot2::element_blank(),
-            panel.grid.major.y = ggplot2::element_line(
-                color = "#eaeded", 
-                linewidth = 0.5
-            ),
-            strip.background = ggplot2::element_rect(
-                fill = "#f8f9f9", 
-                color = "#d5dbdb", 
-                linewidth = 0.5
-            ),
-            strip.text = ggplot2::element_text(
-                face = "bold", 
-                color = "#2c3e50", 
-                size = 9
-            ),
-            axis.line.x = ggplot2::element_line(
-                color = "#bdc3c7", 
-                linewidth = 0.6
-            ),
-            axis.text = ggplot2::element_text(
-                color = "#34495e", 
-                face = "bold"
-            ),
-            axis.title = ggplot2::element_text(
-                face = "bold", 
-                color = "#2c3e50"
-            ),
-            panel.spacing = ggplot2::unit(1.5, "lines")
-        )
-
-    return(p)
-}
-
-#' Plot row-wise missingness distribution
-#'
-#' Computes the total number of missing values (NAs) per row (patient),
-#' aggregates their frequency counts, and renders a professional distribution 
-#' plot.
-#' Y-axis displays absolute counts for sample-size transparency, while 
-#' bar labels dynamically show relative percentages for clinical impact 
-#' assessment.
-#'
-#' @param df A data frame containing clinical features.
-#' @param title Plot title string. Default is "Distribution of Missing Values 
-#' per Patient".
-#' @param subtitle Plot subtitle string.
-#' @param x_label Character string for the horizontal axis title. Default is 
-#' "Number of missing values".
-#' @param y_label Character string for the vertical axis title. Default is 
-#' "Number of Records".
-#'
-#' @return A ggplot2 object representing the publication-ready missingness 
-#' distribution.
-plot_row_missingness <- function(
-        df,
-        title = "Distribution of Missing Values per Patient",
-        subtitle = "Analysis of row-wise missingness patterns across the 
-        PREDIMAR cohort",
-        x_label = "Number of missing values",
-        y_label = "Number of Records"
-) {
-    
-    # 1. Compute missing values per row and aggregate metrics cleanly
-    na_summary <- df |> 
-        dplyr::mutate(row_na_count = rowSums(is.na(df))) |> 
-        dplyr::count(row_na_count, name = "n_records") |>
-        dplyr::mutate(
-            pct_label = scales::percent(
-                n_records / sum(n_records), accuracy = 0.1
-                )
-            ) |> 
-        dplyr::arrange(row_na_count)
-    
-    # 2. Build the distribution chart
-    p <- ggplot2::ggplot(
-        na_summary, 
-        ggplot2::aes(x = row_na_count, y = n_records)
-        ) +
-        
-        # Main vertical bar layer
-        ggplot2::geom_col(
-            fill = "#2563eb", 
-            color = "#1e3a8a", 
-            alpha = 0.85, 
-            width = 0.75, 
-            linewidth = 0.4
-            ) +
-        
-        # Add the percentage text on top of the columns
-        ggplot2::geom_text(
-            ggplot2::aes(label = pct_label),
-            vjust = -0.6,
-            size = 3.0,         
-            fontface = "bold",  
-            color = "#1e293b"   
-        ) +
-        
-        # Format vertical axis to eliminate lower floating and add safety room 
-        for text strings
-        ggplot2::scale_y_continuous(
-            expand = ggplot2::expansion(mult = c(0, 0.18))
-            ) +
-        ggplot2::scale_x_continuous(
-            expand = ggplot2::expansion(mult = c(0.02, 0.02))
-            ) +
-        
-        # Customize titles and labels
-        ggplot2::labs(
-            title = title, 
-            subtitle = subtitle, 
-            x = x_label, 
-            y = y_label
-            ) +
-        
-        # Customize theme
-        ggplot2::theme_minimal(base_size = 11) +
-        ggplot2::theme(
-            plot.title = ggplot2::element_text(
-                face = "bold", 
-                size = 13, 
-                margin = ggplot2::margin(b = 4)
-                ),
-            plot.subtitle = ggplot2::element_text(
-                color = "#64748b", 
-                size = 9, 
-                margin = margin(b = 15)
-                ),
-            axis.title = ggplot2::element_text(
-                face = "bold", 
-                color = "#1e293b"
-                ),
-            axis.text.y = ggplot2::element_text(
-                color = "#475569", 
-                face = "bold"
-                ),
-            axis.text.x = ggplot2::element_text(
-                color = "#475569", 
-                face = "bold", 
-                hjust = 1
-                ),
-            axis.line.x = ggplot2::element_line(
-                color = "#bdc3c7", 
-                linewidth = 0.6
-                ),
-            panel.grid.minor = ggplot2::element_blank(),
-            panel.grid.major.x = ggplot2::element_blank(), 
-            panel.grid.major.y = ggplot2::element_line(
-                color = "#f1f5f9", 
-                linewidth = 0.5
-                )
-        )
-        
     return(p)
 }
