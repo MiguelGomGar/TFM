@@ -153,7 +153,7 @@ def autolabel(rects, ax):
                         textcoords="offset points",
                         ha='center', va='bottom', fontsize=10, weight='bold')
 
-def plot_overfitting_bars(df_cv_results, title, output_dir=None, identifier=None):
+def plot_overfitting_bars(df_cv_results, title, output_dir=None, identifier=None, filtering=False):
     """
     Plots a grouped bar chart directly from raw CV fold data using Seaborn,
     automatically computing means and standard deviation error bars.
@@ -168,6 +168,9 @@ def plot_overfitting_bars(df_cv_results, title, output_dir=None, identifier=None
         Directory where the plot will be saved as a PNG file.
     - identifier : str, optional
         Identifier for the plot file.
+    - filtering : bool, default=False
+        If True, adds a subtitle indicating features whose coefficients where 
+        forced to 0 in the baseline model were filtered out.
     
     Returns:
     - None
@@ -193,7 +196,11 @@ def plot_overfitting_bars(df_cv_results, title, output_dir=None, identifier=None
     )
     
     # 4. Customize the plot aesthetics
-    plt.title(f'Overfitting Analysis: {title}', fontsize=16, weight='bold', pad=20)
+    plt.suptitle(f'Overfitting Analysis: {title}', fontsize=16, weight='bold')
+    
+    if filtering:
+        plt.title('Filtering enabled', fontsize=12, weight='normal')
+    
     plt.ylabel('Score Value', fontsize=12, weight='bold')
     plt.xlabel('', fontsize=12)
     plt.xticks(ha='right')
@@ -211,7 +218,7 @@ def plot_overfitting_bars(df_cv_results, title, output_dir=None, identifier=None
     plt.show()
 
 #%% METRICS COMPARISON
-def plot_metrics_bars(df, metrics, color_palette='viridis', baselines=None, output_dir=None):
+def plot_metrics_bars(df, metrics, color_palette='viridis', baselines=None, output_dir=None, filtering=False):
     """
     Plots a grid of bar charts comparing multiple Test metrics across different models
     using a long-format (tidy) DataFrame.
@@ -228,7 +235,10 @@ def plot_metrics_bars(df, metrics, color_palette='viridis', baselines=None, outp
         Horizontal line(s) to indicate reference value(s) (one for each metric).
     - output_dir : str, optional
         Directory where the plot will be saved as a PNG file.
-    
+    - filtering : bool, default=False
+        If True, adds a subtitle indicating features whose coefficients where 
+        forced to 0 were filtered out.
+
     Returns:
     - None
     """
@@ -294,7 +304,7 @@ def plot_metrics_bars(df, metrics, color_palette='viridis', baselines=None, outp
                 ax.axhline(y=baseline_val, color='red', linestyle='--', linewidth=1.5, alpha=0.8, label=f'HATCH score (AUC = {baseline_val:.2f})')
             
         # Aesthetic customizations for each subplot
-        ax.set_title(metric, fontsize=14, weight='bold')
+        ax.set_title(metric + ('\n(Filtering enabled)' if filtering else ''), fontsize=14, weight='bold')
         ax.set_xlabel('')
         ax.set_ylabel('', fontsize=12)
         ax.set_ylim(0, 1.05)
@@ -441,7 +451,7 @@ def plot_risk_score_curves(fpr, tpr, recalls, precisions, title=None, prevalence
     fig, ax = plt.subplots(1, 2, figsize=(12, 5))
 
     # Plot ROC Curve
-    ax[0].plot(fpr, tpr, color='blue', lw=2, label=f'Risk score (AUC = {roc_auc_:.4f})')
+    ax[0].plot(fpr, tpr, color='blue', lw=2, label=f'Risk score (AUC = {roc_auc_:.3f})')
     ax[0].plot([0, 1], [0, 1], color='black', lw=2, linestyle='--', label='Random Classifier (AUC = 0.5)')
     ax[0].set_xlim([0.0, 1.0])
     ax[0].set_ylim([0.0, 1.05])
@@ -451,11 +461,11 @@ def plot_risk_score_curves(fpr, tpr, recalls, precisions, title=None, prevalence
     ax[0].legend(loc='lower right')
 
     # Plot Precision-Recall Curve
-    ax[1].plot(recalls, precisions, color='blue', lw=2, label=f'Risk score (AUC = {pr_auc_:.4f})')
+    ax[1].plot(recalls, precisions, color='blue', lw=2, label=f'Risk score (AUC = {pr_auc_:.3f})')
     
     # Add horizontal line for random classifier baseline if prevalence is provided
     if prevalence is not None:
-        ax[1].axhline(y=prevalence, color='black', lw=2, linestyle='--', label=f'Random Classifier (AUC = {prevalence:.4f})')
+        ax[1].axhline(y=prevalence, color='black', lw=2, linestyle='--', label=f'Random Classifier (AUC = {prevalence:.3f})')
         
     ax[1].set_xlim([0.0, 1.0])
     ax[1].set_ylim([0.0, 1.05])
@@ -476,5 +486,5 @@ def plot_risk_score_curves(fpr, tpr, recalls, precisions, title=None, prevalence
         path = Path(output_dir)
         file_path = path / 'risk_scores_curves.png'
         plt.savefig(str(file_path), dpi=300, bbox_inches='tight')
-    
+        
     plt.show()
