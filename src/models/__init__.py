@@ -3,7 +3,10 @@ from .preprocessing import (
     get_trees_preprocessor, 
     get_boost_preprocessor
 )
-from .training_and_evaluation import optimize_model_optuna_search, optimize_model_random_search
+from .training_and_evaluation import (
+    hyperparameters_search_space,
+    optimize_model_random_search
+    )
 
 from .results import (
     get_relevant_features,

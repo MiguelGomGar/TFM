@@ -1,10 +1,12 @@
+#%% Imports
 import numpy as np
 import pandas as pd
-import optuna
+from scipy.stats import uniform, loguniform, randint
 
 import logging
 import warnings
 
+import optuna
 from optuna_integration import OptunaSearchCV
 from optuna.samplers import TPESampler
 from optuna import visualization as vis
@@ -17,10 +19,88 @@ from sklearn.metrics import (
     roc_auc_score,
     roc_curve,
     precision_recall_curve,
-    average_precision_score,
-    make_scorer
+    average_precision_score
     )
 from sklearn.model_selection import cross_validate, RandomizedSearchCV
+
+#%% Hyperparameters search space
+hyperparameters_search_space = {
+    # Elastic Net Logistic Regression
+    'EN': {
+    'clf__l1_ratio': uniform(0, 1),
+    'clf__C': loguniform(1e-4, 1e3)
+    },
+    
+    # Support Vector Machine
+    'SVM': {
+    'clf__C': loguniform(1e-5, 1e3),
+    'clf__kernel': ['linear', 'rbf', 'poly', 'sigmoid'],
+    'clf__gamma': ['scale', 'auto'] + list(np.logspace(-4, 1, 50)),
+    'clf__degree': randint(2, 4),
+    'clf__class_weight': [None, 'balanced']
+    },
+    
+    # Decision Tree
+    'DT': {
+    'clf__max_depth': randint(2, 33),
+    'clf__min_samples_split': randint(2, 21),
+    'clf__min_samples_leaf': randint(1, 21),
+    'clf__criterion': ['gini', 'entropy'],
+    },
+    
+    # Random Forest
+    'RF': {
+    # Decision trees hyperparameters
+    'clf__max_depth': [None] + list(range(2, 21)),
+    'clf__max_features': ['sqrt', 'log2', None] + list(np.arange(0.2, 0.9, 0.1)),
+    'clf__min_samples_split': randint(2, 21),
+    'clf__min_samples_leaf': randint(1, 21),
+    'clf__criterion': ['gini', 'entropy'],
+    
+    # Ensemble bagging hyperparameters
+    'clf__n_estimators': randint(50, 501),
+    'clf__class_weight': [None, 'balanced', 'balanced_subsample']
+    },
+    
+    # Adaptive Boosting
+    'AB': {
+    # Decision trees hyperparameters
+    'clf__estimator__max_depth': randint(1, 4), 
+    'clf__estimator__max_features': ['sqrt', 'log2', None],
+    'clf__estimator__min_samples_split': randint(2, 21),
+    'clf__estimator__criterion': ['gini', 'entropy'],
+    
+    # Ensemble boosting hyperparameters
+    'clf__n_estimators': randint(50, 501),
+    'clf__learning_rate': loguniform(0.001, 1.0) 
+    },
+    
+    # Gradient Boosting
+    'GB': {
+    # Decision trees hyperparameters
+    'clf__max_depth': randint(2, 6),
+    'clf__max_features': ['sqrt', 'log2', None] + list(np.arange(0.2, 0.9, 0.1)),
+    'clf__min_samples_split': randint(2, 21),
+    'clf__min_samples_leaf': randint(1, 21),
+    
+    # Ensemble boosting hyperparameters
+    'clf__n_estimators': randint(50, 501),
+    'clf__learning_rate': loguniform(0.001, 1),
+    'clf__subsample': uniform(0.5, 0.5)
+    },
+    
+    # Multilayer Perceptron
+    'MLP': {
+    'clf__hidden_layer_sizes': [(50,), (100,), (100, 50), (100, 100), (200, 100)],
+    'clf__alpha': loguniform(1e-5, 1e-1),
+    'clf__learning_rate_init': loguniform(0.001, 0.01),
+    'clf__batch_size': np.logspace(start = 0, stop = 6, base = 2, num = 7).astype(int).tolist(),
+    'clf__activation': ['relu', 'tanh', 'logistic'],
+    'clf__solver': ['adam', 'sgd']
+    }
+}
+
+#%% Training functions
 
 def optimize_model_optuna_search(pipeline, param_distributions, 
                     X_train, y_train, X_test, y_test, 

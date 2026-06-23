@@ -173,7 +173,7 @@ def save_metrics_results(models_dict, output_dir=None):
 
     # 3. Save the master DataFrame to a CSV file if an output directory is provided
     if output_dir is not None:
-        output_path = Path(output_dir) / "metrics.csv"
+        output_path = Path(output_dir) / "models_metrics.csv"
         df_master.to_csv(output_path, index=False)
         
     return df_master
