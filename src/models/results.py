@@ -4,27 +4,27 @@ import joblib
 
 def clean_feature_names(feature_list):
     """
-    Limpia una lista de nombres de características transformadas por scikit-learn,
-    quedándose únicamente con el texto a la derecha del doble guion bajo (__).
+    Cleans a list of feature names by removing any prefixes before the double 
+    underscore '__'.
     
     Parameters:
     ----------
-    feature_list : list of str
-        Lista con los nombres originales preprocesados (ej. 'num__age').
+    - feature_list : list of str
+        A list of feature names with prefixes (e.g., 'num__age').
         
     Returns:
     -------
-    list of str
-        Lista con los nombres limpios.
+    - list of str
+        A list of cleaned feature names.
+
     """
     
-    clean_names = [name.split('__')[-1] for name in feature_list]
-    
-    return clean_names
+    return [name.split('__')[-1] for name in feature_list]
 
 def get_relevant_features(regularized_model_pipeline):
     """
-    Extracts and returns a DataFrame of non-zero coefficients from a regularized linear model.
+    Extracts and returns a DataFrame of non-zero coefficients from a regularized 
+    linear model.
     
     Parameters:
     ----------
@@ -34,7 +34,8 @@ def get_relevant_features(regularized_model_pipeline):
     Returns:
     -------
     - relevant_cols : list
-        A list of feature names corresponding to non-zero coefficients in the model.
+        A list of feature names corresponding to non-zero coefficients in the 
+        model.
     - irrelevant_cols : list
         A list of feature names corresponding to zero coefficients in the model.
     """
@@ -54,7 +55,8 @@ def get_relevant_features(regularized_model_pipeline):
         'Coefficient': coefficients
     })
     
-    # Separate out features with zero coefficients from features with non-zero coefficients
+    # Separate out features with zero coefficients from features with non-zero 
+    # coefficients
     df_relevant = df_coefficients[df_coefficients['Coefficient'] != 0]
     df_irrelevant = df_coefficients[df_coefficients['Coefficient'] == 0]
     
@@ -64,7 +66,8 @@ def get_relevant_features(regularized_model_pipeline):
     
     # Sort by absolute value of coefficients in descending order
     df_relevant['Abs_Coefficient'] = df_relevant['Coefficient'].abs()
-    df_relevant = df_relevant.sort_values(by='Abs_Coefficient', ascending=False).drop(columns='Abs_Coefficient')
+    df_relevant = df_relevant.sort_values(by='Abs_Coefficient', 
+                                        ascending=False).drop(columns='Abs_Coefficient')
     
     # Extract the list of relevant feature names
     relevant_cols = df_relevant['Feature'].tolist()
@@ -72,10 +75,13 @@ def get_relevant_features(regularized_model_pipeline):
     
     return relevant_cols, irrelevant_cols
 
-def save_model(fitted_pipeline, output_dir=None, identifier=None):
+def save_model(fitted_pipeline, 
+            output_dir=None, 
+            identifier=None):
     """
     Saves the entire fitted pipeline as a binary file (.joblib), displays its 
-    hyperparameters as a formatted pandas DataFrame (excluding default/None values), 
+    hyperparameters as a formatted pandas DataFrame (excluding default/None 
+    values), 
     and returns that DataFrame.
 
     Parameters:
@@ -85,16 +91,18 @@ def save_model(fitted_pipeline, output_dir=None, identifier=None):
     - output_dir : str or pathlib.Path, optional
         The directory path where the binary file will be stored.
     - identifier : str, optional
-        An optional string to uniquely identify the saved model file (e.g., "RF" or "XGB").
+        An optional string to uniquely identify the saved model file (e.g., 
+        "RF").
 
     Returns:
     -------
     - df_display : pandas.DataFrame
-        A DataFrame containing only the explicit optimal hyperparameters for notebook visualization.
+        A DataFrame containing only the explicit optimal hyperparameters for 
+        notebook visualization.
     """
-    #===============================================================================
+    #===========================================================================
     # 1. Save the entire fitted pipeline
-    #===============================================================================
+    #===========================================================================
     
     if output_dir is not None:
         # Extract the classifier class name dynamically for a precise filename
@@ -106,12 +114,13 @@ def save_model(fitted_pipeline, output_dir=None, identifier=None):
         else:
             file_path = output_dir / f"optimized_{model_class_name}.joblib"
     
-        # Save the model object (contains preprocessing states, weights, and params)
+        # Save the model object (contains preprocessing states, weights, and 
+        # params)
         joblib.dump(fitted_pipeline, file_path)
     
-    #===============================================================================
+    #===========================================================================
     # 2. Extract and display only the explicitly set optimal hyperparameters
-    #===============================================================================
+    #===========================================================================
     # Extract hyperparameters from the specific estimator step ('clf')
     fitted_model_params = fitted_pipeline['clf'].get_params()
     
@@ -130,15 +139,18 @@ def save_model(fitted_pipeline, output_dir=None, identifier=None):
 
     return df_display
 
-def save_metrics_results(models_dict, output_dir=None):
+def save_metrics_results(models_dict, 
+                        output_dir=None):
     """
     Unifies multiple long-format model result DataFrames into a single master 
-    DataFrame, adds a 'Model' column, removes the 'Fold' column, and saves it as a CSV.
+    DataFrame, adds a 'Model' column, removes the 'Fold' column, and saves it as 
+    a CSV.
 
     Parameters:
     ----------
     - models_dict : dict
-        A dictionary where keys are model names (str) and values are pandas DataFrames
+        A dictionary where keys are model names (str) and values are pandas 
+        DataFrames
         containing ['Metric', 'Dataset', 'Score', 'Fold'] columns.
     - output_dir : str or pathlib.Path
         The directory where the output CSV file will be saved.
@@ -150,7 +162,8 @@ def save_metrics_results(models_dict, output_dir=None):
     """
     processed_dfs = []
 
-    # 1. Iterate over each model's DataFrame to add the 'Model' column and remove 'Fold'
+    # 1. Iterate over each model's DataFrame to add the 'Model' column and 
+    # remove 'Fold'
     for model_name, df_model in models_dict.items():        
         # Make a copy to avoid modifying the original DataFrame
         df_copy = df_model.copy()
@@ -171,17 +184,23 @@ def save_metrics_results(models_dict, output_dir=None):
     desired_order = ['Model', 'Metric', 'Dataset', 'Score']
     df_master = df_master[[col for col in desired_order if col in df_master.columns]]
 
-    # 3. Save the master DataFrame to a CSV file if an output directory is provided
+    # 3. Save the master DataFrame to a CSV file if an output directory is 
+    # provided
     if output_dir is not None:
         output_path = Path(output_dir) / "models_metrics.csv"
         df_master.to_csv(output_path, index=False)
         
     return df_master
 
-def save_curves_results(model_names, x_list, y_list, curve_type='roc', 
-                        output_dir=None, filename=None):
+def save_curves_results(model_names, 
+                        x_list, 
+                        y_list, 
+                        curve_type='roc', 
+                        output_dir=None, 
+                        filename=None):
     """
-    Builds a unified long-format DataFrame containing evaluation curve coordinates (ROC or PR)
+    Builds a unified long-format DataFrame containing evaluation curve 
+    coordinates (ROC or PR)
     for multiple models and saves it to a CSV file.
 
     Parameters:
@@ -189,9 +208,11 @@ def save_curves_results(model_names, x_list, y_list, curve_type='roc',
     - model_names : list of str
         List containing the names of the models.
     - x_list : list of arrays/lists
-        List containing the X-axis values for each model (FPR for ROC, Recall for PR).
+        List containing the X-axis values for each model (FPR for ROC, Recall 
+        for PR).
     - y_list : list of arrays/lists
-        List containing the Y-axis values for each model (TPR for ROC, Precision for PR).
+        List containing the Y-axis values for each model (TPR for ROC, Precision 
+        for PR).
     - curve_type : str, default='roc'
         The type of evaluation curve data to build. Options are 'roc' or 'pr'.
     - output_dir : str or pathlib.Path, optional
@@ -209,7 +230,8 @@ def save_curves_results(model_names, x_list, y_list, curve_type='roc',
     if curve_type.lower() not in ['roc', 'pr']:
         raise ValueError("curve_type must be strictly 'roc' or 'pr'")
     
-    # 1. Dynamically set column labels and file prefixes based on the curve category
+    # 1. Dynamically set column labels and file prefixes based on the curve 
+    # category
     if curve_type.lower() == 'roc':
         x_label = 'False Positive Rate'
         y_label = 'True Positive Rate'
@@ -232,7 +254,8 @@ def save_curves_results(model_names, x_list, y_list, curve_type='roc',
         })
         individual_dfs.append(df_temp)
         
-    # 3. Concatenate all individual records into a single master long-format DataFrame
+    # 3. Concatenate all individual records into a single master long-format 
+    # DataFrame
     df_curve = pd.concat(individual_dfs, ignore_index=True)
     
     # 4. Serialize and save the DataFrame to disk if a path is provided

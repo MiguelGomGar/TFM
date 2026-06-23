@@ -1,7 +1,6 @@
 from .preprocessing import (
     get_full_preprocessor, 
-    get_trees_preprocessor, 
-    get_boost_preprocessor
+    get_trees_preprocessor 
 )
 from .training_and_evaluation import (
     hyperparameters_search_space,

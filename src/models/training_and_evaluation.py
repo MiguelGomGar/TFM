@@ -52,13 +52,13 @@ hyperparameters_search_space = {
     'RF': {
     # Decision trees hyperparameters
     'clf__max_depth': [None] + list(range(2, 21)),
-    'clf__max_features': ['sqrt', 'log2', None] + list(np.arange(0.2, 0.9, 0.1)),
     'clf__min_samples_split': randint(2, 21),
     'clf__min_samples_leaf': randint(1, 21),
     'clf__criterion': ['gini', 'entropy'],
     
     # Ensemble bagging hyperparameters
     'clf__n_estimators': randint(50, 501),
+    'clf__max_features': ['sqrt', 'log2', None] + list(np.arange(0.2, 0.9, 0.1)),
     'clf__class_weight': [None, 'balanced', 'balanced_subsample']
     },
     

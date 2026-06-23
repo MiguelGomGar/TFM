@@ -1,23 +1,31 @@
+#%% IMPORTS
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from pathlib import Path
 import matplotlib.pyplot as plt
+
+from pathlib import Path
+
 from optuna import visualization as vis
 from optuna.visualization import matplotlib as vis_plt
 from sklearn.metrics import confusion_matrix, auc
 
 #%% OPTIMIZATION HISTORY
-def plot_optimization_history(study, model_name=None, output_dir=None, identifier=None):
+def plot_optimization_history(study, 
+                            model_name=None, 
+                            output_dir=None, 
+                            identifier=None):
     """
-    Creates and customizes an optimization history plot for a given study and model.
+    Creates and customizes an optimization history plot for a given study and 
+    model.
         
     Parameters:
     ----------
     - study : optuna.study.Study
         The Optuna study object containing the optimization results.
     - model_name : str, optional
-        The name of the model to display in the title. If None, it tries to get it 
+        The name of the model to display in the title. If None, it tries to get 
+        it 
         from the study's or the best trial's user attributes.
     - output_dir : str or pathlib.Path, optional
         The directory path where the plot will be saved as a PNG file.
@@ -32,17 +40,24 @@ def plot_optimization_history(study, model_name=None, output_dir=None, identifie
         model_name = study.user_attrs.get('model_name', 
                         study.best_trial.user_attrs.get('model_name', 'Model'))
 
-    # 2. Generate the plot using the matplotlib backend to avoid kaleido/browser dependencies
+    # 2. Generate the plot using the matplotlib backend to avoid kaleido/browser 
+    # dependencies
     ax = vis_plt.plot_optimization_history(study)
     fig = ax.figure
     
     # 3. Customization
-    ax.set_title(f"{model_name} Optimization History", fontsize=16, weight='bold', pad=20)
+    ax.set_title(f"{model_name} Optimization History", 
+                fontsize=16, weight='bold', 
+                pad=20)
     ax.set_xlabel("Number of Trials", fontsize=12, weight='bold')
     ax.set_ylabel("Metric Score Value", fontsize=12, weight='bold')
     ax.set_ylim(-0.02, 1.02)
     ax.grid(True, linestyle='--', alpha=0.7)
-    ax.legend(loc='lower right', frameon=True, facecolor='#f8f9fa', edgecolor='gray', framealpha=0.9)
+    ax.legend(loc='lower right', 
+            frameon=True, 
+            facecolor='#f8f9fa', 
+            edgecolor='gray', 
+            framealpha=0.9)
     
     # 4. Save the plot as a PNG file if output_dir is provided
     if output_dir is not None:
@@ -61,8 +76,8 @@ def plot_confusion_matrix(y_true, y_pred,
             output_dir=None,
             identifier=None):
     """
-    Plots a confusion matrix with absolute counts and relative percentages as text, 
-    but strictly uses the relative percentages to drive the color scale.
+    Plots a confusion matrix with absolute counts and relative percentages as 
+    text, but strictly uses the relative percentages to drive the color scale.
 
     Parameters:
     ----------
@@ -91,7 +106,8 @@ def plot_confusion_matrix(y_true, y_pred,
     cm_percentages = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
     
     # 3. Create the text labels by combining absolute counts and percentages
-    labels = [f"{v1}\n({v2:.1%})" for v1, v2 in zip(cm.flatten(), cm_percentages.flatten())]
+    labels = [f"{v1}\n({v2:.1%})" for v1, v2 in zip(cm.flatten(), 
+                                                    cm_percentages.flatten())]
     labels = np.asarray(labels).reshape(cm.shape)
     
     # 4. Set up the figure size
@@ -102,10 +118,10 @@ def plot_confusion_matrix(y_true, y_pred,
                     annot=labels, 
                     fmt='', 
                     cmap=cmap, 
-                    vmin=0.0,      # Min color is 0%
-                    vmax=1.0,      # Max color is 100%
+                    vmin=0.0,
+                    vmax=1.0,
                     cbar=True,
-                    cbar_kws={'label': 'Proportion of Actual Class'}, # Legend for the colorbar
+                    cbar_kws={'label': 'Proportion of Actual Class'}, 
                     linewidths=1, 
                     linecolor='white', 
                     annot_kws={"size": 12, "weight": "bold"})
@@ -132,28 +148,32 @@ def plot_confusion_matrix(y_true, y_pred,
 
 #%% OVERFITTING ANALYSIS
 def autolabel(rects, ax):
-        """
-        Add labels on top of the bars.
+    """
+    Add labels on top of the bars.
+    
+    Parameters:
+    ----------
+    - rects : list
+        List of bar objects.
+    - ax : matplotlib.axes.Axes
+        The axes object on which to draw the labels.
+    """
+    for rect in rects:
+        height = rect.get_height()
         
-        Parameters:
-        ----------
-        - rects : list
-            List of bar objects.
-        - ax : matplotlib.axes.Axes
-            The axes object on which to draw the labels.
-        """
-        for rect in rects:
-            height = rect.get_height()
-            
-            if np.isnan(height): continue
-            
-            ax.annotate(f'{height:.3f}',
-                        xy=(rect.get_x() + rect.get_width() / 2, height),
-                        xytext=(0, 3),
-                        textcoords="offset points",
-                        ha='center', va='bottom', fontsize=10, weight='bold')
+        if np.isnan(height): continue
+        
+        ax.annotate(f'{height:.3f}',
+                    xy=(rect.get_x() + rect.get_width() / 2, height),
+                    xytext=(0, 3),
+                    textcoords="offset points",
+                    ha='center', va='bottom', fontsize=8, weight='bold')
 
-def plot_overfitting_bars(df_cv_results, title, output_dir=None, identifier=None, filtering=False):
+def plot_overfitting_bars(df_cv_results, 
+                        title, 
+                        output_dir=None, 
+                        identifier=None, 
+                        filtering=False):
     """
     Plots a grouped bar chart directly from raw CV fold data using Seaborn,
     automatically computing means and standard deviation error bars.
@@ -179,10 +199,13 @@ def plot_overfitting_bars(df_cv_results, title, output_dir=None, identifier=None
     plt.figure(figsize=(11, 6))
     sns.set_theme(style="whitegrid")
     
-    # 2. Filter out the test results if they are present, since we only want to compare train vs val
-    df_cv_results = df_cv_results[df_cv_results['Dataset'].isin(['Train', 'Validation'])]
+    # 2. Filter out the test results if they are present, since we only want to 
+    # compare train vs val
+    df_cv_results = df_cv_results[df_cv_results['Dataset'].isin(['Train', 
+                                                                'Validation'])]
     
-    # 3. Plot the grouped bar chart with automatic error bars (standard deviation)
+    # 3. Plot the grouped bar chart with automatic error bars (standard 
+    # deviation)
     ax = sns.barplot(
         data=df_cv_results,
         x='Metric',
@@ -218,17 +241,24 @@ def plot_overfitting_bars(df_cv_results, title, output_dir=None, identifier=None
     plt.show()
 
 #%% METRICS COMPARISON
-def plot_metrics_bars(df, metrics, color_palette='viridis', baselines=None, output_dir=None, filtering=False):
+def plot_metrics_bars(df, 
+                    metrics, 
+                    color_palette='viridis', 
+                    baselines=None, 
+                    output_dir=None, 
+                    filtering=False):
     """
-    Plots a grid of bar charts comparing multiple Test metrics across different models
-    using a long-format (tidy) DataFrame.
+    Plots a grid of bar charts comparing multiple Test metrics across different 
+    models using a long-format (tidy) DataFrame.
 
     Parameters:
     ----------
     - df : pandas.DataFrame
-        Long-format DataFrame containing columns: 'Metric', 'Dataset', 'Score', and 'Model'.
+        Long-format DataFrame containing columns: 'Metric', 'Dataset', 'Score', 
+        and 'Model'.
     - metrics : list
-        List with the exact names of the metrics to plot (e.g., ['Accuracy', 'Precision', 'ROC-AUC']).
+        List with the exact names of the metrics to plot (e.g., ['Accuracy', 
+        'Precision', 'ROC-AUC']).
     - color_palette : str, default='viridis'
         Color palette for seaborn.
     - baselines : float or list, optional
@@ -251,7 +281,7 @@ def plot_metrics_bars(df, metrics, color_palette='viridis', baselines=None, outp
 
     # 2. Determine the grid size based on the number of requested metrics
     n_metrics = len(metrics)
-    cols = min(n_metrics, 3) # <-- El cambio clave: usar máximo 3, pero menos si hay pocas métricas
+    cols = min(n_metrics, 3)
     rows = int(np.ceil(n_metrics / cols))
     
     # 3. Set up the figure and axes for matplotlib
@@ -301,32 +331,46 @@ def plot_metrics_bars(df, metrics, color_palette='viridis', baselines=None, outp
 
             # Plot the line only if a valid baseline value is provided
             if baseline_val is not None:
-                ax.axhline(y=baseline_val, color='red', linestyle='--', linewidth=1.5, alpha=0.8, label=f'HATCH score (AUC = {baseline_val:.2f})')
+                ax.axhline(y=baseline_val, 
+                        color='red', 
+                        linestyle='--', 
+                        linewidth=1.5, 
+                        alpha=0.8, 
+                        label=f'HATCH score (AUC = {baseline_val:.3f})')
             
         # Aesthetic customizations for each subplot
-        ax.set_title(metric + ('\n(Filtering enabled)' if filtering else ''), fontsize=14, weight='bold')
+        ax.set_title(metric, fontsize=14, weight='bold')
         ax.set_xlabel('')
         ax.set_ylabel('', fontsize=12)
         ax.set_ylim(0, 1.05)
         
-        # Adjust and rotate the model labels on the X-axis to prevent overlapping
+        # Adjust and rotate the model labels on the X-axis to prevent 
+        # overlapping
         models_list = df_metric['Model'].unique()
         ax.set_xticks(range(len(models_list)))
-        ax.set_xticklabels(models_list, fontsize=11, weight='bold', rotation=45, ha='right')
+        ax.set_xticklabels(models_list, 
+                        fontsize=11, 
+                        weight='bold', 
+                        rotation=45, 
+                        ha='right')
         
         # Use helper function to add numerical labels on top of the bars
         autolabel(ax.patches, ax)
         
         # Add legend
         if baselines is not None and baseline_val is not None:
-            ax.legend(loc='upper right', frameon=True, facecolor='#f8f9fa', edgecolor='gray', framealpha=0.9)
+            ax.legend(loc='upper right', 
+                    frameon=True, 
+                    facecolor='#f8f9fa', 
+                    edgecolor='gray', 
+                    framealpha=0.9)
     
     # 5. Delete any remaining empty subplots in the grid
     for j in range(i + 1, len(axes)):
         fig.delaxes(axes[j])
         
     # 6. Global title for the entire figure layout
-    plt.suptitle('Comparison of Test Metrics Across Models', 
+    plt.suptitle('Comparison of Test Metrics Across Models' + ('\n(Filtering enabled)' if filtering else ''), 
                 fontsize=18, weight='bold', y=1.02)
     
     # 7. Save the entire figure as a PNG file if output_dir is provided
@@ -340,11 +384,18 @@ def plot_metrics_bars(df, metrics, color_palette='viridis', baselines=None, outp
     plt.show()
     
 #%% CURVES COMPARISON
-def plot_model_curves(df, x_col, y_col, model_col='Model', 
-                    curve_type='roc', prevalence=0.5, title=None, output_dir=None):
+def plot_model_curves(df, 
+                    x_col, 
+                    y_col, 
+                    model_col='Model', 
+                    curve_type='roc', 
+                    prevalence=0.5, 
+                    title=None, 
+                    output_dir=None,
+                    filtering=False):
     """
-    Plots multiple ROC or Precision-Recall curves from a single long-format DataFrame
-    and includes the appropriate random classifier baseline.
+    Plots multiple ROC or Precision-Recall curves from a single long-format 
+    DataFrame and includes the appropriate random classifier baseline.
 
     Parameters:
     ----------
@@ -359,12 +410,15 @@ def plot_model_curves(df, x_col, y_col, model_col='Model',
     - curve_type : str, default='roc'
         The type of curve to plot. Options are 'roc' or 'pr'.
     - prevalence : float, default=0.5
-        The proportion of positive samples in the dataset (used as baseline for PR curve).
+        The proportion of positive samples in the dataset (used as baseline for 
+        PR curve).
     - title : str, optional
         Custom title for the plot.
     - output_dir : str, optional
         Directory where the plot will be saved.
-    
+    - filtering : bool, default=False
+        Whether to apply filtering to the data.
+
     Returns:
     - None
     """
@@ -379,12 +433,19 @@ def plot_model_curves(df, x_col, y_col, model_col='Model',
         area = auc(group_sorted[x_col], group_sorted[y_col])
         label_with_auc = f"{model_name} (AUC = {area:.3f})"
         
-        plt.plot(group_sorted[x_col], group_sorted[y_col], label=label_with_auc, linewidth=2)
+        plt.plot(group_sorted[x_col], 
+                group_sorted[y_col], 
+                label=label_with_auc, 
+                linewidth=2)
     
     # 2. Configure axes and the baseline for the random classifier
     if curve_type.lower() == 'roc':
-        # Random classifier: diagonal line from (0,0) to (1,1)
-        plt.plot([0, 1], [0, 1], linestyle='--', color='gray', label='Random Classifier (AUC = 0.5)')
+        # Random classifier
+        plt.plot([0, 1], 
+                [0, 1], 
+                linestyle='--', 
+                color='gray', 
+                label='Random Classifier (AUC = 0.5)')
         
         plt.xlabel('False Positive Rate', fontsize=11, weight='bold')
         plt.ylabel('True Positive Rate', fontsize=11, weight='bold')
@@ -393,7 +454,10 @@ def plot_model_curves(df, x_col, y_col, model_col='Model',
         
     elif curve_type.lower() == 'pr':
         # Random classifier: horizontal line at the prevalence value
-        plt.axhline(y=prevalence, linestyle='--', color='gray', label=f'Random Classifier (Baseline = {prevalence:.2f})')
+        plt.axhline(y=prevalence, 
+                    linestyle='--', 
+                    color='gray', 
+                    label=f'Random Classifier (Baseline = {prevalence:.2f})')
         
         plt.xlabel('Recall', fontsize=11, weight='bold')
         plt.ylabel('Precision', fontsize=11, weight='bold')
@@ -406,21 +470,31 @@ def plot_model_curves(df, x_col, y_col, model_col='Model',
     # 3. Customize the plot
     plt.xlim([-0.02, 1.02])
     plt.ylim([-0.02, 1.02])
-    plt.title(title if title else default_title, fontsize=13, weight='bold', pad=15)
+    plt.suptitle(title if title else default_title, 
+            fontsize=14, 
+            weight='bold')
+    plt.title('Filtering enabled' if filtering else '', fontsize=10, weight='normal')
     plt.legend(loc=legend_loc, frameon=True)
     plt.tight_layout()
     
     # 4. Save the plot as a PNG file if output_dir is provided
     if output_dir is not None:
         path = Path(output_dir)
-        file_path = path / f'{curve_type}_curves.png'
+        file_path = path / f'models_{curve_type}_curves.png'
         plt.savefig(str(file_path), dpi=300, bbox_inches='tight')
     
     plt.show()
 
-def plot_risk_score_curves(fpr, tpr, recalls, precisions, title=None, prevalence=None, output_dir=None):
+def plot_risk_score_curves(fpr, 
+                        tpr, 
+                        recalls, 
+                        precisions, 
+                        title=None, 
+                        prevalence=None, 
+                        output_dir=None):
     """
-    Plots both the ROC and Precision-Recall curves for risk scores in a single figure.
+    Plots both the ROC and Precision-Recall curves for risk scores in a single 
+    figure.
 
     Parameters:
     ----------
@@ -435,7 +509,8 @@ def plot_risk_score_curves(fpr, tpr, recalls, precisions, title=None, prevalence
     - title : str, optional
         Title for the overall figure.
     - prevalence : float, optional
-        The proportion of positive samples in the dataset (used as baseline for PR curve).
+        The proportion of positive samples in the dataset (used as baseline for 
+        PR curve).
     - output_dir : str, optional
         Directory where the plot will be saved as a PNG file.
 
@@ -452,7 +527,12 @@ def plot_risk_score_curves(fpr, tpr, recalls, precisions, title=None, prevalence
 
     # Plot ROC Curve
     ax[0].plot(fpr, tpr, color='blue', lw=2, label=f'Risk score (AUC = {roc_auc_:.3f})')
-    ax[0].plot([0, 1], [0, 1], color='black', lw=2, linestyle='--', label='Random Classifier (AUC = 0.5)')
+    ax[0].plot([0, 1], 
+            [0, 1], 
+            color='black', 
+            lw=2, 
+            linestyle='--', 
+            label='Random Classifier (AUC = 0.5)')
     ax[0].set_xlim([0.0, 1.0])
     ax[0].set_ylim([0.0, 1.05])
     ax[0].set_xlabel('False Positive Rate')
@@ -461,11 +541,20 @@ def plot_risk_score_curves(fpr, tpr, recalls, precisions, title=None, prevalence
     ax[0].legend(loc='lower right')
 
     # Plot Precision-Recall Curve
-    ax[1].plot(recalls, precisions, color='blue', lw=2, label=f'Risk score (AUC = {pr_auc_:.3f})')
+    ax[1].plot(recalls, 
+            precisions, 
+            color='blue', 
+            lw=2, 
+            label=f'Risk score (AUC = {pr_auc_:.3f})')
     
-    # Add horizontal line for random classifier baseline if prevalence is provided
+    # Add horizontal line for random classifier baseline if prevalence is 
+    # provided
     if prevalence is not None:
-        ax[1].axhline(y=prevalence, color='black', lw=2, linestyle='--', label=f'Random Classifier (AUC = {prevalence:.3f})')
+        ax[1].axhline(y=prevalence, 
+                    color='black', 
+                    lw=2, 
+                    linestyle='--', 
+                    label=f'Random Classifier (AUC = {prevalence:.3f})')
         
     ax[1].set_xlim([0.0, 1.0])
     ax[1].set_ylim([0.0, 1.05])
