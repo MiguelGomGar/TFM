@@ -10,142 +10,6 @@ from optuna import visualization as vis
 from optuna.visualization import matplotlib as vis_plt
 from sklearn.metrics import confusion_matrix, auc
 
-#%% OPTIMIZATION HISTORY
-def plot_optimization_history(study, 
-                            model_name=None, 
-                            output_dir=None, 
-                            identifier=None):
-    """
-    Creates and customizes an optimization history plot for a given study and 
-    model.
-        
-    Parameters:
-    ----------
-    - study : optuna.study.Study
-        The Optuna study object containing the optimization results.
-    - model_name : str, optional
-        The name of the model to display in the title. If None, it tries to get 
-        it 
-        from the study's or the best trial's user attributes.
-    - output_dir : str or pathlib.Path, optional
-        The directory path where the plot will be saved as a PNG file.
-    - identifier : str, optional
-        Identifier for the plot file.
-
-    Returns:
-    - None
-    """
-    # 1. Get the model's name
-    if model_name is None:
-        model_name = study.user_attrs.get('model_name', 
-                        study.best_trial.user_attrs.get('model_name', 'Model'))
-
-    # 2. Generate the plot using the matplotlib backend to avoid kaleido/browser 
-    # dependencies
-    ax = vis_plt.plot_optimization_history(study)
-    fig = ax.figure
-    
-    # 3. Customization
-    ax.set_title(f"{model_name} Optimization History", 
-                fontsize=16, weight='bold', 
-                pad=20)
-    ax.set_xlabel("Number of Trials", fontsize=12, weight='bold')
-    ax.set_ylabel("Metric Score Value", fontsize=12, weight='bold')
-    ax.set_ylim(-0.02, 1.02)
-    ax.grid(True, linestyle='--', alpha=0.7)
-    ax.legend(loc='lower right', 
-            frameon=True, 
-            facecolor='#f8f9fa', 
-            edgecolor='gray', 
-            framealpha=0.9)
-    
-    # 4. Save the plot as a PNG file if output_dir is provided
-    if output_dir is not None:
-        file_path = output_dir / f"optimization_history_{identifier}.png"
-        plt.savefig(str(file_path), dpi=300, bbox_inches='tight')
-    
-    # 5. Show the plot
-    plt.tight_layout()
-    plt.show()
-
-#%% CONFUSION MATRIX
-def plot_confusion_matrix(y_true, y_pred, 
-            class_names=None, 
-            title='Confusion Matrix', 
-            cmap='Blues',
-            output_dir=None,
-            identifier=None):
-    """
-    Plots a confusion matrix with absolute counts and relative percentages as 
-    text, but strictly uses the relative percentages to drive the color scale.
-
-    Parameters:
-    ----------
-    - y_true : array-like
-        True labels.
-    - y_pred : array-like
-        Predicted labels.
-    - class_names : list, optional
-        List with the names of the classes. If None, uses numbers.
-    - title : str, default='Confusion Matrix'
-        Title of the plot.
-    - cmap : str, default='Blues'
-        Color palette.
-    - output_dir : str, optional
-        Directory where the plot will be saved.
-    - identifier : str, optional
-        Identifier for the plot file.
-    
-    Returns:
-    - None
-    """
-    # 1. Compute the absolute confusion matrix
-    cm = confusion_matrix(y_true, y_pred)
-    
-    # 2. Compute the percentages per row (normalization by true labels)
-    cm_percentages = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-    
-    # 3. Create the text labels by combining absolute counts and percentages
-    labels = [f"{v1}\n({v2:.1%})" for v1, v2 in zip(cm.flatten(), 
-                                                    cm_percentages.flatten())]
-    labels = np.asarray(labels).reshape(cm.shape)
-    
-    # 4. Set up the figure size
-    plt.figure(figsize=(8, 6))
-    
-    # 5. Draw the heatmap
-    ax = sns.heatmap(cm_percentages, 
-                    annot=labels, 
-                    fmt='', 
-                    cmap=cmap, 
-                    vmin=0.0,
-                    vmax=1.0,
-                    cbar=True,
-                    cbar_kws={'label': 'Proportion of Actual Class'}, 
-                    linewidths=1, 
-                    linecolor='white', 
-                    annot_kws={"size": 12, "weight": "bold"})
-    
-    # 6. Customize the plot
-    plt.title(title, fontsize=16, pad=20, weight='bold')
-    plt.ylabel('True values', fontsize=14, weight='bold')
-    plt.xlabel('Predicted values', fontsize=14, weight='bold')
-    
-    # 7. Set class names if provided
-    if class_names is not None:
-        ax.set_xticklabels(class_names, fontsize=12, rotation=45, ha='right')
-        ax.set_yticklabels(class_names, fontsize=12, rotation=0)
-    
-    # 8. Save the plot as a PNG file if output_dir is provided
-    if output_dir is not None:
-        path = Path(output_dir)
-        file_path = path / f'confusion_matrix_{identifier}.png'
-        plt.savefig(str(file_path), dpi=300, bbox_inches='tight')
-    
-    # 9. Adjust layout and show the plot
-    plt.tight_layout()
-    plt.show()
-
 #%% OVERFITTING ANALYSIS
 def autolabel(rects, ax):
     """
@@ -175,7 +39,7 @@ def plot_overfitting_bars(df_cv_results,
                         identifier=None, 
                         filtering=False):
     """
-    Plots a grouped bar chart directly from raw CV fold data using Seaborn,
+    Plots a grouped bar chart directly from raw CV fold data using seaborn,
     automatically computing means and standard deviation error bars.
     
     Parameters:
@@ -222,7 +86,10 @@ def plot_overfitting_bars(df_cv_results,
     plt.suptitle(f'Overfitting Analysis: {title}', fontsize=16, weight='bold')
     
     if filtering:
-        plt.title('Filtering enabled', fontsize=12, weight='normal')
+        plt.suptitle(f'Overfitting Analysis: {title} ' + '(filtering enabled)', 
+                    fontsize=16, 
+                    weight='bold')
+    
     
     plt.ylabel('Score Value', fontsize=12, weight='bold')
     plt.xlabel('', fontsize=12)
@@ -370,7 +237,7 @@ def plot_metrics_bars(df,
         fig.delaxes(axes[j])
         
     # 6. Global title for the entire figure layout
-    plt.suptitle('Comparison of Test Metrics Across Models' + ('\n(Filtering enabled)' if filtering else ''), 
+    plt.suptitle('Evaluation on test set' + ('(filtering enabled)' if filtering else ''), 
                 fontsize=18, weight='bold', y=1.02)
     
     # 7. Save the entire figure as a PNG file if output_dir is provided

@@ -15,7 +15,6 @@ from .results import (
 )
 
 from .plots import (
-    plot_optimization_history, 
     plot_overfitting_bars, 
     plot_metrics_bars,
     plot_model_curves,
