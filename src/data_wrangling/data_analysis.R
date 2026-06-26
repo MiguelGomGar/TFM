@@ -190,8 +190,7 @@ plot_row_missingness <- function(
         subtitle = "Analysis of row-wise missingness patterns across the 
         PREDIMAR cohort",
         x_label = "Number of missing values",
-        y_label = "Number of Records"
-) {
+        y_label = "Number of Records") {
     
     # 1. Compute missing values per row and aggregate metrics cleanly
     na_summary <- df |> 
