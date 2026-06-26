@@ -237,7 +237,7 @@ def plot_metrics_bars(df,
         fig.delaxes(axes[j])
         
     # 6. Global title for the entire figure layout
-    plt.suptitle('Evaluation on test set' + ('(filtering enabled)' if filtering else ''), 
+    plt.suptitle('Evaluation on test set' + (' (filtering enabled)' if filtering else ''), 
                 fontsize=18, weight='bold', y=1.02)
     
     # 7. Save the entire figure as a PNG file if output_dir is provided
