@@ -81,8 +81,7 @@ def save_model(fitted_pipeline,
     """
     Saves the entire fitted pipeline as a binary file (.joblib), displays its 
     hyperparameters as a formatted pandas DataFrame (excluding default/None 
-    values), 
-    and returns that DataFrame.
+    values), and returns that DataFrame.
 
     Parameters:
     ----------
