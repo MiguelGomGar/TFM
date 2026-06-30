@@ -450,7 +450,7 @@ plot_stratified_numeric_distribution <- function(
         ) +
         
         # Scale fill with a high-contrast palette for clinical stratification
-        ggplot2::scale_fill_manual(values = c("#16A085", "#2C3E50")) +
+        ggplot2::scale_fill_viridis_d(option = "mako", begin = 0.2, end = 0.8) +
         
         # Apply the pseudo-log transformation to safely handle wide clinical 
         # ranges
@@ -712,7 +712,10 @@ plot_stratified_categorical_distribution <- function(
         
         # Facet grid
         ggplot2::facet_wrap(~ feature, scales = "free", ncol = 3) +
-        
+
+        # Flip the axes
+        ggplot2::coord_flip() +
+
         # Clinical theme adjustments
         ggplot2::theme_minimal(base_size = 11) +
         ggplot2::theme(

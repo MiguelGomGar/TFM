@@ -17,13 +17,13 @@ main <- function() {
     source(here("src", "data_wrangling", "data_cleaning.R"))
 
     # 1. Load raw data and remove labels
-    id <- cli::cli_process_start("Collecting data from {.path raw_data_dir}...")
+    id <- cli::cli_process_start("Collecting data from {.path raw_data_dir}")
     original_clinical_data <- read_dta(raw_data_dir) |> remove_labels()
     Sys.sleep(2)
     cli::cli_process_done(id)
 
     # 2. Select relevant variables
-    id <- cli::cli_process_start("Selecting relevant variables...")
+    id <- cli::cli_process_start("Selecting relevant variables")
     clinical_data_selected <- original_clinical_data |> 
     select(
         #=======================================================================
@@ -82,7 +82,7 @@ main <- function() {
     cli::cli_process_done(id)
 
     # 3. Relabel categorical variables using factors
-    id <- cli::cli_process_start("Reformatting variables...")
+    id <- cli::cli_process_start("Reformatting variables")
     clinical_data_modified <- clinical_data_selected |> 
     mutate(
         # ======================================================================
@@ -276,7 +276,7 @@ main <- function() {
     cli::cli_process_done(id)
 
     # 5. Feature engineering
-    id <- cli::cli_process_start("Engineering features...")
+    id <- cli::cli_process_start("Engineering features")
     clinical_data_processed <- clinical_data_processed |> 
     mutate(
         # waist-to-height ratio might be a better predictor than BMI
@@ -289,7 +289,7 @@ main <- function() {
     cli::cli_process_done(id)
 
     # 6. Save the data
-    id <- cli::cli_process_start("Saving processed data...")
+    id <- cli::cli_process_start("Saving processed data")
 
     # Save the entire dataset
     whole_data_output_file <- here(interm_data_dir, "whole_clinical_data.parquet")
