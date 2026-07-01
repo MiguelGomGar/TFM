@@ -13,13 +13,14 @@ main <- function() {
     # 0. Define paths and load functions
     raw_data_dir <- here("data", "raw", "predimar_miguelgomez.dta")
     interm_data_dir <- here("data", "intermediate")
+    clean_data_dir <- here("data", "clean")
 
     source(here("src", "data_wrangling", "data_cleaning.R"))
 
     # 1. Load raw data and remove labels
-    id <- cli::cli_process_start("Collecting data from {.path raw_data_dir}")
+    id <- cli::cli_process_start("Collecting data from {.path {raw_data_dir}}")
     original_clinical_data <- read_dta(raw_data_dir) |> remove_labels()
-    Sys.sleep(2)
+    
     cli::cli_process_done(id)
 
     # 2. Select relevant variables
@@ -47,7 +48,6 @@ main <- function() {
         altura_0m,
         mettotal_0m,
         glu_new0m,
-        diabetest1_0m,
         diabetest2_0m,
         hdl_new0m,
         trig_new0m,
@@ -78,7 +78,7 @@ main <- function() {
         # Target class
         event18m_conkardia
     )
-    Sys.sleep(2)
+    
     cli::cli_process_done(id)
 
     # 3. Relabel categorical variables using factors
@@ -121,13 +121,6 @@ main <- function() {
         ),
 
         # Lifestyle & General Comorbidities
-        diabetest1_0m = factor(
-            diabetest1_0m,
-            levels = c(0, 1),
-            labels = c("no", "yes"),
-            ordered = FALSE
-        ),
-        
         diabetest2_0m = factor(
             diabetest2_0m,
             levels = c(0, 1),
@@ -261,18 +254,17 @@ main <- function() {
     # 4. Rename columns
     new_names <- c(
     "sex", "age", "smoking_status", "code", "center", "intervention", "BMI", 
-    "waist_circumference", "height", "Met", "glucose", "type1_diabetes", 
-    "type2_diabetes", "HDL", "triglicerides", "hypercholesterolemia", 
-    "hypolipidemic_meds", "OSA", "renal_insuf", "hypertension", "COPD", 
-    "stroke", "heart_failure", "cardiomyopathy", "antirrythmic_meds", 
-    "LA_enlargment", "LAD", "LAA", "LAV", "LVEF", "AF_type", 
-    "AF_ablation_time", "previous_ablation", "ERAF", 
+    "waist_circumference", "height", "Met", "glucose", "diabetes", "HDL", 
+    "triglicerides", "hypercholesterolemia", "hypolipidemic_meds", "OSA", 
+    "renal_insuf", "hypertension", "COPD", "stroke", "heart_failure", 
+    "cardiomyopathy", "antirrythmic_meds", "LA_enlargment", "LAD", "LAA", "LAV", 
+    "LVEF", "AF_type", "AF_ablation_time", "previous_ablation", "ERAF", 
     "AF_recurrence"
     )
     clinical_data_processed <- clinical_data_modified |> 
     setnames(old = names(clinical_data_modified), new = new_names)
 
-    Sys.sleep(2)
+    
     cli::cli_process_done(id)
 
     # 5. Feature engineering
@@ -285,10 +277,10 @@ main <- function() {
     ) |> 
     select(-c(waist_circumference, height)) |> 
     compute_hatch_score()
-    Sys.sleep(2)
+    
     cli::cli_process_done(id)
 
-    # 6. Save the data
+    # 6. Save progress
     id <- cli::cli_process_start("Saving processed data")
 
     # Save the entire dataset
@@ -310,7 +302,7 @@ main <- function() {
             AF_recurrence
             )
     write_parquet(hatch_data, hatch_data_output_file)
-    Sys.sleep(2)
+    
     cli::cli_process_done(id)
 
     cli::cli_alert_success(
@@ -320,6 +312,31 @@ main <- function() {
     cli::cli_alert_success(
         "Hatch subset saved to: {.path {hatch_data_output_file}}"
         )
+
+    # 7. Drop features after EDA
+    cli::cli_alert_info(
+        "Dropping features after Exploratory Data Analysis"
+        )
+    
+    clinical_data_clean <- clinical_data_processed |>
+
+    # drop features with more than 20% missing values
+    select(where(~ sum(is.na(.)) / length(.) <= 0.20)) |> 
+
+    # drop highly correlated features
+    select(-c(heart_failure, hypolipidemic_meds))
+
+    cli::cli_process_done(id)
+
+    # 8. Save cleaned data
+    id <- cli::cli_process_start(
+        "Saving cleaned data to {.path {clean_data_dir}}"
+        )
+
+    file_path <- here(clean_data_dir, "whole_clinical_data.parquet")
+    write_parquet(clinical_data_clean, file_path)
+
+    cli::cli_process_done(id)
 }
 
 main()

@@ -50,7 +50,7 @@ plot_stratified_missingness <- function(
         title = "Missing Data Diagnostic",
         subtitle = "Proportion and absolute count of missing values evaluated 
         within each patient record",
-        x_label = "Missingness Rate within Stratum (%)",
+        x_label = "Missingness Rate (%)",
         y_label = target_var) {
     
     # 1. Isolate the target column and any predictors containing at least one NA
@@ -113,7 +113,7 @@ plot_stratified_missingness <- function(
         ) +
         
         # High-contrast medical palette
-        ggplot2::scale_fill_viridis_d(option = "D", begin = 0.3, end = 0.8) +
+        ggplot2::scale_fill_viridis_d(option = "mako", begin = 0.2, end = 0.8) +
         
         # Facet grid
         ggplot2::facet_wrap(~ feature, ncol = 3) +
@@ -169,9 +169,6 @@ plot_stratified_missingness <- function(
 #' Computes the total number of missing values (NAs) per row (patient),
 #' aggregates their frequency counts, and renders a professional distribution 
 #' plot.
-#' Y-axis displays absolute counts for sample-size transparency, while 
-#' bar labels dynamically show relative percentages for clinical impact 
-#' assessment.
 #'
 #' @param df A data frame containing clinical features.
 #' @param title Plot title string. Default is "Distribution of Missing Values 
@@ -230,9 +227,11 @@ plot_row_missingness <- function(
         # Format vertical axis to eliminate lower floating and add safety room 
         # for text strings
         ggplot2::scale_y_continuous(
+            breaks = scales::breaks_width(100),
             expand = ggplot2::expansion(mult = c(0, 0.18))
             ) +
         ggplot2::scale_x_continuous(
+            breaks = scales::breaks_width(1),
             expand = ggplot2::expansion(mult = c(0.02, 0.02))
             ) +
         
@@ -255,7 +254,7 @@ plot_row_missingness <- function(
             plot.subtitle = ggplot2::element_text(
                 color = "#64748b", 
                 size = 9, 
-                margin = margin(b = 15)
+                margin = ggplot2::margin(b = 15)
                 ),
             axis.title = ggplot2::element_text(
                 face = "bold", 
@@ -284,6 +283,109 @@ plot_row_missingness <- function(
         
     return(p)
 }
+
+#' Save row-wise missingness distribution plot
+#'
+#' Saves the row-wise missingness distribution plot to a specified file path 
+#' with the given dimensions and resolution.
+#'
+#' @param df A data frame containing clinical features.
+#' @param title Plot title string.
+#' @param subtitle Plot subtitle string.
+#' @param x_label Character string for the horizontal axis title.
+#' @param y_label Character string for the vertical axis title.
+plot_column_missingness <- function(
+    df, 
+    title = "Missing Data by Feature", 
+    subtitle = "Proportion of NAs per feature in the PREDIMAR cohort", 
+    x_label = "Missing Values Rate", 
+    y_label = NULL) { 
+    
+    # 1. Arrange the data by missing_rate and create a clean percentage label for the plot
+    df_plot <- df |>
+    dplyr::filter(missing_rate > 0) |>
+    dplyr::arrange(missing_rate) |> 
+    dplyr::mutate(
+        feature = factor(feature, levels = feature), 
+        pct_label = scales::percent(missing_rate, accuracy = 0.1)
+        )
+    
+    # 2. Build the bar plot 
+    p <- ggplot2::ggplot(
+        df_plot, 
+        ggplot2::aes(x = missing_rate, y = feature)
+        ) +
+        
+        ggplot2::geom_col(
+            fill = "#2563eb", 
+            color = "#1e3a8a",
+            alpha = 0.85, 
+            width = 0.75, 
+            linewidth = 0.4
+            ) +
+        
+        # Threshold line at 25% missingness
+        ggplot2::geom_vline(
+            xintercept = 0.25, 
+            color = "#e11d48", 
+            linetype = "dashed", 
+            linewidth = 0.8
+            ) +
+        
+        # Text annotation for the threshold line
+        ggplot2::annotate(
+            "text", 
+            x = 0.25, 
+            y = 1,
+            label = "Umbral 25%", 
+            vjust = -1, 
+            hjust = -0.1,
+            color = "#e11d48", 
+            fontface = "italic", 
+            size = 3.5
+            ) +
+        
+        # Label formatting as percentage with safety expansion to avoid clipping
+        ggplot2::scale_x_continuous(
+            labels = scales::percent_format(accuracy = 1), 
+            expand = ggplot2::expansion(mult = c(0, 0.15)) 
+        ) +
+        
+        # Axis labels and titles
+        ggplot2::labs(
+            title = title, 
+            subtitle = subtitle, 
+            x = x_label, 
+            y = y_label
+            ) +
+        
+        # Aesthetics
+        ggplot2::theme_minimal(base_size = 11) +
+        ggplot2::theme(
+            plot.title = ggplot2::element_text(
+                face = "bold", size = 13, margin = ggplot2::margin(b = 4)
+                ),
+            plot.subtitle = ggplot2::element_text(
+                color = "#64748b", size = 9, margin = ggplot2::margin(b = 15)
+                ),
+            axis.title = ggplot2::element_text(
+                face = "bold", color = "#1e293b"
+                ),
+            axis.text.y = ggplot2::element_text(
+                color = "#475569", face = "bold"
+                ),
+            axis.text.x = ggplot2::element_text(
+                color = "#475569", face = "bold"
+                ),
+            panel.grid.minor = ggplot2::element_blank(),
+            panel.grid.major.y = ggplot2::element_blank(),
+            panel.grid.major.x = ggplot2::element_line(
+                color = "#f1f5f9", linewidth = 0.5
+                )
+        )
+    
+    return(p)
+    }
 
 #---- Distributions ----
 
@@ -1100,16 +1202,6 @@ plot_vif <- function(
             width = 0.7
             ) +
         
-        # Add exact text labels to the tip of each bar
-        ggplot2::geom_text(
-            ggplot2::aes(
-                label = sprintf("%.2f", VIF_Equivalent)), 
-                hjust = -0.2,
-                size = 3.2,
-                fontface = "bold",
-                color = "#1e293b"
-        ) +
-        
         # Establish clinical collinearity reference lines
         ggplot2::geom_hline(
             yintercept = 10, 
@@ -1169,3 +1261,67 @@ plot_vif <- function(
 
     return(p)
 }
+
+# ---- Summary ----
+summarize_numeric_features <- function(df) {
+    numeric_df <- df |> 
+        dplyr::select(tidyselect::where(is.numeric))
+    
+    summary_df <- numeric_df |> 
+        dplyr::summarise(
+            dplyr::across(
+                tidyselect::everything(),
+                list(
+                    mean = ~ mean(., na.rm = TRUE),
+                    median = ~ median(., na.rm = TRUE),
+                    sd = ~ sd(., na.rm = TRUE),
+                    min = ~ min(., na.rm = TRUE),
+                    max = ~ max(., na.rm = TRUE),
+                    missing_rate = ~ sum(is.na(.))/nrow(numeric_df)
+                )
+            )
+        )
+
+    return(summary_df)
+}
+
+summarize_categorical_features <- function(df) {
+    # 1. Identify categorical columns
+    cat_vars <- df |> dplyr::select(where(is.factor)) |> names()
+
+    # 2. Iterate over each categorical variable to compute summary metrics
+    res_list <- lapply(cat_vars, function(var_name) {
+    col_data <- df[[var_name]]
+    total_rows <- length(col_data)
+
+    # Missing value stats
+    n_miss <- sum(is.na(col_data))
+    miss_rate <- n_miss / total_rows
+
+    # Specific categorical stats
+    clean_data <- na.omit(col_data)
+    n_uniq <- length(unique(clean_data))
+
+    # Compute the most frequent category, handling cases with no unique values
+    if (n_uniq > 0) {
+        freq_table <- table(col_data, useNA = "no")
+        top_cat <- names(freq_table)[which.max(freq_table)]
+    } else {
+        top_cat <- "None"
+    }
+
+    # Create a data frame
+    data.frame(
+        feature = var_name,
+        missing_rate = as.numeric(miss_rate),
+        n_unique = as.integer(n_uniq),
+        top_category = as.character(top_cat),
+        stringsAsFactors = FALSE
+    )
+    })
+
+    # 3. Join the individual summaries into a single data frame
+    summary_df <- do.call(rbind, res_list)
+
+    return(summary_df)
+    }
