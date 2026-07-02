@@ -2,38 +2,40 @@
 suppressPackageStartupMessages({
     library(here)
     library(tidyverse)
+    library(readxl)
 })
 
 # ---- Main Function
 main <- function() {
-    id <- cli::cli_process_start("Creating plot...")
-    # 0. Define paths
-    data_dir <- here("data", "clean", "clinical_variables_selection.csv")
+    
+    # Define paths
+    input_data_dir <- here("data", "intermediate", "clinical_variables_review.xlsx")
     output_dir <- here("results", "data_collection")
     
-    # 1. Load selected data
-    clinical_variables <- read.csv(
-        file = data_dir,
-        sep = ";"
+    # Load selected data
+    clinical_variables <- read_excel(
+        path = input_data_dir,
+        range = "A1:C32"
         )
         
-    # 2. Preprocess factor levels and implement the hierarchical dual-sorting 
-    # algorithm
+    # Preprocess factor levels
     prepared_variables <- clinical_variables |> 
         mutate(
-            # Helper factor to handle the technical bottom-to-top plotting order 
-            # of ggplot Y-axis
+            
+            # Helper factor to handle the technical bottom-to-top plotting order
             Predimar_sort = factor(
                 Predimar, 
                 levels = c("no", "categorized", "related", "yes")
                 ),
             
             # Original factor preservation
-            Predimar = factor(Predimar, 
-            levels = c("yes", "related", "categorized", "no")
-            )
+            Predimar = factor(
+                Predimar, 
+                levels = c("yes", "related", "categorized", "no")
+                )
         ) |> 
-        # This places "no" values with small scores first, rising up to "yes"  
+        
+        # Places "no" values with small scores first, rising up to "yes"  
         # values with high scores
         arrange(Predimar_sort, Scores) |> 
         
@@ -41,13 +43,13 @@ main <- function() {
         # levels
         mutate(Variable = fct_inorder(Variable))
 
-    # 3. Build the horizontal bar chart
+    # Build the bar plot
     p <- ggplot(
         prepared_variables, 
         aes(x = Variable, y = Scores, fill = Predimar)
         ) +
         
-        # Grid bars with subtle medical-themed dark slate borders
+        # Grid bars
         geom_col(
             color = "#2c3e50", 
             width = 0.75, 
@@ -55,7 +57,7 @@ main <- function() {
             alpha = 0.85
             ) +
         
-        # Invert coordinates to maintain readability for long clinical terms
+        # Invert coordinates
         coord_flip(clip = "off") +
         
         # Force integer ticks on the score axis and leave room for text labels
@@ -64,7 +66,7 @@ main <- function() {
             expand = expansion(mult = c(0, 0.08))
         ) +
         
-        # Professional, high-contrast palette mapped to clinical categories
+        # Palette mapped to clinical categories
         scale_fill_manual(
             values = c(
                 "yes"         = "#10b981",
@@ -74,7 +76,7 @@ main <- function() {
             )
         ) +
         
-        # Formal chart metadata configuration
+        # Title, subtitle, axis labels and legend
         labs(
             title = "Risk Score Variables Selection Review",
             subtitle = "Predictors grouped by PREDIMAR cohort feasibility and ranked by literary frequency within each stratum",
@@ -83,7 +85,7 @@ main <- function() {
             fill = "PREDIMAR Cohort Feasibility"
         ) +
         
-        # Minimalist theme architecture 
+        # Theme customization 
         theme_minimal(base_size = 11) +
         theme(
             plot.title = element_text(
@@ -122,17 +124,9 @@ main <- function() {
                 )
         )
         
-    # 4. Save the plot
+    # Save the plot
     file_path <- here(output_dir, "clinical_variables_review_plot.png")
-
     ggsave(filename = file_path, plot = p, width = 9, height = 7, dpi = 300)
-
-    Sys.sleep(2) 
-    cli::cli_process_done(id)
-
-    cli::cli_alert_success(
-        "Clinical variables review plot saved to: {.path {file_path}}"
-        )
 }
 
 main()
