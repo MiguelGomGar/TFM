@@ -11,7 +11,7 @@
 compute_hatch_score <- function(df) {
     df_result <- df |>
         dplyr::mutate(
-            hatch_score =
+            score_hatch =
                 dplyr::if_else(age > 75, 1, 0) +
                     dplyr::if_else(hypertension == "yes", 1, 0) +
                     dplyr::if_else(COPD == "yes", 1, 0) +
@@ -34,7 +34,7 @@ compute_hatch_score <- function(df) {
 compute_chads2_score <- function(df) {
     df_result <- df |>
         dplyr::mutate(
-            chads2_score =
+            score_chads2 =
                 dplyr::if_else(age >= 75, 1, 0) +
                     dplyr::if_else(hypertension == "yes", 1, 0) +
                     dplyr::if_else(diabetes == "yes", 1, 0) +
@@ -56,7 +56,7 @@ compute_chads2_score <- function(df) {
 compute_base_af2_score <- function(df) {
     df_result <- df |>
         dplyr::mutate(
-            base_af2_score =
+            score_baseaf2 =
                 dplyr::if_else(BMI >= 28, 1, 0) +
                     dplyr::if_else((sex == "male" & LA_enlargment %in% c("moderate", "severe")) | (sex == "female" & LA_enlargment %in% c("mild", "moderate", "severe")), 1, 0) +
                     dplyr::if_else(smoking_status == "yes", 1, 0) +
@@ -78,7 +78,7 @@ compute_base_af2_score <- function(df) {
 compute_mb_later_score <- function(df) {
     df_result <- df |>
         dplyr::mutate(
-            mb_later_score = dplyr::if_else(sex == "male", 1, 0) +
+            score_mblater = dplyr::if_else(sex == "male", 1, 0) +
                 dplyr::if_else(bundle_branch_R == "yes" | bundle_branch_L == "yes", 1, 0) +
                 dplyr::if_else(sex == "female" & LA_enlargment %in% c("moderate", "severe"), 1, 0) +
                 dplyr::if_else(sex == "male" & LA_enlargment == "severe", 1, 0) +

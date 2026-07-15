@@ -85,7 +85,7 @@ main <- function() {
     ### stratified by AF recurrence and intervention
     for (feature in strat_vars) {
         print(paste("Generating numeric features distribution stratified by", feature, "..."))
-        num_dist_strat <- plot_numeric_distribution_by_feature(clean_data, feature)
+        num_dist_strat <- plot_stratified_numeric_distribution(clean_data, feature)
         ggsave(
             filename = here(plots_output_dir, paste0("numeric_features_distribution_stratified_by_", feature, ".png")),
             plot = num_dist_strat,
@@ -95,7 +95,33 @@ main <- function() {
     }
 
     ## categorical features distributions
+    pages <- 3
+    print("Generating categorical features distributions plot...")
+
+    for (page in 1:pages) {
+        cat_dist <- plot_global_categorical_distribution(clean_data, page = page)
+        ggsave(
+            filename = here(plots_output_dir, paste0("categorical_features_global_distribution", page, ".png")),
+            plot = cat_dist,
+            width = 8,
+            height = 6
+        )
+    }
+
     ### stratified by AF recurrence and intervention
+    for (feature in strat_vars) {
+        print(paste("Generating categorical features distributions stratified by", feature, "..."))
+
+        for (page in 1:pages) {
+            cat_dist_strat <- plot_stratified_categorical_distributions(clean_data, target_var = strat_vars, page = page)
+            ggsave(
+                filename = here(plots_output_dir, paste0("categorical_features_distribution_stratified_by_", feature, page, ".png")),
+                plot = cat_dist_strat,
+                width = 8,
+                height = 6
+            )
+        }
+    }
 
     # TABLE 1
     print("Generating table 1...")

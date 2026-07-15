@@ -14,9 +14,7 @@ main <- function() {
     print("Setting up paths and loading functions...")
 
     input_file <- here("data", "raw", "predimar_miguelgomez.dta")
-    output_file <- here("data", "intermediate", "clinical_data.parquet")
-
-    source(here("src", "data_wrangling", "feature_engineering.R"))
+    output_file <- here("data", "intermediate", "clinical_data1_cleaned.parquet")
 
     # Load raw data and remove labels
     print("Loading raw data and removing STATA labels...")
@@ -299,18 +297,8 @@ main <- function() {
     clinical_data_processed <- clinical_data_modified |>
         setnames(old = names(clinical_data_modified), new = new_names)
 
-    # Feature engineering
-    print("Creating new features and computing available risk scores...")
-
-    clinical_data_processed <- clinical_data_processed |>
-        compute_chads2_score() |>
-        compute_hatch_score() |>
-        compute_mb_later_score() |>
-        compute_base_af2_score()
-
-    # Save data (before Data Analysis is performed)
-    print("Saving data...")
-
+    # Save data
+    print(paste0("Saving data to ", output_file, "..."))
     write_parquet(clinical_data_processed, output_file)
 }
 

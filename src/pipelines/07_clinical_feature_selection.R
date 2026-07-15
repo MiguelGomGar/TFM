@@ -8,7 +8,7 @@ suppressPackageStartupMessages({
 # ---- Main ----
 main <- function() {
     # Define paths
-    input_file <- here("data", "intermediate", "clinical_data.parquet")
+    input_file <- here("data", "intermediate", "clinical_data_selected.parquet")
     output_dir <- here("data", "clean")
 
     # Load data
@@ -16,15 +16,15 @@ main <- function() {
 
     clinical_data <- read_parquet(input_file)
 
-    # Dropping records with missing rate > threshold dynamically
+    # Dropping features with missing rate > threshold
     threshold <- 0.25
     print(paste0(
-        "Dropping records with missing rate > ", as.character(threshold)
+        "Dropping features with missing rate > ", as.character(threshold)
     ))
     na_rates <- colMeans(is.na(clinical_data))
     drop_cols_na <- names(na_rates[na_rates > threshold])
 
-    # Dropping highly correlated features manually
+    # Dropping highly correlated features
     print("Dropping highly correlated features...")
     drop_cols_collinearity <- c(
         "hypolipidemic_meds",
