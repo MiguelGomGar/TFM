@@ -1,4 +1,5 @@
-# ---- Configuration
+# ---- Setup ----
+# Load packages
 suppressPackageStartupMessages({
     library(here)
     library(tidyverse)
@@ -8,14 +9,12 @@ suppressPackageStartupMessages({
     library(data.table)
 })
 
+# Set paths
+input_file <- here("data", "raw", "predimar_miguelgomez.dta")
+output_file <- here("data", "intermediate", "02clinical_data_cleaned.parquet")
+
 # ---- Main ----
 main <- function() {
-    # Define paths and load functions
-    print("Setting up paths and loading functions...")
-
-    input_file <- here("data", "raw", "predimar_miguelgomez.dta")
-    output_file <- here("data", "intermediate", "clinical_data1_cleaned.parquet")
-
     # Load raw data and remove labels
     print("Loading raw data and removing STATA labels...")
 
@@ -74,7 +73,7 @@ main <- function() {
             # Target class
             event18m_conkardia,
 
-            # Risk scores
+            # Risk scores related to AF
             chad2ds2vasc_v00
         )
 
@@ -93,7 +92,7 @@ main <- function() {
             fum_0m = factor(
                 fum_0m,
                 levels = c(0, 2, 1),
-                labels = c("never", "current", "former"),
+                labels = c("never", "former", "current"),
                 ordered = TRUE
             ),
 
@@ -214,12 +213,7 @@ main <- function() {
             eco_fe_0m = factor(
                 eco_fe_0m,
                 levels = c(0, 1, 2, 3),
-                labels = c(
-                    "normal",
-                    "slightly abnormal",
-                    "moderately abnormal",
-                    "severely abnormal"
-                ),
+                labels = c("normal", "mild", "moderate", "severe"),
                 ordered = TRUE
             ),
 
@@ -291,7 +285,7 @@ main <- function() {
         "previous_ablation",
         "ERAF",
         "AF_recurrence",
-        "chad2ds2_vasc_score"
+        "score_chad2ds2_vasc"
     )
 
     clinical_data_processed <- clinical_data_modified |>

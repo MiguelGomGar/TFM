@@ -1,4 +1,4 @@
-# ---- Compute necessary statistics ----
+# ---- Compute statistics ----
 #' Compute numeric correlation matrix
 #'
 #' Compute a correlation matrix for all numeric columns in the dataframe.
@@ -13,6 +13,7 @@ compute_num_corr_matrix <- function(df) {
 
     correlation_matrix <- stats::cor(
         numeric_df,
+        method = "spearman",
         use = "pairwise.complete.obs"
     )
 
@@ -228,7 +229,7 @@ plot_corr_matrix <- function(df,
     return(p)
 }
 
-#' Plot Variance Inflation Factor (VIF) Diagnostics
+#' Plot Variance Inflation Factor for each feature
 #'
 #' Computes the Generalized Variance Inflation Factor (GVIF) for a mixed
 #' data set, safely handles invariant features within complete cases, scales it
@@ -252,14 +253,16 @@ plot_vif <- function(df,
                      title = "VIF Diagnostics",
                      x_label = "VIF / GVIF^2",
                      y_label = NULL) {
-    # 1. Clean tracking columns, drop unused factors, and force target to numeric
+    # 1. Clean tracking columns, drop unused factors, and force target to
+    # numeric
     temp_data <- df |>
         dplyr::mutate(
             dplyr::across(tidyselect::all_of(target_var), as.numeric)
         ) |>
         droplevels()
 
-    # 2. Extract complete cases to replicate lm()'s internal listwise row deletion
+    # 2. Extract complete cases to replicate lm()'s internal listwise row
+    # deletion
     complete_cases_subset <- temp_data |>
         tidyr::drop_na()
 
@@ -330,7 +333,7 @@ plot_vif <- function(df,
 
         # Establish clinical collinearity reference lines
         ggplot2::geom_hline(
-            yintercept = 10,
+            yintercept = 5,
             linetype = "dashed",
             color = "#ef4444",
             linewidth = 0.7
@@ -338,7 +341,7 @@ plot_vif <- function(df,
         ggplot2::annotate(
             "text",
             x = 0.7,
-            y = 10.2,
+            y = 5.2,
             color = "#b91c1c",
             size = 3,
             fontface = "italic",

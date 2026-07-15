@@ -1,23 +1,26 @@
-# ---- Configuration
+# ---- Setup ----
+# Load packages
 suppressPackageStartupMessages({
     library(here)
     library(tidyverse)
     library(readxl)
 })
 
-# ---- Main Function
-main <- function() {
-    # Define paths
-    input_file <- here("data", "intermediate", "clinical_variables_review.xlsx")
-    output_file <- here("results", "data_collection", "clinical_variables_review_plot.png")
+# Set paths
+input_file <- here("data", "raw", "clinical_variables_review.xlsx")
+output_file <- here("results", "data_collection", "clinical_variables_review_plot.png")
 
-    # Load selected data
+# ---- Main Function ----
+main <- function() {
+    # Load data
+    print(paste0("Loading data from ", input_file, "..."))
     clinical_variables <- read_excel(
         path = input_file,
         range = "A1:C27"
     )
 
     # Preprocess factor levels
+    print("Rearranging factor levels for plotting...")
     prepared_variables <- clinical_variables |>
         mutate(
             # Helper factor to handle the technical bottom-to-top plotting order
@@ -40,6 +43,7 @@ main <- function() {
         mutate(Variable = fct_inorder(Variable))
 
     # Build the bar plot
+    print("Generating the plot...")
     p <- ggplot(
         prepared_variables,
         aes(x = Variable, y = Scores, fill = Predimar)
@@ -121,6 +125,7 @@ main <- function() {
         )
 
     # Save the plot
+    print(paste0("Saving the plot to ", output_file, "..."))
     ggsave(filename = output_file, plot = p, width = 9, height = 7, dpi = 300)
 }
 

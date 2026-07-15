@@ -1,20 +1,18 @@
-# ---- Configuration
+# ---- Setup ----
+# Load packages
 suppressPackageStartupMessages({
     library(here)
     library(tidyverse)
     library(arrow)
 })
+source(here("src", "data_wrangling", "feature_engineering.R"))
+
+# Set paths
+input_file <- here("data", "intermediate", "02clinical_data_cleaned.parquet")
+output_file <- here("data", "intermediate", "03clinical_data_engineered.parquet")
 
 # ---- Main ----
 main <- function() {
-    # Define paths and load functions
-    print("Setting up paths and loading functions...")
-
-    input_file <- here("data", "intermediate", "clinical_data1_cleaned.parquet")
-    output_file <- here("data", "intermediate", "clinical_data2_engineered.parquet")
-
-    source(here("src", "data_wrangling", "feature_engineering.R"))
-
     # Load data
     print("Loading data...")
     df <- read_parquet(input_file)
