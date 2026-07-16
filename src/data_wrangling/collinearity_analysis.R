@@ -253,39 +253,43 @@ plot_vif <- function(df,
                      title = "VIF Diagnostics",
                      x_label = "VIF / GVIF^2",
                      y_label = NULL) {
-    # 1. Clean tracking columns, drop unused factors, and force target to
-    # numeric
+    # 1. Clean tracking columns, drop unused factors, and force target to numeric
     temp_data <- df |>
         dplyr::mutate(
             dplyr::across(tidyselect::all_of(target_var), as.numeric)
         ) |>
         droplevels()
 
-    # 2. Extract complete cases to replicate lm()'s internal listwise row
-    # deletion
+    # 2. Extract complete cases to replicate lm()'s internal listwise row deletion
     complete_cases_subset <- temp_data |>
         tidyr::drop_na()
 
-    # 3. Dynamic filtration: Identify and drop invariant features within
-    # complete cases to protect the linear model from the "contrasts can be
-    # applied only to factors" crash.
-    single_level_features <- complete_cases_subset |>
-        dplyr::select(tidyselect::where(is.factor)) |>
-        dplyr::summarise(
-            dplyr::across(tidyselect::everything(), ~ dplyr::n_distinct(.))
-        ) |>
-        tidyr::pivot_longer(
-            cols = tidyselect::everything(),
-            names_to = "feature",
-            values_to = "unique_levels"
-        ) |>
-        dplyr::filter(unique_levels < 2) |>
-        dplyr::pull(feature)
+    # 3. Dynamic filtration: Identify and drop invariant features within complete cases
+    # Extract only factor columns first
+    factor_cols <- complete_cases_subset |>
+        dplyr::select(tidyselect::where(is.factor))
+
+    # Initialize as empty vector
+    single_level_features <- character(0)
+
+    # Only attempt to pivot and summarize if there is at least ONE factor column
+    if (ncol(factor_cols) > 0) {
+        single_level_features <- factor_cols |>
+            dplyr::summarise(
+                dplyr::across(tidyselect::everything(), ~ dplyr::n_distinct(.))
+            ) |>
+            tidyr::pivot_longer(
+                cols = tidyselect::everything(),
+                names_to = "feature",
+                values_to = "unique_levels"
+            ) |>
+            dplyr::filter(unique_levels < 2) |>
+            dplyr::pull(feature)
+    }
 
     if (length(single_level_features) > 0) {
         cat(
-            "\n[VIF Diagnostics] Automatically dropping columns that become
-            invariant within complete cases:\n",
+            "\n[VIF Diagnostics] Automatically dropping columns that become invariant within complete cases:\n",
             paste(single_level_features, collapse = ", "), "\n\n"
         )
         temp_data <- temp_data |>
@@ -312,7 +316,7 @@ plot_vif <- function(df,
     } else {
         vif_df <- vif_raw_output |>
             tibble::rownames_to_column(var = "feature") |>
-            dplyr::rename(VIF_Equivalent = 1) |>
+            dplyr::rename(VIF_Equivalent = 2) |>
             dplyr::select(feature, VIF_Equivalent)
     }
 

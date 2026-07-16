@@ -16,7 +16,7 @@ main <- function() {
     # Load data
     print(paste0("Loading data from ", input_file, "..."))
     df <- read_parquet(input_file) |>
-        select(-code)
+        select(-c(code, starts_with("score")))
 
     # Identifying numeric and categorical features
     print("Identifying numeric and categorical features...")
@@ -32,7 +32,7 @@ main <- function() {
     for (feature in numeric_features) {
         plot <- plot_single_numeric_distribution(df, feature)
         ggsave(
-            filename = here(output_dir, paste0(feature, "_global_distribution.png")),
+            filename = here(output_dir, paste0("distribution_", feature, ".png")),
             plot = plot,
             width = 8,
             height = 6
@@ -45,7 +45,7 @@ main <- function() {
         ggsave(
             filename = here(
                 output_dir,
-                paste0("grouped_numeric_global_distribution_page_", i, ".png")
+                paste0("grouped_numeric_distribution_page_", i, ".png")
             ),
             plot = grouped_num_global[[i]],
             width = 12,
@@ -58,7 +58,7 @@ main <- function() {
     for (feature in numeric_features) {
         qqplot <- plot_single_qq(df, feature)
         ggsave(
-            filename = here(output_dir, paste0(feature, "_qq_plot.png")),
+            filename = here(output_dir, paste0("qq_plot_", feature, ".png")),
             plot = qqplot,
             width = 8,
             height = 6
@@ -80,7 +80,7 @@ main <- function() {
     }
 
     # Numeric features distribution plots stratified by AF recurrence
-    print("Creating individualized distribution plots for numeric features stratified by AF recurrence...")
+    print("Creating individualized distribution plots  stratified by AF recurrence for numeric features...")
     for (feature in numeric_features) {
         plot <- plot_stratified_numeric_distribution(
             df,
@@ -88,7 +88,7 @@ main <- function() {
             target_var = "AF_recurrence"
         )
         ggsave(
-            filename = here(output_dir, paste0(feature, "_distribution_by_AF_recurrence.png")),
+            filename = here(output_dir, paste0("distribution_", feature, "_by_AF_recurrence.png")),
             plot = plot,
             width = 8,
             height = 6
@@ -101,7 +101,7 @@ main <- function() {
         ggsave(
             filename = here(
                 output_dir,
-                paste0("grouped_numeric_by_AF_recurrence_page_", i, ".png")
+                paste0("grouped_numeric_stratified_by_AF_recurrence_page_", i, ".png")
             ),
             plot = grouped_num_af[[i]],
             width = 12,
@@ -110,7 +110,7 @@ main <- function() {
     }
 
     # Numeric features distribution plots stratified by intervention
-    print("Creating individualized distribution plots for numeric features stratified by intervention...")
+    print("Creating individualized distribution plots stratified by intervention for numeric features...")
     for (feature in numeric_features) {
         plot <- plot_stratified_numeric_distribution(
             df,
@@ -118,7 +118,7 @@ main <- function() {
             target_var = "intervention"
         )
         ggsave(
-            filename = here(output_dir, paste0(feature, "_distribution_by_intervention.png")),
+            filename = here(output_dir, paste0("distribution_", feature, "_by_intervention.png")),
             plot = plot,
             width = 8,
             height = 6
@@ -131,7 +131,7 @@ main <- function() {
         ggsave(
             filename = here(
                 output_dir,
-                paste0("grouped_numeric_by_intervention_page_", i, ".png")
+                paste0("grouped_numeric_stratified_by_intervention_page_", i, ".png")
             ),
             plot = grouped_num_intervention[[i]],
             width = 12,
@@ -144,7 +144,7 @@ main <- function() {
     for (feature in categorical_features) {
         plot <- plot_single_categorical_distribution(df, feature)
         ggsave(
-            filename = here(output_dir, paste0(feature, "_global_distribution.png")),
+            filename = here(output_dir, paste0("distribution_", feature, ".png")),
             plot = plot,
             width = 8,
             height = 6
@@ -157,7 +157,7 @@ main <- function() {
         ggsave(
             filename = here(
                 output_dir,
-                paste0("grouped_categorical_global_distribution_page_", i, ".png")
+                paste0("grouped_categorical_distribution_page_", i, ".png")
             ),
             plot = grouped_cat_global[[i]],
             width = 12,
@@ -166,7 +166,7 @@ main <- function() {
     }
 
     # Categorical features distribution plots stratified by AF recurrence
-    print("Creating individualized distribution plots for categorical features stratified by AF recurrence...")
+    print("Creating individualized distribution plots stratified by AF recurrence for categorical features...")
     for (feature in categorical_features) {
         plot <- plot_stratified_categorical_distribution(
             df,
@@ -174,7 +174,7 @@ main <- function() {
             target_var = "AF_recurrence"
         )
         ggsave(
-            filename = here(output_dir, paste0(feature, "_distribution_by_AF_recurrence.png")),
+            filename = here(output_dir, paste0("distribution_", feature, "_by_AF_recurrence.png")),
             plot = plot,
             width = 8,
             height = 6
@@ -191,7 +191,7 @@ main <- function() {
         ggsave(
             filename = here(
                 output_dir,
-                paste0("grouped_categorical_by_AF_recurrence_page_", i, ".png")
+                paste0("grouped_categorical_stratified_by_AF_recurrence_page_", i, ".png")
             ),
             plot = grouped_cat_af[[i]],
             width = 12,
@@ -200,7 +200,7 @@ main <- function() {
     }
 
     # Categorical features distribution plots stratified by intervention
-    print("Creating individualized distribution plots for categorical features stratified by intervention...")
+    print("Creating individualized distribution plots stratified by intervention for categorical features...")
     for (feature in categorical_features) {
         plot <- plot_stratified_categorical_distribution(
             df,
@@ -210,7 +210,7 @@ main <- function() {
         ggsave(
             filename = here(
                 output_dir,
-                paste0(feature, "_distribution_by_intervention.png")
+                paste0("distribution_", feature, "_by_intervention.png")
             ),
             plot = plot,
             width = 8,
@@ -228,7 +228,7 @@ main <- function() {
         ggsave(
             filename = here(
                 output_dir,
-                paste0("grouped_categorical_by_intervention_page_", i, ".png")
+                paste0("grouped_categorical_stratified_by_intervention_page_", i, ".png")
             ),
             plot = grouped_cat_intervention[[i]],
             width = 12,

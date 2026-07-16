@@ -27,24 +27,18 @@ plot_single_numeric_distribution <- function(df, col_name) {
         ggplot2::theme(
             panel.grid.minor = ggplot2::element_blank(),
             panel.grid.major.x = ggplot2::element_blank(),
-            panel.grid.major.y = ggplot2::element_line(
-                color = "#eaeded",
-                linewidth = 0.4
-            ),
-            axis.line.x = ggplot2::element_line(
-                color = "#bdc3c7",
-                linewidth = 0.6
-            ),
-            axis.text = ggplot2::element_text(color = "#34495e"),
-            axis.title = ggplot2::element_text(
-                face = "bold",
-                color = "#2c3e50"
-            )
+            panel.grid.major.y = ggplot2::element_line(color = "#eaeded", linewidth = 0.4),
+            axis.line.x = ggplot2::element_line(color = "#bdc3c7", linewidth = 0.6),
+            axis.text = ggplot2::element_text(color = "#34495e", face = "bold"),
+            axis.title.y = ggplot2::element_text(angle = 0, vjust = 0.5, hjust = 0.5),
+            axis.title = ggplot2::element_text(face = "bold", color = "#2c3e50"),
+            plot.title = ggplot2::element_text(face = "bold", color = "#2c3e50", margin = ggplot2::margin(b = 10)),
+            plot.margin = ggplot2::margin(t = 10, r = 10, b = 10, l = 10, unit = "pt")
         ) +
         ggplot2::labs(
             title = paste("Distribution of", col_name),
             x = col_name,
-            y = "Count"
+            y = "n"
         )
 
     return(p)
@@ -66,7 +60,7 @@ plot_single_categorical_distribution <- function(df, col_name) {
         dplyr::count(.data[[col_name]]) |>
         dplyr::mutate(
             pct = n / sum(n),
-            # Format as percentage (e.g., 25.4%) requires 'scales' package
+            # Format as percentage
             pct_label = scales::percent(pct, accuracy = 0.1)
         )
 
@@ -88,32 +82,25 @@ plot_single_categorical_distribution <- function(df, col_name) {
             fontface = "bold",
             color = "#2c3e50"
         ) +
+        ggplot2::scale_x_continuous(expand = ggplot2::expansion(mult = c(0, 0.15))) +
         ggplot2::scale_fill_viridis_d(option = "mako", begin = 0.3, end = 0.8) +
-        # Allow labels to exceed the right plot margin safely
         ggplot2::coord_cartesian(clip = "off") +
         ggplot2::theme_minimal(base_size = 11) +
         ggplot2::theme(
             legend.position = "none",
             panel.grid.minor = ggplot2::element_blank(),
-            panel.grid.major.y = ggplot2::element_blank(), # No horizontal grid lines needed
-            panel.grid.major.x = ggplot2::element_line(
-                color = "#eaeded",
-                linewidth = 0.4
-            ), # Vertical grid lines to read values
-            axis.line.y = ggplot2::element_line(
-                color = "#bdc3c7",
-                linewidth = 0.6
-            ),
+            panel.grid.major.y = ggplot2::element_blank(),
+            panel.grid.major.x = ggplot2::element_line(color = "#eaeded", linewidth = 0.4),
+            axis.line.y = ggplot2::element_line(color = "#bdc3c7", linewidth = 0.6),
             axis.text = ggplot2::element_text(color = "#34495e", face = "bold"),
-            axis.title = ggplot2::element_text(
-                face = "bold",
-                color = "#2c3e50"
-            )
+            axis.title = ggplot2::element_text(face = "bold", color = "#2c3e50"),
+            plot.title = ggplot2::element_text(face = "bold", color = "#2c3e50", margin = ggplot2::margin(b = 10)),
+            plot.margin = ggplot2::margin(t = 10, r = 10, b = 10, l = 10, unit = "pt")
         ) +
         ggplot2::labs(
             title = paste("Distribution of", col_name),
-            y = col_name,
-            x = "Count"
+            y = NULL,
+            x = "n"
         )
 
     return(p)
@@ -138,7 +125,7 @@ plot_stratified_numeric_distribution <- function(df, col_name, target_var) {
         stop(paste("The target variable", target_var, "must be categorical/factor."))
     }
 
-    # 2. Build the stratified boxplot (Mapped natively to horizontal)
+    # 2. Build the stratified boxplot
     p <- ggplot2::ggplot(
         df,
         ggplot2::aes(
@@ -177,8 +164,8 @@ plot_stratified_numeric_distribution <- function(df, col_name, target_var) {
             )
         ) +
         ggplot2::labs(
-            title = paste(col_name, "by", target_var),
-            y = target_var,
+            title = paste("Distribution of", col_name, "stratified by", target_var),
+            y = NULL,
             x = col_name
         )
 
@@ -187,64 +174,62 @@ plot_stratified_numeric_distribution <- function(df, col_name, target_var) {
 
 #' Plot Stratified Categorical Distribution
 #'
-#' Renders a horizontal, 100% stacked bar chart to visualize the proportion
-#' of a target variable across the categories of another feature.
+#' Renders a horizontal 100% stacked bar chart with internal percentage labels.
 #'
-#' @param df A data frame containing the data.
-#' @param col_name A string specifying the name of the feature column (y-axis).
-#' @param target_var A string specifying the name of the stratifying target
-#' column (fill colors).
+#' @param df A data frame.
+#' @param col_name Name of the categorical column to plot.
+#' @param target_var Name of the stratifying variable.
 #'
-#' @return A ggplot2 object representing the horizontal stacked bar chart.
+#' @return A ggplot2 object.
 plot_stratified_categorical_distribution <- function(df, col_name, target_var) {
-    # 1. Validation: Clean NAs from the variables being plotted to avoid empty gray bars
-    clean_df <- df |>
-        dplyr::filter(!is.na(.data[[col_name]]) & !is.na(.data[[target_var]]))
+    # 1. Validation checks: a feature can't be stratified by itself
+    if (col_name == target_var) {
+        return(NULL)
+    }
 
-    # 2. Build the 100% stacked horizontal bar chart
+    # 2. Calculate proportions for the stacked bar chart
+    df_summary <- df |>
+        dplyr::select(dplyr::all_of(c(col_name, target_var))) |>
+        tidyr::drop_na() |>
+        dplyr::mutate(dplyr::across(dplyr::everything(), as.character)) |>
+        dplyr::group_by(.data[[col_name]], .data[[target_var]]) |>
+        dplyr::summarise(n = dplyr::n(), .groups = "drop_last") |>
+        dplyr::mutate(prop = n / sum(n)) |>
+        dplyr::ungroup()
+
+    # 3. Build the plot
     p <- ggplot2::ggplot(
-        clean_df,
-        ggplot2::aes(
-            y = .data[[col_name]],
-            fill = .data[[target_var]]
-        )
+        df_summary,
+        ggplot2::aes(y = .data[[col_name]], x = n, fill = .data[[target_var]])
     ) +
-        # position = "fill" makes all bars the same length (100% proportions)
-        ggplot2::geom_bar(
+        ggplot2::geom_col(
             position = "fill",
             color = "#2c3e50",
-            linewidth = 0.4,
-            alpha = 0.85
+            alpha = 0.85,
+            linewidth = 0.4
         ) +
-        # Use Viridis 'mako' palette for the target classes
-        ggplot2::scale_fill_viridis_d(
-            option = "mako",
-            begin = 0.3,
-            end = 0.8,
-            name = target_var
+        ggplot2::geom_text(
+            ggplot2::aes(label = scales::percent(prop, accuracy = 1)),
+            position = ggplot2::position_fill(vjust = 0.5),
+            color = "black",
+            fontface = "bold",
+            size = 4
         ) +
-        # Format the x-axis (which is now horizontal) to show percentages
-        ggplot2::scale_x_continuous(labels = scales::percent_format()) +
-        ggplot2::theme_minimal(base_size = 11) +
+        ggplot2::scale_fill_viridis_d(option = "mako", begin = 0.3, end = 0.8) +
+        ggplot2::scale_x_continuous(labels = scales::percent) +
+        ggplot2::theme_minimal(base_size = 12) +
         ggplot2::theme(
-            legend.position = "bottom", # Move legend to bottom for better horizontal space
-            legend.title = ggplot2::element_text(face = "bold", size = 10),
-            panel.grid.minor = ggplot2::element_blank(),
-            panel.grid.major.y = ggplot2::element_blank(), # No horizontal lines needed
-            panel.grid.major.x = ggplot2::element_line(color = "#eaeded", linewidth = 0.5), # Vertical grid lines
-            axis.line.y = ggplot2::element_line(color = "#bdc3c7", linewidth = 0.6),
+            legend.position = "bottom",
+            panel.grid.major.y = ggplot2::element_blank(),
             axis.text = ggplot2::element_text(color = "#34495e", face = "bold"),
             axis.title = ggplot2::element_text(face = "bold", color = "#2c3e50"),
-            plot.title = ggplot2::element_text(
-                face = "bold",
-                color = "#2c3e50",
-                margin = ggplot2::margin(b = 10)
-            )
+            plot.title = ggplot2::element_text(face = "bold", color = "#2c3e50", margin = ggplot2::margin(b = 10))
         ) +
         ggplot2::labs(
-            title = paste("Proportion of", target_var, "within", col_name),
-            y = col_name, # Mapped to Y natively
-            x = "Proportion" # Mapped to X natively, representing the fill percentage
+            title = paste("Distribution of", col_name, "stratified by", target_var),
+            x = NULL,
+            y = NULL,
+            fill = target_var
         )
 
     return(p)
@@ -277,18 +262,17 @@ plot_global_numeric_paginated <- function(df, nrow = 2, ncol = 3) {
             ggplot2::geom_histogram(bins = 30, fill = "#16a085", color = "white", alpha = 0.7) +
             ggforce::facet_wrap_paginate(~Variable, scales = "free", nrow = nrow, ncol = ncol, page = .x) +
             ggplot2::theme_minimal() +
-            ggplot2::labs(title = paste("Global Numeric Distribution - Page", .x), x = "Value", y = "Count")
+            ggplot2::theme(
+                plot.title = ggplot2::element_text(face = "bold", color = "#2c3e50", margin = ggplot2::margin(b = 10), )
+            ) +
+            ggplot2::labs(
+                title = paste("Global Numeric Features Distribution - Page", .x),
+                x = NULL, y = NULL
+            )
     })
 
     return(plot_list)
 }
-
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-library(ggforce)
-library(purrr)
-library(scales)
 
 #' Plot Multiple Global Categorical Distributions (Paginated)
 #'
@@ -329,20 +313,23 @@ plot_global_categorical_paginated <- function(df, nrow = 2, ncol = 3) {
     plot_list <- purrr::map(1:n_pages, ~ {
         ggplot2::ggplot(df_long, ggplot2::aes(x = n, y = Category, fill = Category)) +
             ggplot2::geom_col(color = "#2c3e50", alpha = 0.8) +
+            scale_x_continuous(expand = ggplot2::expansion(mult = c(0, 0.15))) +
             ggplot2::geom_text(
                 ggplot2::aes(label = pct_label),
                 hjust = -0.5, size = 3, fontface = "bold"
             ) +
+            coord_cartesian(clip = "off") +
             ggforce::facet_wrap_paginate(~Variable, scales = "free", nrow = nrow, ncol = ncol, page = .x) +
             ggplot2::scale_fill_viridis_d(option = "mako", begin = 0.3, end = 0.8) +
             ggplot2::theme_minimal() +
             ggplot2::theme(
                 legend.position = "none",
-                axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
+                plot.title = ggplot2::element_text(face = "bold", color = "#2c3e50", margin = ggplot2::margin(b = 10)),
+                plot.margin = ggplot2::margin(r = 20, l = 30, t = 20, b = 10, unit = "pt")
             ) +
             ggplot2::labs(
-                title = paste("Global Categorical Distribution - Page", .x),
-                y = NULL, x = "Count"
+                title = paste("Global Categorical Features Distribution - Page", .x),
+                y = NULL, x = "n"
             )
     })
 
@@ -383,14 +370,14 @@ plot_stratified_numeric_paginated <- function(df, target_var, nrow = 2, ncol = 3
                 alpha = 0.8,
                 outlier.size = 1.0
             ) +
-            # Note: Changed to free_x because numeric 'Value' is now mapped to the X-axis
             ggforce::facet_wrap_paginate(~Variable, scales = "free_x", nrow = nrow, ncol = ncol, page = .x) +
             ggplot2::scale_fill_viridis_d(option = "mako", begin = 0.3, end = 0.7) +
             ggplot2::theme_minimal(base_size = 11) +
             ggplot2::theme(
                 legend.position = "none",
                 panel.grid.minor = ggplot2::element_blank(),
-                strip.text = ggplot2::element_text(face = "bold", size = 11, color = "#2c3e50")
+                strip.text = ggplot2::element_text(face = "bold", size = 11, color = "#2c3e50"),
+                plot.title = ggplot2::element_text(face = "bold", color = "#2c3e50", margin = ggplot2::margin(b = 10))
             ) +
             ggplot2::labs(
                 title = paste("Numeric Distributions stratified by", target_var, "- Page", .x),
@@ -426,7 +413,8 @@ plot_stratified_categorical_paginated <- function(df, target_var, nrow = 2, ncol
         tidyr::pivot_longer(cols = dplyr::all_of(cat_cols), names_to = "Variable", values_to = "Category") |>
         tidyr::drop_na(Category) |>
         dplyr::group_by(Variable, Category, .data[[target_var]]) |>
-        dplyr::summarise(n = dplyr::n(), .groups = "drop") |>
+        dplyr::summarise(n = dplyr::n(), .groups = "drop_last") |>
+        dplyr::mutate(prop = n / sum(n)) |>
         dplyr::ungroup()
 
     # 3. Calculate pages
@@ -438,16 +426,25 @@ plot_stratified_categorical_paginated <- function(df, target_var, nrow = 2, ncol
         ggplot2::ggplot(df_long, ggplot2::aes(y = Category, x = n, fill = .data[[target_var]])) +
             ggplot2::geom_col(position = "fill", color = "#2c3e50", alpha = 0.85, linewidth = 0.4) +
             ggforce::facet_wrap_paginate(~Variable, scales = "free_y", nrow = nrow, ncol = ncol, page = .x) +
+            ggplot2::geom_text(
+                ggplot2::aes(label = scales::percent(prop, accuracy = 1)),
+                position = ggplot2::position_fill(vjust = 0.5),
+                color = "black",
+                fontface = "bold",
+                size = 3.5
+            ) +
             ggplot2::scale_fill_viridis_d(option = "mako", begin = 0.3, end = 0.8) +
             ggplot2::scale_x_continuous(labels = scales::percent) +
             ggplot2::theme_minimal(base_size = 11) +
             ggplot2::theme(
                 legend.position = "bottom",
-                strip.text = ggplot2::element_text(face = "bold", size = 11, color = "#2c3e50")
+                strip.text = ggplot2::element_text(face = "bold", size = 11, color = "#2c3e50"),
+                plot.title = ggplot2::element_text(face = "bold", color = "#2c3e50", margin = ggplot2::margin(b = 10)),
+                plot.margin = ggplot2::margin(r = 20, l = 30, t = 20, b = 10, unit = "pt")
             ) +
             ggplot2::labs(
                 title = paste("Categorical Distributions stratified by", target_var, "- Page", .x),
-                x = "Proportion",
+                x = NULL,
                 y = NULL
             )
     })
@@ -474,7 +471,7 @@ plot_single_qq <- function(df, feature, ci_level = 0.95) {
         x = feature,
         conf.int = TRUE, # Enable confidence interval shading
         conf.int.level = ci_level, # Apply the threshold (0.95 by default)
-        color = "#16a068", # Professional dark slate color for points
+        color = "#16a085", # Professional dark slate color for points
         ggtheme = ggplot2::theme_minimal()
     ) +
         # 3. Customize titles and labels dynamically
@@ -517,12 +514,16 @@ plot_global_qq_paginated <- function(df, nrow = 2, ncol = 3) {
             data = df_long,
             x = "Value",
             conf.int = TRUE,
-            color = "#16a068"
+            color = "#16a085"
         ) +
             ggforce::facet_wrap_paginate(~Variable, scales = "free", nrow = nrow, ncol = ncol, page = .x) +
             ggplot2::theme_minimal() +
+            ggplot2::theme(
+                plot.title = ggplot2::element_text(face = "bold", size = 14),
+                strip.text = ggplot2::element_text(face = "bold", size = 11, color = "#2c3e50")
+            ) +
             ggplot2::labs(
-                title = paste("Global Q-Q Plots - Page", .x),
+                title = paste("Q-Q Plots - Page", .x),
                 x = "Theoretical Quantiles", y = "Sample Quantiles"
             )
     })
