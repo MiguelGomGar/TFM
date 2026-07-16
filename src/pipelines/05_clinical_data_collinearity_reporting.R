@@ -5,7 +5,7 @@ suppressPackageStartupMessages({
     library(arrow)
     library(tidyverse)
 })
-source(here("src", "data_wrangling", "collinearity_analysis.R"))
+source(here("src", "utils", "data_wrangling", "collinearity_analysis.R"))
 
 # Set paths
 input_file <- here("data", "intermediate", "03clinical_data_engineered.parquet")

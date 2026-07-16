@@ -6,7 +6,7 @@ suppressPackageStartupMessages({
     library(tidyverse)
     library(tableone)
 })
-source(here("src", "data_wrangling", "distributions_analysis.R"))
+source(here("src", "utils", "data_wrangling", "distributions_analysis.R"))
 
 # Set paths
 input_file <- here("data", "clean", "06clinical_data_selected.parquet")
