@@ -27,27 +27,6 @@ main <- function() {
         "heart_failure"
     )
 
-    # Save subsets for risk scores
-    print("Saving subset data for HATCH score...")
-    clinical_data |>
-        select(code, hypertension, COPD, stroke, age, heart_failure) |>
-        write_parquet(here(output_dir, "hatch_data.parquet"))
-
-    print("Saving subset data for CHADS2 score...")
-    clinical_data |>
-        select(code, hypertension, diabetes, stroke, age, heart_failure) |>
-        write_parquet(here(output_dir, "chads2_data.parquet"))
-
-    print("Saving subset data for MB-LATER score...")
-    clinical_data |>
-        select(code, sex, bundle_branch_R, bundle_branch_L, AF_type, LA_enlargment, ERAF) |>
-        write_parquet(here(output_dir, "mb_later_data.parquet"))
-
-    print("Saving subset data for BASE-AF2 score...")
-    clinical_data |>
-        select(code, BMI, LA_enlargment, smoking_status, ERAF, AF_duration, AF_type) |>
-        write_parquet(here(output_dir, "base_af2_data.parquet"))
-
     # Save clean data set
     print(paste0(
         "Dropping features with missing rate > ",

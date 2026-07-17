@@ -1,6 +1,7 @@
 #%% Imports
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from scipy.stats import uniform, loguniform, randint
 
 from sklearn.metrics import (
@@ -102,8 +103,8 @@ def optimize_model_random_search(pipeline, param_distributions,
                     seed=42):
     """
     Optimizes a model using Randomized Search, trains it, and returns 
-    cross-validation metrics (mean and standard deviation) and test metrics to assess overfitting,
-    as well as the data for the Precision-Recall curve.
+    cross-validation metrics (mean and standard deviation) and test metrics to 
+    assess overfitting, as well as the data for the Precision-Recall curve.
 
     Parameters:
     ----------
@@ -116,8 +117,8 @@ def optimize_model_random_search(pipeline, param_distributions,
     - X_test, y_test : array-like
         Test data.
     - metrics_dict : dict
-        Dictionary of metric names and their corresponding scorer strings (e.g., {'Accuracy': 
-        'accuracy', ...})
+        Dictionary of metric names and their corresponding scorer strings (e.g., 
+        {'Accuracy': 'accuracy', ...})
     - aim : str, default="average_precision"
         Metric to optimize in the RandomizedSearchCV.
     - cv : int, default=5
@@ -130,7 +131,8 @@ def optimize_model_random_search(pipeline, param_distributions,
     Returns:
     -------
     - best_model : fitted estimator
-    - df_results_complete : pd.DataFrame (unified results across train, validation, and test)
+    - df_results_complete : pd.DataFrame (unified results across train, 
+    validation, and test)
     - fpr : array (false positive rates for the test ROC curve)
     - tpr : array (true positive rates for the test ROC curve)
     - precisions : array (precision values for the test PR curve)
@@ -139,7 +141,7 @@ def optimize_model_random_search(pipeline, param_distributions,
     """
     
     # ---------------------------------------------------------
-    # 1. HYPERPARAMETER OPTIMIZATION WITH RANDOMIZEDSEARCHCV
+    # 1. HYPERPARAMETER OPTIMIZATION WITH RANDOMIZED SEARCH CV
     # ---------------------------------------------------------
     print("Starting randomized hyperparameter optimization...")
     
@@ -162,18 +164,18 @@ def optimize_model_random_search(pipeline, param_distributions,
     best_model = random_search.best_estimator_
 
     # ---------------------------------------------------------
-    # 2. EVALUATION OF THE BEST MODEL ON TRAINING (REFACTORED)
+    # 2. INTERNAL CROSS-VALIDATION ON TRAINING SET
     # ---------------------------------------------------------
-    print("Evaluating on the training set...")
+    print("Performing internal cross-validation...")
         
     # Evaluate the best model using cross-validation on the training set
     cv_results = cross_validate(best_model, X_train, y_train, cv=cv, 
                                 scoring=metrics_dict, return_train_score=True)
     
     # ---------------------------------------------------------
-    # 3. FINAL EVALUATION ON TEST
+    # 3. EXTERNAL CROSS-VALIDATION ON TEST SET
     # ---------------------------------------------------------
-    print("Evaluating on the test set...")
+    print("Performing external cross-validation...")
     
     # Predict on the test set
     y_pred_test = best_model.predict(X_test)
@@ -190,8 +192,7 @@ def optimize_model_random_search(pipeline, param_distributions,
         'Accuracy': accuracy_score(y_test, y_pred_test),
         'Precision': precision_score(y_test, y_pred_test, zero_division=0),
         'Recall': recall_score(y_test, y_pred_test, zero_division=0),
-        'Specificity': recall_score(y_test, y_pred_test, pos_label=0, zero_division=0), 
-        'F1-Score': f1_score(y_test, y_pred_test, zero_division=0)
+        'Specificity': recall_score(y_test, y_pred_test, pos_label=0, zero_division=0) 
     }
 
     if y_score_test is not None:
@@ -226,3 +227,315 @@ def optimize_model_random_search(pipeline, param_distributions,
     df_results_complete = pd.DataFrame(cv_rows)
     
     return (best_model, df_results_complete, fpr, tpr, precisions, recalls)
+
+
+def plot_internal_validation(df_results_complete, metrics_list, figsize=(10, 6), title="Internal validation metrics"):
+    """
+    Plots a grouped bar chart comparing Train and Validation scores for the
+    selected metrics from the output of optimize_model_random_search.
+
+    Parameters:
+    ----------
+    - df_results_complete : pd.DataFrame
+        Long-format dataframe with at least the columns ['Metric', 'Dataset',
+        'Score'].
+    - metrics_list : list of str
+        Metrics to display on the x-axis.
+    - figsize : tuple, default=(10, 6)
+        Figure size used for the plot.
+    - title : str, default="Internal validation metrics"
+        Plot title.
+
+    Returns:
+    -------
+    - fig : matplotlib.figure.Figure
+        Created figure.
+    - ax : matplotlib.axes.Axes
+        Axes containing the plot.
+    - df_summary : pd.DataFrame
+        Aggregated dataframe with mean and standard deviation per metric and
+        dataset.
+    """
+
+    required_columns = {'Metric', 'Dataset', 'Score'}
+    missing_columns = required_columns.difference(df_results_complete.columns)
+    if missing_columns:
+        raise ValueError(
+            "df_results_complete must contain the columns: "
+            f"{sorted(required_columns)}"
+        )
+
+    if not metrics_list:
+        raise ValueError("metrics_list must contain at least one metric name")
+
+    selected_metrics = list(dict.fromkeys(metrics_list))
+    df_plot = df_results_complete[
+        df_results_complete['Dataset'].isin(['Train', 'Validation'])
+        & df_results_complete['Metric'].isin(selected_metrics)
+    ].copy()
+
+    if df_plot.empty:
+        raise ValueError("No Train/Validation rows were found for the selected metrics")
+
+    df_summary = (
+        df_plot.groupby(['Metric', 'Dataset'], as_index=False)['Score']
+        .agg(mean='mean', std='std')
+    )
+    df_summary['std'] = df_summary['std'].fillna(0.0)
+
+    mean_pivot = (
+        df_summary.pivot(index='Metric', columns='Dataset', values='mean')
+        .reindex(selected_metrics)
+    )
+    std_pivot = (
+        df_summary.pivot(index='Metric', columns='Dataset', values='std')
+        .reindex(selected_metrics)
+    )
+
+    train_means = mean_pivot.get('Train', pd.Series(index=selected_metrics, dtype=float)).reindex(selected_metrics)
+    validation_means = mean_pivot.get('Validation', pd.Series(index=selected_metrics, dtype=float)).reindex(selected_metrics)
+    train_stds = std_pivot.get('Train', pd.Series(index=selected_metrics, dtype=float)).fillna(0.0).reindex(selected_metrics)
+    validation_stds = std_pivot.get('Validation', pd.Series(index=selected_metrics, dtype=float)).fillna(0.0).reindex(selected_metrics)
+
+    x_positions = np.arange(len(selected_metrics))
+    bar_width = 0.35
+
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.bar(
+        x_positions - bar_width / 2,
+        train_means.to_numpy(),
+        bar_width,
+        yerr=train_stds.to_numpy(),
+        capsize=4,
+        label='Train',
+        color='#4C78A8',
+        alpha=0.9,
+    )
+    ax.bar(
+        x_positions + bar_width / 2,
+        validation_means.to_numpy(),
+        bar_width,
+        yerr=validation_stds.to_numpy(),
+        capsize=4,
+        label='Validation',
+        color='#F58518',
+        alpha=0.9,
+    )
+
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels(selected_metrics)
+    ax.set_ylabel('Score')
+    ax.set_title(title)
+    ax.legend()
+    ax.grid(axis='y', alpha=0.3)
+    fig.tight_layout()
+
+    return fig, ax, df_summary
+
+
+def plot_external_validation(df_results_complete, baseline, metric, figsize=(10, 6), title=None):
+    """
+    Plots a vertical bar chart for the selected external evaluation metric
+    across trained models.
+
+    Parameters:
+    ----------
+    - df_results_complete : pd.DataFrame
+        Long-format dataframe with at least the columns ['Model', 'Metric',
+        'Dataset', 'Score'].
+    - baseline : float
+        Reference value drawn as a horizontal dashed line.
+    - metric : str
+        Metric to display on the y-axis.
+    - figsize : tuple, default=(10, 6)
+        Figure size used for the plot.
+    - title : str, optional
+        Plot title. If None, a default title is generated from metric.
+
+    Returns:
+    -------
+    - fig : matplotlib.figure.Figure
+        Created figure.
+    - ax : matplotlib.axes.Axes
+        Axes containing the plot.
+    - df_plot : pd.DataFrame
+        Aggregated dataframe used for plotting.
+    """
+
+    required_columns = {'Model', 'Metric', 'Dataset', 'Score'}
+    missing_columns = required_columns.difference(df_results_complete.columns)
+    if missing_columns:
+        raise ValueError(
+            "df_results_complete must contain the columns: "
+            f"{sorted(required_columns)}"
+        )
+
+    if metric is None or str(metric).strip() == '':
+        raise ValueError("metric must be a non-empty string")
+
+    df_plot = df_results_complete[
+        df_results_complete['Dataset'].eq('Test')
+        & df_results_complete['Metric'].eq(metric)
+    ].copy()
+
+    if df_plot.empty:
+        raise ValueError(f"No Test rows were found for metric '{metric}'")
+
+    df_plot = (
+        df_plot.groupby('Model', as_index=False)['Score']
+        .mean()
+        .sort_values('Score', ascending=False)
+    )
+
+    plot_title = title if title is not None else f"External validation for {metric}"
+
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.bar(
+        df_plot['Model'],
+        df_plot['Score'],
+        color='#4C78A8',
+        alpha=0.9,
+    )
+    ax.axhline(baseline, linestyle='--', color='#D62728', linewidth=2, label=f'Baseline = {baseline:.3f}')
+
+    ax.set_xlabel('Model')
+    ax.set_ylabel(metric)
+    ax.set_title(plot_title)
+    ax.legend()
+    ax.grid(axis='y', alpha=0.3)
+    fig.tight_layout()
+
+    return fig, ax, df_plot
+
+
+def plot_roc_curves(df_curve, metric=None, figsize=(8, 6), title=None):
+    """
+    Plots ROC curves for all models contained in a long-format curve dataframe.
+
+    Parameters:
+    ----------
+    - df_curve : pd.DataFrame
+        DataFrame with at least the columns ['False Positive Rate', 'True
+        Positive Rate', 'Model'].
+    - metric : str, optional
+        Label used in the plot title and legend context.
+    - figsize : tuple, default=(8, 6)
+        Figure size used for the plot.
+    - title : str, optional
+        Plot title. If None, a default title is generated.
+
+    Returns:
+    -------
+    - fig : matplotlib.figure.Figure
+        Created figure.
+    - ax : matplotlib.axes.Axes
+        Axes containing the plot.
+    """
+
+    required_columns = {'False Positive Rate', 'True Positive Rate', 'Model'}
+    missing_columns = required_columns.difference(df_curve.columns)
+    if missing_columns:
+        raise ValueError(
+            "df_curve must contain the columns: "
+            f"{sorted(required_columns)}"
+        )
+
+    if metric is not None and str(metric).strip() == '':
+        raise ValueError("metric must be a non-empty string when provided")
+
+    plot_title = title if title is not None else (
+        f"ROC curves" if metric is None else f"ROC curves for {metric}"
+    )
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    for model_name, df_model in df_curve.groupby('Model', sort=False):
+        df_model = df_model.sort_values('False Positive Rate')
+        ax.plot(
+            df_model['False Positive Rate'],
+            df_model['True Positive Rate'],
+            linewidth=2,
+            label=model_name,
+        )
+
+    ax.plot([0, 1], [0, 1], linestyle='--', color='grey', linewidth=1.5, label='Random')
+    ax.set_xlabel('False Positive Rate')
+    ax.set_ylabel('True Positive Rate')
+    ax.set_title(plot_title)
+    ax.legend(loc='lower right')
+    ax.grid(alpha=0.3)
+    fig.tight_layout()
+
+    return fig, ax
+
+
+def plot_pr_curves(df_curve, metric=None, baseline=None, figsize=(8, 6), title=None):
+    """
+    Plots Precision-Recall curves for all models contained in a long-format
+    curve dataframe.
+
+    Parameters:
+    ----------
+    - df_curve : pd.DataFrame
+        DataFrame with at least the columns ['Recall', 'Precision', 'Model'].
+    - metric : str, optional
+        Label used in the plot title and legend context.
+    - baseline : float, optional
+        Reference prevalence line drawn across the plot. If None, no baseline
+        is drawn.
+    - figsize : tuple, default=(8, 6)
+        Figure size used for the plot.
+    - title : str, optional
+        Plot title. If None, a default title is generated.
+
+    Returns:
+    -------
+    - fig : matplotlib.figure.Figure
+        Created figure.
+    - ax : matplotlib.axes.Axes
+        Axes containing the plot.
+    """
+
+    required_columns = {'Recall', 'Precision', 'Model'}
+    missing_columns = required_columns.difference(df_curve.columns)
+    if missing_columns:
+        raise ValueError(
+            "df_curve must contain the columns: "
+            f"{sorted(required_columns)}"
+        )
+
+    if metric is not None and str(metric).strip() == '':
+        raise ValueError("metric must be a non-empty string when provided")
+
+    plot_title = title if title is not None else (
+        f"Precision-Recall curves" if metric is None else f"Precision-Recall curves for {metric}"
+    )
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    for model_name, df_model in df_curve.groupby('Model', sort=False):
+        df_model = df_model.sort_values('Recall')
+        ax.plot(
+            df_model['Recall'],
+            df_model['Precision'],
+            linewidth=2,
+            label=model_name,
+        )
+
+    if baseline is not None:
+        ax.axhline(
+            baseline,
+            linestyle='--',
+            color='grey',
+            linewidth=1.5,
+            label=f'Baseline = {baseline:.3f}',
+        )
+
+    ax.set_xlabel('Recall')
+    ax.set_ylabel('Precision')
+    ax.set_title(plot_title)
+    ax.legend(loc='lower left')
+    ax.grid(alpha=0.3)
+    fig.tight_layout()
+
+    return fig, ax

@@ -65,7 +65,6 @@ def get_full_preprocessor(X: pd.DataFrame, seed: int) -> ColumnTransformer:
     
     return preprocessor
 
-
 def get_trees_preprocessor(X: pd.DataFrame, seed: int) -> ColumnTransformer:
     """
     Creates a scikit-learn ColumnTransformer tailored for tree-based bagging 
