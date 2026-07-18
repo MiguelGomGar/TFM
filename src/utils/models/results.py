@@ -75,6 +75,44 @@ def get_relevant_features(regularized_model_pipeline):
     
     return relevant_cols, irrelevant_cols
 
+def save_feature_selection_results(relevant_cols, irrelevant_cols, output_dir, identifier=None):
+    """
+    Saves the relevant and irrelevant feature lists derived from the Elastic Net
+    regularization step as a joblib artifact.
+
+    Parameters:
+    ----------
+    - relevant_cols : list
+        List of feature names with non-zero coefficients.
+    - irrelevant_cols : list
+        List of feature names with zero coefficients.
+    - output_dir : str or pathlib.Path
+        Directory where the feature selection artifact will be stored.
+    - identifier : str, optional
+        Optional identifier used to build the filename.
+
+    Returns:
+    -------
+    - pathlib.Path
+        Path to the saved joblib file.
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    payload = {
+        "relevant_features": relevant_cols,
+        "irrelevant_features": irrelevant_cols,
+    }
+
+    if identifier is not None:
+        file_path = output_dir / f"feature_selection_{identifier}.joblib"
+    else:
+        file_path = output_dir / "feature_selection.joblib"
+
+    joblib.dump(payload, file_path)
+    return file_path
+
+
 def save_model(fitted_pipeline, output_dir, identifier=None):
     """
     Saves the entire fitted pipeline as a binary file (.joblib), displays its 

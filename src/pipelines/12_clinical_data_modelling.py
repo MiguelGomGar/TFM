@@ -23,23 +23,24 @@ if str(PROJECT_PATH) not in sys.path:
     sys.path.append(str(PROJECT_PATH))
 
 from src.utils.models import (
+    clinical_hyperparameters_search_space,
     get_full_preprocessor,
     get_relevant_features,
     get_trees_preprocessor,
-    hyperparameters_search_space,
     optimize_model_random_search,
     plot_external_validation,
     plot_internal_validation,
     plot_pr_curves,
     plot_roc_curves,
     save_curves_results,
+    save_feature_selection_results,
     save_metrics_results,
     save_model,
 )
 
 data_path = PROJECT_PATH / "data" / "clean" / "06clinical_data_selected.parquet"
 
-enable_filter = True  # Set to True to enable feature filtering based on Elastic Net results
+enable_filter = False  # Set to True to enable feature filtering based on Elastic Net results
 
 if enable_filter:
     results_path = PROJECT_PATH / "results" / "models" / "clinical_data_filtered"
@@ -108,7 +109,7 @@ def main() -> None:
         ("preprocessor", preprocessor_EN),
         ("clf", LogisticRegression(random_state=seed, solver="saga", max_iter=10000)),
     ])
-    params_EN = hyperparameters_search_space["EN"]
+    params_EN = clinical_hyperparameters_search_space["EN"]
     print("Optimizing model: Elastic Net")
     (
         optimized_EN,
@@ -139,6 +140,13 @@ def main() -> None:
 
     relevant_cols, irrelevant_cols = get_relevant_features(optimized_EN)
     print("Features' coefficients forced out: ", irrelevant_cols)
+    feature_selection_path = save_feature_selection_results(
+        relevant_cols=relevant_cols,
+        irrelevant_cols=irrelevant_cols,
+        output_dir=results_path,
+        identifier="EN",
+    )
+    print(f"Saved Elastic Net feature selection lists to: {feature_selection_path}")
 
     if enable_filter:
         X_train_filtered = X_train.drop(columns=irrelevant_cols)
@@ -152,7 +160,7 @@ def main() -> None:
         ("preprocessor", preprocessor_SVM),
         ("clf", SVC(random_state=seed, max_iter=-1)),
     ])
-    params_dist_SVM = hyperparameters_search_space["SVM"]
+    params_dist_SVM = clinical_hyperparameters_search_space["SVM"]
     print("Optimizing model: SVM")
     (
         optimized_SVM,
@@ -185,7 +193,7 @@ def main() -> None:
         ("preprocessor", preprocessor_DT),
         ("clf", DecisionTreeClassifier(random_state=seed)),
     ])
-    params_dist_DT = hyperparameters_search_space["DT"]
+    params_dist_DT = clinical_hyperparameters_search_space["DT"]
     print("Optimizing model: Decision Tree")
     (
         optimized_DT,
@@ -218,7 +226,7 @@ def main() -> None:
         ("preprocessor", preprocessor_RF),
         ("clf", RandomForestClassifier(random_state=seed)),
     ])
-    params_dist_RF = hyperparameters_search_space["RF"]
+    params_dist_RF = clinical_hyperparameters_search_space["RF"]
     print("Optimizing model: Random Forest")
     (
         optimized_RF,
@@ -251,12 +259,7 @@ def main() -> None:
         ("preprocessor", preprocessor_ET),
         ("clf", ExtraTreesClassifier(random_state=seed)),
     ])
-    # ExtraTrees uses bootstrap=False by default; max_samples is only valid with bootstrap=True.
-    params_dist_ET = {
-        key: value
-        for key, value in hyperparameters_search_space["RF"].items()
-        if key != "clf__max_samples"
-    }
+    params_dist_ET = clinical_hyperparameters_search_space["ET"]
     print("Optimizing model: Extra Trees")
     (
         optimized_ET,
@@ -289,7 +292,7 @@ def main() -> None:
         ("preprocessor", preprocessor_AB),
         ("clf", AdaBoostClassifier(random_state=seed, estimator=DecisionTreeClassifier(random_state=seed))),
     ])
-    params_dist_AB = hyperparameters_search_space["AB"]
+    params_dist_AB = clinical_hyperparameters_search_space["AB"]
     print("Optimizing model: AdaBoost")
     (
         optimized_AB,
@@ -322,7 +325,7 @@ def main() -> None:
         ("preprocessor", preprocessor_GB),
         ("clf", GradientBoostingClassifier(random_state=seed)),
     ])
-    params_dist_GB = hyperparameters_search_space["GB"]
+    params_dist_GB = clinical_hyperparameters_search_space["GB"]
     print("Optimizing model: Gradient Boosting")
     (
         optimized_GB,
@@ -355,7 +358,7 @@ def main() -> None:
         ("preprocessor", preprocessor_MLP),
         ("clf", MLPClassifier(random_state=seed, max_iter=1000, early_stopping=True, validation_fraction=0.1)),
     ])
-    params_dist_MLP = hyperparameters_search_space["MLP"]
+    params_dist_MLP = clinical_hyperparameters_search_space["MLP"]
     print("Optimizing model: MLP")
     (
         optimized_MLP,
