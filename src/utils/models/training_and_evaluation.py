@@ -143,9 +143,7 @@ def optimize_model_random_search(pipeline, param_distributions,
     
     # ---------------------------------------------------------
     # 1. HYPERPARAMETER OPTIMIZATION WITH RANDOMIZED SEARCH CV
-    # ---------------------------------------------------------
-    print("Starting randomized hyperparameter optimization...")
-    
+    # ---------------------------------------------------------    
     # Set up the search 
     random_search = RandomizedSearchCV(
         estimator=pipeline,
@@ -167,7 +165,7 @@ def optimize_model_random_search(pipeline, param_distributions,
     # ---------------------------------------------------------
     # 2. INTERNAL CROSS-VALIDATION ON TRAINING SET
     # ---------------------------------------------------------
-    print("Performing internal cross-validation...")
+    print("Performing internal and external cross-validation...")
         
     # Evaluate the best model using cross-validation on the training set
     cv_results = cross_validate(best_model, X_train, y_train, cv=cv, 
@@ -175,9 +173,7 @@ def optimize_model_random_search(pipeline, param_distributions,
     
     # ---------------------------------------------------------
     # 3. EXTERNAL CROSS-VALIDATION ON TEST SET
-    # ---------------------------------------------------------
-    print("Performing external cross-validation...")
-    
+    # ---------------------------------------------------------    
     # Predict on the test set
     y_pred_test = best_model.predict(X_test)
 
