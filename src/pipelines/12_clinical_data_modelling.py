@@ -39,7 +39,7 @@ from src.utils.models import (
 
 data_path = PROJECT_PATH / "data" / "clean" / "06clinical_data_selected.parquet"
 
-enable_filter = True
+enable_filter = True  # Set to True to enable feature filtering based on Elastic Net results
 
 if enable_filter:
     results_path = PROJECT_PATH / "results" / "models" / "clinical_data_filtered"
@@ -251,7 +251,12 @@ def main() -> None:
         ("preprocessor", preprocessor_ET),
         ("clf", ExtraTreesClassifier(random_state=seed)),
     ])
-    params_dist_ET = hyperparameters_search_space["RF"]
+    # ExtraTrees uses bootstrap=False by default; max_samples is only valid with bootstrap=True.
+    params_dist_ET = {
+        key: value
+        for key, value in hyperparameters_search_space["RF"].items()
+        if key != "clf__max_samples"
+    }
     print("Optimizing model: Extra Trees")
     (
         optimized_ET,

@@ -21,74 +21,80 @@ from sklearn.model_selection import cross_validate, RandomizedSearchCV
 hyperparameters_search_space = {
     # Elastic Net Logistic Regression
     'EN': {
-    'clf__l1_ratio': uniform(0, 1),
-    'clf__C': loguniform(1e-4, 1e3)
+    # Avoid very weak regularization values (large C)
+    'clf__l1_ratio': uniform(0.1, 0.9),
+    'clf__C': loguniform(1e-3, 1e1)
     },
     
     # Support Vector Machine
     'SVM': {
-    'clf__C': loguniform(1e-5, 1e3),
-    'clf__kernel': ['linear', 'rbf', 'poly', 'sigmoid'],
-    'clf__gamma': ['scale', 'auto'] + list(np.logspace(-4, 1, 50)),
-    'clf__degree': randint(2, 4),
+    # Focus on kernels with better bias-variance trade-off for tabular data
+    'clf__C': loguniform(1e-3, 1e2),
+    'clf__kernel': ['linear', 'rbf'],
+    'clf__gamma': ['scale', 'auto'] + list(np.logspace(-5, -1, 25)),
     'clf__class_weight': [None, 'balanced']
     },
     
     # Decision Tree
     'DT': {
-    'clf__max_depth': randint(2, 33),
-    'clf__min_samples_split': randint(2, 21),
-    'clf__min_samples_leaf': randint(1, 21),
+    'clf__max_depth': randint(2, 13),
+    'clf__min_samples_split': randint(8, 41),
+    'clf__min_samples_leaf': randint(4, 21),
     'clf__criterion': ['gini', 'entropy'],
+    'clf__ccp_alpha': loguniform(1e-6, 1e-2),
     },
     
     # Random Forest
     'RF': {
     # Decision trees hyperparameters
-    'clf__max_depth': [None] + list(range(2, 21)),
-    'clf__min_samples_split': randint(2, 21),
-    'clf__min_samples_leaf': randint(1, 21),
+    'clf__max_depth': [None] + list(range(3, 13)),
+    'clf__min_samples_split': randint(8, 31),
+    'clf__min_samples_leaf': randint(3, 16),
     'clf__criterion': ['gini', 'entropy'],
+    'clf__ccp_alpha': loguniform(1e-7, 1e-3),
     
     # Ensemble bagging hyperparameters
-    'clf__n_estimators': randint(50, 501),
-    'clf__max_features': ['sqrt', 'log2', None] + list(np.arange(0.2, 0.9, 0.1)),
-    'clf__class_weight': [None, 'balanced', 'balanced_subsample']
+    'clf__n_estimators': randint(100, 401),
+    'clf__max_features': ['sqrt', 'log2'] + list(np.arange(0.2, 0.7, 0.1)),
+    'clf__class_weight': [None, 'balanced', 'balanced_subsample'],
+    'clf__max_samples': list(np.arange(0.6, 1.0, 0.1))
     },
     
     # Adaptive Boosting
     'AB': {
     # Decision trees hyperparameters
-    'clf__estimator__max_depth': randint(1, 4), 
+    'clf__estimator__max_depth': randint(1, 3), 
     'clf__estimator__max_features': ['sqrt', 'log2', None],
-    'clf__estimator__min_samples_split': randint(2, 21),
+    'clf__estimator__min_samples_split': randint(10, 41),
+    'clf__estimator__min_samples_leaf': randint(4, 16),
     'clf__estimator__criterion': ['gini', 'entropy'],
+    'clf__estimator__ccp_alpha': loguniform(1e-7, 1e-3),
     
     # Ensemble boosting hyperparameters
-    'clf__n_estimators': randint(50, 501),
-    'clf__learning_rate': loguniform(0.001, 1.0) 
+    'clf__n_estimators': randint(50, 301),
+    'clf__learning_rate': loguniform(0.01, 0.3)
     },
     
     # Gradient Boosting
     'GB': {
     # Decision trees hyperparameters
-    'clf__max_depth': randint(2, 6),
-    'clf__max_features': ['sqrt', 'log2', None] + list(np.arange(0.2, 0.9, 0.1)),
-    'clf__min_samples_split': randint(2, 21),
-    'clf__min_samples_leaf': randint(1, 21),
+    'clf__max_depth': randint(2, 4),
+    'clf__max_features': ['sqrt', 'log2'] + list(np.arange(0.2, 0.7, 0.1)),
+    'clf__min_samples_split': randint(8, 31),
+    'clf__min_samples_leaf': randint(3, 16),
     
     # Ensemble boosting hyperparameters
-    'clf__n_estimators': randint(50, 501),
-    'clf__learning_rate': loguniform(0.001, 1),
-    'clf__subsample': uniform(0.5, 0.5)
+    'clf__n_estimators': randint(80, 351),
+    'clf__learning_rate': loguniform(0.01, 0.2),
+    'clf__subsample': uniform(0.6, 0.3)
     },
     
     # Multilayer Perceptron
     'MLP': {
-    'clf__hidden_layer_sizes': [(50,), (100,), (100, 50), (100, 100), (200, 100)],
-    'clf__alpha': loguniform(1e-5, 1e-1),
-    'clf__learning_rate_init': loguniform(0.001, 0.01),
-    'clf__batch_size': np.logspace(start = 0, stop = 6, base = 2, num = 7).astype(int).tolist(),
+    'clf__hidden_layer_sizes': [(32,), (64,), (64, 32), (128, 64)],
+    'clf__alpha': loguniform(1e-4, 1e0),
+    'clf__learning_rate_init': loguniform(1e-4, 5e-3),
+    'clf__batch_size': [16, 32, 64, 128],
     'clf__activation': ['relu', 'tanh', 'logistic'],
     'clf__solver': ['adam', 'sgd']
     }
