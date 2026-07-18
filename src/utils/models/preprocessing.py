@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, OrdinalEncoder
 
@@ -50,7 +51,12 @@ def get_full_preprocessor(X: pd.DataFrame, seed: int) -> ColumnTransformer:
         extracted_order = list(X[col].dtype.categories)
         
         categorical_pipeline = Pipeline(steps=[
-            ('encoder', OrdinalEncoder(categories=[extracted_order])),
+            ('imputer', SimpleImputer(strategy='most_frequent')),
+            ('encoder', OrdinalEncoder(
+                categories=[extracted_order],
+                handle_unknown='use_encoded_value',
+                unknown_value=-1
+            )),
             ('scaler', StandardScaler())
         ])
         
@@ -97,7 +103,12 @@ def get_trees_preprocessor(X: pd.DataFrame, seed: int) -> ColumnTransformer:
         extracted_order = list(X[col].dtype.categories)
         
         categorical_pipeline = Pipeline(steps=[
-            ('encoder', OrdinalEncoder(categories=[extracted_order]))
+            ('imputer', SimpleImputer(strategy='most_frequent')),
+            ('encoder', OrdinalEncoder(
+                categories=[extracted_order],
+                handle_unknown='use_encoded_value',
+                unknown_value=-1
+            ))
         ])
         
         # Append as a clean, localized and independent processing lane

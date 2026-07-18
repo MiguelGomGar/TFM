@@ -12,7 +12,8 @@ from sklearn.metrics import (
     roc_auc_score,
     roc_curve,
     precision_recall_curve,
-    average_precision_score
+    average_precision_score,
+    auc
     )
 from sklearn.model_selection import cross_validate, RandomizedSearchCV
 
@@ -229,7 +230,7 @@ def optimize_model_random_search(pipeline, param_distributions,
     return (best_model, df_results_complete, fpr, tpr, precisions, recalls)
 
 
-def plot_internal_validation(df_results_complete, metrics_list, figsize=(10, 6), title="Internal validation metrics"):
+def plot_internal_validation(df_results_complete, metrics_list, figsize=(10, 6), title="Overfitting analysis"):
     """
     Plots a grouped bar chart comparing Train and Validation scores for the
     selected metrics from the output of optimize_model_random_search.
@@ -328,6 +329,7 @@ def plot_internal_validation(df_results_complete, metrics_list, figsize=(10, 6),
     ax.set_title(title)
     ax.legend()
     ax.grid(axis='y', alpha=0.3)
+    ax.set_ylim(0, 1)
     fig.tight_layout()
 
     return fig, ax, df_summary
@@ -387,22 +389,26 @@ def plot_external_validation(df_results_complete, baseline, metric, figsize=(10,
         .sort_values('Score', ascending=False)
     )
 
-    plot_title = title if title is not None else f"External validation for {metric}"
+    plot_title = title if title is not None else "External Validation"
 
     fig, ax = plt.subplots(figsize=figsize)
-    ax.bar(
-        df_plot['Model'],
+    y_positions = np.arange(len(df_plot))
+    ax.barh(
+        y_positions,
         df_plot['Score'],
         color='#4C78A8',
         alpha=0.9,
     )
-    ax.axhline(baseline, linestyle='--', color='#D62728', linewidth=2, label=f'Baseline = {baseline:.3f}')
+    ax.axvline(baseline, linestyle='--', color='#D62728', linewidth=2, label=f'Baseline = {baseline:.3f}')
 
-    ax.set_xlabel('Model')
-    ax.set_ylabel(metric)
+    ax.set_yticks(y_positions)
+    ax.set_yticklabels(df_plot['Model'])
+    ax.invert_yaxis()
+    ax.set_xlabel(metric)
     ax.set_title(plot_title)
     ax.legend()
-    ax.grid(axis='y', alpha=0.3)
+    ax.grid(axis='x', alpha=0.3)
+    ax.set_xlim(0, 1)
     fig.tight_layout()
 
     return fig, ax, df_plot
@@ -450,12 +456,13 @@ def plot_roc_curves(df_curve, metric=None, figsize=(8, 6), title=None):
     fig, ax = plt.subplots(figsize=figsize)
 
     for model_name, df_model in df_curve.groupby('Model', sort=False):
-        df_model = df_model.sort_values('False Positive Rate')
+        df_model = df_model.sort_values('False Positive Rate').copy()
+        auc_value = auc(df_model['False Positive Rate'], df_model['True Positive Rate'])
         ax.plot(
             df_model['False Positive Rate'],
             df_model['True Positive Rate'],
             linewidth=2,
-            label=model_name,
+            label=f'{model_name} (AUC = {auc_value:.3f})',
         )
 
     ax.plot([0, 1], [0, 1], linestyle='--', color='grey', linewidth=1.5, label='Random')
@@ -464,6 +471,8 @@ def plot_roc_curves(df_curve, metric=None, figsize=(8, 6), title=None):
     ax.set_title(plot_title)
     ax.legend(loc='lower right')
     ax.grid(alpha=0.3)
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
     fig.tight_layout()
 
     return fig, ax
@@ -514,12 +523,13 @@ def plot_pr_curves(df_curve, metric=None, baseline=None, figsize=(8, 6), title=N
     fig, ax = plt.subplots(figsize=figsize)
 
     for model_name, df_model in df_curve.groupby('Model', sort=False):
-        df_model = df_model.sort_values('Recall')
+        df_model = df_model.sort_values('Recall').copy()
+        auc_value = auc(df_model['Recall'], df_model['Precision'])
         ax.plot(
             df_model['Recall'],
             df_model['Precision'],
             linewidth=2,
-            label=model_name,
+            label=f'{model_name} (AUC = {auc_value:.3f})',
         )
 
     if baseline is not None:
@@ -536,6 +546,8 @@ def plot_pr_curves(df_curve, metric=None, baseline=None, figsize=(8, 6), title=N
     ax.set_title(plot_title)
     ax.legend(loc='lower left')
     ax.grid(alpha=0.3)
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
     fig.tight_layout()
 
     return fig, ax

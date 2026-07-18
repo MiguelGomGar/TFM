@@ -75,9 +75,7 @@ def get_relevant_features(regularized_model_pipeline):
     
     return relevant_cols, irrelevant_cols
 
-def save_model(fitted_pipeline, 
-            output_dir=None, 
-            identifier=None):
+def save_model(fitted_pipeline, output_dir, identifier=None):
     """
     Saves the entire fitted pipeline as a binary file (.joblib), displays its 
     hyperparameters as a formatted pandas DataFrame (excluding default/None 
@@ -87,7 +85,7 @@ def save_model(fitted_pipeline,
     ----------
     - fitted_pipeline : sklearn.pipeline.Pipeline
         The fully trained pipeline object to be serialized and saved.
-    - output_dir : str or pathlib.Path, optional
+    - output_dir : str or pathlib.Path
         The directory path where the binary file will be stored.
     - identifier : str, optional
         An optional string to uniquely identify the saved model file (e.g., 
@@ -95,51 +93,27 @@ def save_model(fitted_pipeline,
 
     Returns:
     -------
-    - df_display : pandas.DataFrame
-        A DataFrame containing only the explicit optimal hyperparameters for 
-        notebook visualization.
+    - None
     """
     #===========================================================================
     # 1. Save the entire fitted pipeline
     #===========================================================================
     
-    if output_dir is not None:
-        # Extract the classifier class name dynamically for a precise filename
-        model_class_name = type(fitted_pipeline['clf']).__name__
-    
-        # Save the model object
-        if identifier is not None:
-            file_path = output_dir / f"optimized_{identifier}.joblib"
-        else:
-            file_path = output_dir / f"optimized_{model_class_name}.joblib"
-    
-        # Save the model object (contains preprocessing states, weights, and 
-        # params)
-        joblib.dump(fitted_pipeline, file_path)
-    
-    #===========================================================================
-    # 2. Extract and display only the explicitly set optimal hyperparameters
-    #===========================================================================
-    # Extract hyperparameters from the specific estimator step ('clf')
-    fitted_model_params = fitted_pipeline['clf'].get_params()
-    
-    # Convert parameters to a DataFrame for clean notebook rendering
-    df_display = pd.DataFrame(
-        list(fitted_model_params.items()), 
-        columns=["Hyperparameter", "Optimal Value"]
-    )
-    
-    # Filter out parameters that are None
-    df_display = df_display.dropna(subset=["Optimal Value"])
-    
-    # Reset the index to make it sequential after removing rows
-    df_display = df_display.reset_index(drop=True)
-    df_display.index = df_display.index + 1
+    # Extract the classifier class name dynamically for a precise filename
+    model_class_name = type(fitted_pipeline['clf']).__name__
 
-    return df_display
+    # Save the model object
+    if identifier is not None:
+        file_path = output_dir / f"optimized_{identifier}.joblib"
+    else:
+        file_path = output_dir / f"optimized_{model_class_name}.joblib"
 
-def save_metrics_results(models_dict, 
-                        output_dir=None):
+    # Save the model object (contains preprocessing states, weights, and 
+    # params)
+    joblib.dump(fitted_pipeline, file_path)
+        
+
+def save_metrics_results(models_dict, output_dir=None):
     """
     Unifies multiple long-format model result DataFrames into a single master 
     DataFrame, adds a 'Model' column, removes the 'Fold' column, and saves it as 
