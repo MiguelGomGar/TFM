@@ -1,20 +1,26 @@
-from pathlib import Path
-import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-import seaborn as sns
+# %% Setup
+print("Setting up paths and loading modules...")
 
-# Paths
+# Set paths
+from pathlib import Path
+
 PROJECT_ROOT = Path(__file__).resolve().parent
 INPUT_FILE = PROJECT_ROOT / "data" / "raw" / "clinical_variables_review.xlsx"
 OUTPUT_FILE = (
     PROJECT_ROOT / "results" / "data_collection" / "clinical_variables_review_plot.png"
 )
 
+# Load modules
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import seaborn as sns
 
+
+# %% Main
 def main():
     print(f"Loading data from {INPUT_FILE}...")
-    # Read the same A1:C27 range (assumes header in first row)
+    # Assumes header in first row
     df = pd.read_excel(INPUT_FILE, usecols="A:C", nrows=27)
     df.columns = df.columns.str.strip()  # clean column names
 
@@ -56,7 +62,6 @@ def main():
     print("Generating the plot...")
     sns.set_style("whitegrid")
     fig, ax = plt.subplots(figsize=(9, 7), dpi=300)
-
     y_positions = range(len(df))
     ax.barh(
         y=y_positions,
@@ -67,14 +72,10 @@ def main():
         linewidth=0.4,
         alpha=0.85,
     )
-
-    # Set y ticks and labels
     ax.set_yticks(y_positions)
     ax.set_yticklabels(
         df["Variable"].astype(str), fontweight="bold", color="#334155", fontsize=9.5
     )
-
-    # X axis integer ticks
     max_score = int(df["Scores"].max()) if not df["Scores"].isnull().all() else 0
     ax.set_xticks(range(0, max_score + 1))
     ax.set_xlabel(
@@ -86,18 +87,11 @@ def main():
     ax.set_xlim(
         0, max_score + max(1, int(max_score * 0.08))
     )  # leave room for text labels
-
-    # Title and subtitle
-    # Increase top padding so title/legend don't overlap the bars
     ax.set_title("Risk Score Factors Review", fontweight="bold", fontsize=14, pad=20)
-
-    # Style adjustments
     ax.xaxis.set_tick_params(labelcolor="#475569")
     ax.grid(axis="x", color="#e2e8f0", linewidth=0.5)
     ax.grid(axis="y", visible=False)
     ax.set_axisbelow(True)
-
-    # Legend (preserve order from predimar_original_levels)
     patches = [
         mpatches.Patch(color=color_map[k], label=k.capitalize())
         for k in predimar_original_levels
@@ -109,12 +103,9 @@ def main():
         ncol=1,
         frameon=False,
     )
-    # Legend title styling is limited in matplotlib; set via prop
     plt.setp(
         ax.get_legend().get_title(), fontsize=9.5, fontweight="bold", color="#1e293b"
     )
-
-    # Remove spines similar to theme_minimal
     for spine in ["top", "right", "left", "bottom"]:
         ax.spines[spine].set_visible(False)
 
@@ -122,8 +113,6 @@ def main():
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
 
     print(f"Saving the plot to {OUTPUT_FILE}...")
-    # Make room at the top so title and legend do not overlap the plot
-    fig.subplots_adjust(top=0.78)
     plt.tight_layout()
     fig.savefig(OUTPUT_FILE, dpi=300)
     plt.close(fig)
