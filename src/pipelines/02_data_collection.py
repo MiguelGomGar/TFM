@@ -2,11 +2,10 @@
 print("Setting up paths and loading modules...")
 
 # Set paths
-from pathlib import Path
+from src.utils.paths import INTERMEDIATE_DATA_DIR, RAW_DATA_DIR
 
-PROJECT_ROOT = Path(__file__).resolve().parent
-INPUT_FILE = PROJECT_ROOT / "data" / "raw" / "predimar_miguelgomez.dta"
-OUTPUT_FILE = PROJECT_ROOT / "data" / "intermediate" / "clinical_data.parquet"
+INPUT_FILE = RAW_DATA_DIR / "predimar_miguelgomez.dta"
+OUTPUT_FILE = INTERMEDIATE_DATA_DIR / "clinical_data.parquet"
 
 # Load modules
 import pandas as pd

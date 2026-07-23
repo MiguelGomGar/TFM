@@ -1,20 +1,12 @@
-# %% Setup
-print("Setting up paths and loading modules...")
-
-# Set paths
-from pathlib import Path
-
-PROJECT_ROOT = Path(__file__).resolve().parent
-INPUT_FILE = PROJECT_ROOT / "data" / "raw" / "clinical_variables_review.xlsx"
-OUTPUT_FILE = (
-    PROJECT_ROOT / "results" / "data_collection" / "clinical_variables_review_plot.png"
-)
-
-# Load modules
+# %% Configuration
+from src.utils.paths import RAW_DATA_DIR, DATA_COLLECTION_DIR
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import seaborn as sns
+
+INPUT_FILE = RAW_DATA_DIR / "clinical_variables_review.xlsx"
+OUTPUT_FILE = DATA_COLLECTION_DIR / "clinical_variables_review_plot.png"
 
 
 # %% Main
@@ -22,7 +14,6 @@ def main():
     print(f"Loading data from {INPUT_FILE}...")
     # Assumes header in first row
     df = pd.read_excel(INPUT_FILE, usecols="A:C", nrows=27)
-    df.columns = df.columns.str.strip()  # clean column names
 
     # Ensure expected columns exist
     expected = {"Variable", "Predimar", "Scores"}

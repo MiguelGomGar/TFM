@@ -1,10 +1,8 @@
 # %% Configuration
 print("Loading libraries and setting configurations...")
-from pathlib import Path
 import sys
 import matplotlib.pyplot as plt
 import pandas as pd
-from pandas.api.types import CategoricalDtype
 from sklearn.ensemble import (
     AdaBoostClassifier,
     ExtraTreesClassifier,
@@ -18,12 +16,14 @@ from sklearn.pipeline import Pipeline
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
-PROJECT_PATH = Path(__file__).resolve().parents[2]
+from src.utils.paths import CLEAN_DATA_DIR, PROJECT_ROOT, PROTEOMIC_MODELS_DIR
+
+PROJECT_PATH = PROJECT_ROOT
 if str(PROJECT_PATH) not in sys.path:
     sys.path.append(str(PROJECT_PATH))
 
-from src.utils.models import (
-    clinical_hyperparameters_search_space,
+from src.models import (
+    proteomic_hyperparameters_search_space,
     get_full_preprocessor,
     get_relevant_features,
     get_trees_preprocessor,
@@ -38,37 +38,38 @@ from src.utils.models import (
     save_model,
 )
 
-INPUT_FILE = PROJECT_PATH / "data" / "clean" / "clinical_data.parquet"
+data_path = CLEAN_DATA_DIR / "proteomic_data.parquet"
 
-enable_filter = (
-    False  # Set to True to enable feature filtering based on Elastic Net results
-)
+enable_filter = True
 
-if enable_filter:
-    results_path = PROJECT_PATH / "results" / "models" / "clinical_data_filtered"
-else:
-    results_path = PROJECT_PATH / "results" / "models" / "clinical_data"
-
+results_path = PROTEOMIC_MODELS_DIR
 results_path.mkdir(parents=True, exist_ok=True)
 
 
 # %% Main function
 def main() -> None:
     seed = 7214
-    n_trials = 200
-    n_cv = 5
+    n_trials = 30
+    n_cv = 3
     objective_metric = "PR-AUC"
     scoring_dict = {
         "ROC-AUC": "roc_auc",
         "PR-AUC": "average_precision",
     }
 
-    print(f"Loading data from: {INPUT_FILE}")
-    df = pd.read_parquet(INPUT_FILE)
+    print(f"Loading data from: {data_path}")
+    df = pd.read_parquet(data_path)
+
+    for col in df.select_dtypes(include=["object"]).columns:
+        df[col] = df[col].astype("category")
+        print(f"Categories of column '{col}': {df[col].cat.categories.tolist()}")
 
     print("Splitting data into training and testing sets...")
     X = df.drop(
-        ["AF_recurrence"],
+        [
+            "code",
+            "AF_recurrence",
+        ],
         axis=1,
     )
     y = df["AF_recurrence"].map({"no": 0, "yes": 1})
@@ -81,9 +82,9 @@ def main() -> None:
         shuffle=True,
         stratify=y,
     )
+    # ENCAPSULAR EN UN BUCLE UTILIZANDO UN DICCIONARIO DE MODELOS Y SUS ABREVIATURAS
 
     print("Starting model training and optimization...")
-    n_cv = 5
     my_cv = StratifiedKFold(n_splits=n_cv, shuffle=True, random_state=42)
 
     preprocessor_EN = get_full_preprocessor(X_train, seed=seed)
@@ -92,11 +93,11 @@ def main() -> None:
             ("preprocessor", preprocessor_EN),
             (
                 "clf",
-                LogisticRegression(random_state=seed, solver="saga", max_iter=10000),
+                LogisticRegression(random_state=seed, solver="saga", max_iter=1000),
             ),
         ]
     )
-    params_EN = clinical_hyperparameters_search_space["EN"]
+    params_EN = proteomic_hyperparameters_search_space["EN"]
     print("Optimizing model: Elastic Net")
     (
         optimized_EN,
@@ -126,7 +127,9 @@ def main() -> None:
     save_model(fitted_pipeline=optimized_EN, output_dir=results_path, identifier="EN")
 
     relevant_cols, irrelevant_cols = get_relevant_features(optimized_EN)
-    print("Features' coefficients forced out: ", irrelevant_cols)
+    print("relevant features: ", relevant_cols)
+    print("\n")
+    print("irrelevant features: ", irrelevant_cols)
     feature_selection_path = save_feature_selection_results(
         relevant_cols=relevant_cols,
         irrelevant_cols=irrelevant_cols,
@@ -146,10 +149,10 @@ def main() -> None:
     pipe_SVM = Pipeline(
         steps=[
             ("preprocessor", preprocessor_SVM),
-            ("clf", SVC(random_state=seed, max_iter=-1)),
+            ("clf", SVC(random_state=seed, max_iter=1000)),
         ]
     )
-    params_dist_SVM = clinical_hyperparameters_search_space["SVM"]
+    params_dist_SVM = proteomic_hyperparameters_search_space["SVM"]
     print("Optimizing model: SVM")
     (
         optimized_SVM,
@@ -184,7 +187,7 @@ def main() -> None:
             ("clf", DecisionTreeClassifier(random_state=seed)),
         ]
     )
-    params_dist_DT = clinical_hyperparameters_search_space["DT"]
+    params_dist_DT = proteomic_hyperparameters_search_space["DT"]
     print("Optimizing model: Decision Tree")
     (
         optimized_DT,
@@ -219,7 +222,7 @@ def main() -> None:
             ("clf", RandomForestClassifier(random_state=seed)),
         ]
     )
-    params_dist_RF = clinical_hyperparameters_search_space["RF"]
+    params_dist_RF = proteomic_hyperparameters_search_space["RF"]
     print("Optimizing model: Random Forest")
     (
         optimized_RF,
@@ -254,7 +257,7 @@ def main() -> None:
             ("clf", ExtraTreesClassifier(random_state=seed)),
         ]
     )
-    params_dist_ET = clinical_hyperparameters_search_space["ET"]
+    params_dist_ET = proteomic_hyperparameters_search_space["ET"]
     print("Optimizing model: Extra Trees")
     (
         optimized_ET,
@@ -295,7 +298,7 @@ def main() -> None:
             ),
         ]
     )
-    params_dist_AB = clinical_hyperparameters_search_space["AB"]
+    params_dist_AB = proteomic_hyperparameters_search_space["AB"]
     print("Optimizing model: AdaBoost")
     (
         optimized_AB,
@@ -330,7 +333,7 @@ def main() -> None:
             ("clf", GradientBoostingClassifier(random_state=seed)),
         ]
     )
-    params_dist_GB = clinical_hyperparameters_search_space["GB"]
+    params_dist_GB = proteomic_hyperparameters_search_space["GB"]
     print("Optimizing model: Gradient Boosting")
     (
         optimized_GB,
@@ -373,7 +376,7 @@ def main() -> None:
             ),
         ]
     )
-    params_dist_MLP = clinical_hyperparameters_search_space["MLP"]
+    params_dist_MLP = proteomic_hyperparameters_search_space["MLP"]
     print("Optimizing model: MLP")
     (
         optimized_MLP,
@@ -522,10 +525,9 @@ def main() -> None:
     fig_roc.savefig(results_path / "curves_roc.png", dpi=300, bbox_inches="tight")
     plt.close(fig_roc)
 
-    test_prevalence = y_test.astype(float).mean()
     fig_pr, _ = plot_pr_curves(
         pr_results,
-        baseline=test_prevalence,
+        baseline=pr_auc_baseline,
         title="Precision-Recall curves",
     )
     fig_pr.savefig(results_path / "curves_pr.png", dpi=300, bbox_inches="tight")

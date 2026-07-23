@@ -1,16 +1,15 @@
 # %% Configuration
 print("Set paths and load modules...")
 # Set paths
-from pathlib import Path
+from src.utils.paths import CLINICAL_EDA_DIR, INTERMEDIATE_DATA_DIR
 
-PROJECT_ROOT = Path(__file__).resolve().parent
-INPUT_FILE = PROJECT_ROOT / "data" / "intermediate" / "clinical_data.parquet"
-OUTPUT_DIR = PROJECT_ROOT / "results" / "eda" / "clinical_features"
+INPUT_FILE = INTERMEDIATE_DATA_DIR / "clinical_data.parquet"
+OUTPUT_DIR = CLINICAL_EDA_DIR
 
 # Load modules
 import matplotlib.pyplot as plt
 import pandas as pd
-from src.utils.data_wrangling.collinearity_analysis import plot_corr_matrix
+from src.collinearity_analysis import plot_corr_matrix
 
 
 # %% Main

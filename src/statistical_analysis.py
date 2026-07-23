@@ -4,14 +4,7 @@ import numpy as np
 import scipy.stats as stats
 import matplotlib.pyplot as plt
 import seaborn as sns
-
-# %% Color palette
-colors = {
-    "no": "#4682b4",
-    "yes": "#800080",
-    "control": "#4682b4",
-    "intervention": "#800080",
-}
+from src.utils.config import CATEGORICAL_PALETTE
 
 
 # %% Single Variable Distribution Plots
@@ -113,7 +106,7 @@ def plot_stratified_numeric_distribution(df, col_name, target_var):
         y=target_var,
         x=col_name,
         hue=target_var,
-        palette=colors,
+        palette=CATEGORICAL_PALETTE,
         dodge=False,
         inner="quartile",
         cut=0,

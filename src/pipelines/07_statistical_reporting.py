@@ -2,19 +2,22 @@
 print("Set paths and load modules...")
 
 # Set paths
-from pathlib import Path
+from src.utils.paths import (
+    CLEAN_DATA_DIR,
+    CLINICAL_EDA_DIR,
+    PROTEOMIC_EDA_DIR,
+)
 
-PROJECT_ROOT = Path(__file__).resolve().parent
-CLINICAL_FILE = PROJECT_ROOT / "data" / "clean" / "clinical_data.parquet"
-PROTEOMIC_FILE = PROJECT_ROOT / "data" / "clean" / "proteomic_data.parquet"
-CLINICAL_OUTPUT_DIR = PROJECT_ROOT / "results" / "eda" / "clinical_features"
-PROTEOMIC_OUTPUT_DIR = PROJECT_ROOT / "results" / "eda" / "proteomic_features"
+CLINICAL_FILE = CLEAN_DATA_DIR / "clinical_data.parquet"
+PROTEOMIC_FILE = CLEAN_DATA_DIR / "proteomic_data.parquet"
+CLINICAL_OUTPUT_DIR = CLINICAL_EDA_DIR
+PROTEOMIC_OUTPUT_DIR = PROTEOMIC_EDA_DIR
 
 # Load modules
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from src.utils.data_wrangling.statistical_analysis import (
+from src.statistical_analysis import (
     create_table1,
     plot_categorical_distribution,
     plot_numeric_distribution,

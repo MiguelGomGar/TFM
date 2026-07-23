@@ -257,63 +257,19 @@ def plot_vif(
                     det_all = np.linalg.det(corr_all + ridge)
                     det_group = np.linalg.det(R_group + 1e-5 * np.eye(R_group.shape[0]))
                     det_other = np.linalg.det(R_other + 1e-5 * np.eye(R_other.shape[0]))
-
                 gvif = (det_group * det_other) / det_all if det_all != 0 else 1.0
+                vif_dict[col] = float(np.sqrt(abs(gvif)))
             except Exception:
-                gvif = 1.0
+                vif_dict[col] = 1.0
 
-            df_g = len(group)
-            vif_dict[col] = gvif ** (1.0 / df_g) if gvif > 0 else 1.0
+    vif_series = pd.Series(vif_dict).sort_values(ascending=False)
 
-    vif_df = pd.DataFrame(
-        list(vif_dict.items()), columns=["feature", "VIF_Equivalent"]
-    ).sort_values("VIF_Equivalent")
-
-    # Plot
-    fig_width = max(10, len(vif_df) * 0.45 + 2)
-    plt.figure(figsize=(fig_width, 6))
-    colors = ["#3b82f6" if val < 5 else "#ef4444" for val in vif_df["VIF_Equivalent"]]
-
-    ax = plt.gca()
-    ax.bar(
-        vif_df["feature"].astype(str),
-        vif_df["VIF_Equivalent"],
-        color=colors,
-        alpha=0.85,
-        width=0.7,
-    )
-    ax.axhline(y=threshold, color="#ef4444", linestyle="--", linewidth=1.2)
-
-    y_text = threshold + max(vif_df["VIF_Equivalent"].max(), threshold) * 0.03
-    ax.text(
-        0.99,
-        y_text,
-        "Severe collinearity",
-        color="#b91c1c",
-        style="italic",
-        fontsize=9,
-        ha="right",
-        va="bottom",
-        transform=ax.get_yaxis_transform(),
-    )
-
-    plt.title(title, fontsize=14, fontweight="bold", pad=15)
-    plt.xlabel(
-        x_label if x_label else "VIF / GVIF^2",
-        fontsize=11,
-        fontweight="bold",
-        labelpad=10,
-    )
+    plt.figure(figsize=(10, max(6, len(vif_series) * 0.35)))
+    sns.barplot(x=vif_series.values, y=vif_series.index, color="#2563eb")
+    plt.axvline(threshold, linestyle="--", color="#e11d48", linewidth=1.2)
+    plt.title(title, fontsize=13, fontweight="bold", pad=20, loc="left")
+    plt.xlabel(x_label, fontsize=11, fontweight="bold", color="#1e293b", labelpad=10)
     if y_label:
-        plt.ylabel(y_label, fontsize=11, fontweight="bold")
-    else:
-        plt.ylabel(None)
-
-    plt.xticks(rotation=45, ha="right", fontsize=10, fontweight="bold", color="#334155")
-    plt.yticks(fontweight="bold", color="#334155")
-    plt.grid(axis="y", color="#f1f5f9", linewidth=0.5)
-    plt.gca().set_axisbelow(True)
-    sns.despine(left=True, bottom=True)
+        plt.ylabel(y_label, fontsize=11, fontweight="bold", color="#1e293b")
     plt.tight_layout()
-
     return plt.gcf()

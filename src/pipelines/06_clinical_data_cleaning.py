@@ -2,16 +2,15 @@
 print("Set paths and load modules...")
 
 # Set paths
-from pathlib import Path
+from src.utils.paths import CLEAN_DATA_DIR, INTERMEDIATE_DATA_DIR, RAW_DATA_DIR
 
-PROJECT_ROOT = Path(__file__).resolve().parent
-CLINICAL_INPUT_FILE = PROJECT_ROOT / "data" / "intermediate" / "clinical_data.parquet"
-PROTEOMIC_INPUT_FILE = PROJECT_ROOT / "data" / "raw" / "olink_baseline_wide.csv"
-OUTPUT_DIR = PROJECT_ROOT / "data" / "clean"
+CLINICAL_INPUT_FILE = INTERMEDIATE_DATA_DIR / "clinical_data.parquet"
+PROTEOMIC_INPUT_FILE = RAW_DATA_DIR / "olink_baseline_wide.csv"
+OUTPUT_DIR = CLEAN_DATA_DIR
 
 # Load modules
 import pandas as pd
-from src.utils.data_wrangling.feature_engineering import compute_risk_scores
+from src.feature_engineering import compute_risk_scores
 
 
 # %% Main

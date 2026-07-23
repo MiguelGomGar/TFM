@@ -3,11 +3,10 @@
 print("Set paths and load modules...")
 
 # Set paths
-from pathlib import Path
+from src.utils.paths import CLEAN_DATA_DIR, RISK_SCORES_VALIDATION_DIR
 
-PROJECT_ROOT = Path(__file__).resolve().parent
-INPUT_FILE = PROJECT_ROOT / "data" / "clean" / "risk_scores_data.parquet"
-OUTPUT_DIR = PROJECT_ROOT / "results" / "eda" / "risk_scores_validation"
+INPUT_FILE = CLEAN_DATA_DIR / "risk_scores_data.parquet"
+OUTPUT_DIR = RISK_SCORES_VALIDATION_DIR
 
 # Load modules
 import pandas as pd
