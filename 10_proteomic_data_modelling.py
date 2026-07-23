@@ -1,4 +1,4 @@
-#%% Configuration
+# %% Configuration
 print("Loading libraries and setting configurations...")
 from pathlib import Path
 import sys
@@ -37,7 +37,7 @@ from src.utils.models import (
     save_model,
 )
 
-data_path = PROJECT_PATH / "data" / "clean" / "09proteomic_data_with_target.parquet"
+data_path = PROJECT_PATH / "data" / "clean" / "proteomic_data.parquet"
 
 enable_filter = True
 
@@ -45,7 +45,7 @@ results_path = PROJECT_PATH / "results" / "models" / "proteomic_data"
 results_path.mkdir(parents=True, exist_ok=True)
 
 
-#%% Main function
+# %% Main function
 def main() -> None:
     seed = 7214
     n_trials = 30
@@ -64,10 +64,13 @@ def main() -> None:
         print(f"Categories of column '{col}': {df[col].cat.categories.tolist()}")
 
     print("Splitting data into training and testing sets...")
-    X = df.drop([
-        "code",
-        "AF_recurrence",
-    ], axis=1)
+    X = df.drop(
+        [
+            "code",
+            "AF_recurrence",
+        ],
+        axis=1,
+    )
     y = df["AF_recurrence"].map({"no": 0, "yes": 1})
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -78,15 +81,21 @@ def main() -> None:
         shuffle=True,
         stratify=y,
     )
+    # ENCAPSULAR EN UN BUCLE UTILIZANDO UN DICCIONARIO DE MODELOS Y SUS ABREVIATURAS
 
     print("Starting model training and optimization...")
     my_cv = StratifiedKFold(n_splits=n_cv, shuffle=True, random_state=42)
 
     preprocessor_EN = get_full_preprocessor(X_train, seed=seed)
-    pipe_EN = Pipeline(steps=[
-        ("preprocessor", preprocessor_EN),
-        ("clf", LogisticRegression(random_state=seed, solver="saga", max_iter=1000)),
-    ])
+    pipe_EN = Pipeline(
+        steps=[
+            ("preprocessor", preprocessor_EN),
+            (
+                "clf",
+                LogisticRegression(random_state=seed, solver="saga", max_iter=1000),
+            ),
+        ]
+    )
     params_EN = proteomic_hyperparameters_search_space["EN"]
     print("Optimizing model: Elastic Net")
     (
@@ -136,10 +145,12 @@ def main() -> None:
         X_test_filtered = X_test
 
     preprocessor_SVM = get_full_preprocessor(X_train_filtered, seed=seed)
-    pipe_SVM = Pipeline(steps=[
-        ("preprocessor", preprocessor_SVM),
-        ("clf", SVC(random_state=seed, max_iter=1000)),
-    ])
+    pipe_SVM = Pipeline(
+        steps=[
+            ("preprocessor", preprocessor_SVM),
+            ("clf", SVC(random_state=seed, max_iter=1000)),
+        ]
+    )
     params_dist_SVM = proteomic_hyperparameters_search_space["SVM"]
     print("Optimizing model: SVM")
     (
@@ -169,10 +180,12 @@ def main() -> None:
     save_model(fitted_pipeline=optimized_SVM, output_dir=results_path, identifier="SVM")
 
     preprocessor_DT = get_trees_preprocessor(X_train_filtered, seed=seed)
-    pipe_DT = Pipeline(steps=[
-        ("preprocessor", preprocessor_DT),
-        ("clf", DecisionTreeClassifier(random_state=seed)),
-    ])
+    pipe_DT = Pipeline(
+        steps=[
+            ("preprocessor", preprocessor_DT),
+            ("clf", DecisionTreeClassifier(random_state=seed)),
+        ]
+    )
     params_dist_DT = proteomic_hyperparameters_search_space["DT"]
     print("Optimizing model: Decision Tree")
     (
@@ -202,10 +215,12 @@ def main() -> None:
     save_model(fitted_pipeline=optimized_DT, output_dir=results_path, identifier="DT")
 
     preprocessor_RF = get_trees_preprocessor(X_train_filtered, seed=seed)
-    pipe_RF = Pipeline(steps=[
-        ("preprocessor", preprocessor_RF),
-        ("clf", RandomForestClassifier(random_state=seed)),
-    ])
+    pipe_RF = Pipeline(
+        steps=[
+            ("preprocessor", preprocessor_RF),
+            ("clf", RandomForestClassifier(random_state=seed)),
+        ]
+    )
     params_dist_RF = proteomic_hyperparameters_search_space["RF"]
     print("Optimizing model: Random Forest")
     (
@@ -235,10 +250,12 @@ def main() -> None:
     save_model(fitted_pipeline=optimized_RF, output_dir=results_path, identifier="RF")
 
     preprocessor_ET = get_trees_preprocessor(X_train_filtered, seed=seed)
-    pipe_ET = Pipeline(steps=[
-        ("preprocessor", preprocessor_ET),
-        ("clf", ExtraTreesClassifier(random_state=seed)),
-    ])
+    pipe_ET = Pipeline(
+        steps=[
+            ("preprocessor", preprocessor_ET),
+            ("clf", ExtraTreesClassifier(random_state=seed)),
+        ]
+    )
     params_dist_ET = proteomic_hyperparameters_search_space["ET"]
     print("Optimizing model: Extra Trees")
     (
@@ -268,10 +285,18 @@ def main() -> None:
     save_model(fitted_pipeline=optimized_ET, output_dir=results_path, identifier="ET")
 
     preprocessor_AB = get_trees_preprocessor(X_train_filtered, seed=seed)
-    pipe_AB = Pipeline(steps=[
-        ("preprocessor", preprocessor_AB),
-        ("clf", AdaBoostClassifier(random_state=seed, estimator=DecisionTreeClassifier(random_state=seed))),
-    ])
+    pipe_AB = Pipeline(
+        steps=[
+            ("preprocessor", preprocessor_AB),
+            (
+                "clf",
+                AdaBoostClassifier(
+                    random_state=seed,
+                    estimator=DecisionTreeClassifier(random_state=seed),
+                ),
+            ),
+        ]
+    )
     params_dist_AB = proteomic_hyperparameters_search_space["AB"]
     print("Optimizing model: AdaBoost")
     (
@@ -301,10 +326,12 @@ def main() -> None:
     save_model(fitted_pipeline=optimized_AB, output_dir=results_path, identifier="AB")
 
     preprocessor_GB = get_trees_preprocessor(X_train_filtered, seed=seed)
-    pipe_GB = Pipeline(steps=[
-        ("preprocessor", preprocessor_GB),
-        ("clf", GradientBoostingClassifier(random_state=seed)),
-    ])
+    pipe_GB = Pipeline(
+        steps=[
+            ("preprocessor", preprocessor_GB),
+            ("clf", GradientBoostingClassifier(random_state=seed)),
+        ]
+    )
     params_dist_GB = proteomic_hyperparameters_search_space["GB"]
     print("Optimizing model: Gradient Boosting")
     (
@@ -334,10 +361,20 @@ def main() -> None:
     save_model(fitted_pipeline=optimized_GB, output_dir=results_path, identifier="GB")
 
     preprocessor_MLP = get_full_preprocessor(X_train_filtered, seed=seed)
-    pipe_MLP = Pipeline(steps=[
-        ("preprocessor", preprocessor_MLP),
-        ("clf", MLPClassifier(random_state=seed, max_iter=1000, early_stopping=True, validation_fraction=0.1)),
-    ])
+    pipe_MLP = Pipeline(
+        steps=[
+            ("preprocessor", preprocessor_MLP),
+            (
+                "clf",
+                MLPClassifier(
+                    random_state=seed,
+                    max_iter=1000,
+                    early_stopping=True,
+                    validation_fraction=0.1,
+                ),
+            ),
+        ]
+    )
     params_dist_MLP = proteomic_hyperparameters_search_space["MLP"]
     print("Optimizing model: MLP")
     (
@@ -366,8 +403,17 @@ def main() -> None:
     )
     save_model(fitted_pipeline=optimized_MLP, output_dir=results_path, identifier="MLP")
 
-    #%% 4. Save metrics results and external validation plots
-    models = ["Elastic Net", "SVM", "Decision Tree", "Random Forest", "Extra Trees", "AdaBoost", "Gradient Boost", "MLP"]
+    # %% 4. Save metrics results and external validation plots
+    models = [
+        "Elastic Net",
+        "SVM",
+        "Decision Tree",
+        "Random Forest",
+        "Extra Trees",
+        "AdaBoost",
+        "Gradient Boost",
+        "MLP",
+    ]
     models_dict = {
         "Elastic Net": cv_results_EN,
         "SVM": cv_results_SVM,
@@ -400,42 +446,75 @@ def main() -> None:
 
     fpr = [fpr_EN, fpr_SVM, fpr_DT, fpr_RF, fpr_ET, fpr_AB, fpr_GB, fpr_MLP]
     tpr = [tpr_EN, tpr_SVM, tpr_DT, tpr_RF, tpr_ET, tpr_AB, tpr_GB, tpr_MLP]
-    roc_results = save_curves_results(models, fpr, tpr, curve_type="roc", output_dir=results_path)
+    roc_results = save_curves_results(
+        models, fpr, tpr, curve_type="roc", output_dir=results_path
+    )
 
-    precs = [precs_EN, precs_SVM, precs_DT, precs_RF, precs_ET, precs_AB, precs_GB, precs_MLP]
+    precs = [
+        precs_EN,
+        precs_SVM,
+        precs_DT,
+        precs_RF,
+        precs_ET,
+        precs_AB,
+        precs_GB,
+        precs_MLP,
+    ]
     recs = [recs_EN, recs_SVM, recs_DT, recs_RF, recs_ET, recs_AB, recs_GB, recs_MLP]
-    pr_results = save_curves_results(models, recs, precs, curve_type="pr", output_dir=results_path)
+    pr_results = save_curves_results(
+        models, recs, precs, curve_type="pr", output_dir=results_path
+    )
 
-    #%% 5. Save plots
+    # %% 5. Save plots
     print("Saving plots...")
-    fig_EN.savefig(results_path / "internal_validation_en.png", dpi=300, bbox_inches="tight")
+    fig_EN.savefig(
+        results_path / "internal_validation_en.png", dpi=300, bbox_inches="tight"
+    )
     plt.close(fig_EN)
 
-    fig_SVM.savefig(results_path / "internal_validation_svm.png", dpi=300, bbox_inches="tight")
+    fig_SVM.savefig(
+        results_path / "internal_validation_svm.png", dpi=300, bbox_inches="tight"
+    )
     plt.close(fig_SVM)
 
-    fig_DT.savefig(results_path / "internal_validation_dt.png", dpi=300, bbox_inches="tight")
+    fig_DT.savefig(
+        results_path / "internal_validation_dt.png", dpi=300, bbox_inches="tight"
+    )
     plt.close(fig_DT)
 
-    fig_RF.savefig(results_path / "internal_validation_rf.png", dpi=300, bbox_inches="tight")
+    fig_RF.savefig(
+        results_path / "internal_validation_rf.png", dpi=300, bbox_inches="tight"
+    )
     plt.close(fig_RF)
 
-    fig_ET.savefig(results_path / "internal_validation_et.png", dpi=300, bbox_inches="tight")
+    fig_ET.savefig(
+        results_path / "internal_validation_et.png", dpi=300, bbox_inches="tight"
+    )
     plt.close(fig_ET)
 
-    fig_AB.savefig(results_path / "internal_validation_ab.png", dpi=300, bbox_inches="tight")
+    fig_AB.savefig(
+        results_path / "internal_validation_ab.png", dpi=300, bbox_inches="tight"
+    )
     plt.close(fig_AB)
 
-    fig_GB.savefig(results_path / "internal_validation_gb.png", dpi=300, bbox_inches="tight")
+    fig_GB.savefig(
+        results_path / "internal_validation_gb.png", dpi=300, bbox_inches="tight"
+    )
     plt.close(fig_GB)
 
-    fig_MLP.savefig(results_path / "internal_validation_mlp.png", dpi=300, bbox_inches="tight")
+    fig_MLP.savefig(
+        results_path / "internal_validation_mlp.png", dpi=300, bbox_inches="tight"
+    )
     plt.close(fig_MLP)
 
-    fig_roc_auc.savefig(results_path / "auc_roc_by_model.png", dpi=300, bbox_inches="tight")
+    fig_roc_auc.savefig(
+        results_path / "auc_roc_by_model.png", dpi=300, bbox_inches="tight"
+    )
     plt.close(fig_roc_auc)
 
-    fig_pr_auc.savefig(results_path / "auc_pr_by_model.png", dpi=300, bbox_inches="tight")
+    fig_pr_auc.savefig(
+        results_path / "auc_pr_by_model.png", dpi=300, bbox_inches="tight"
+    )
     plt.close(fig_pr_auc)
 
     fig_roc, _ = plot_roc_curves(
