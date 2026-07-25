@@ -1,12 +1,13 @@
+"""Preprocessing factories used by the model pipelines."""
+
 import numpy as np
 import pandas as pd
+from sklearn.experimental import enable_iterative_imputer
 from sklearn.compose import ColumnTransformer
+from sklearn.impute import IterativeImputer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler, OrdinalEncoder
-
-from sklearn.experimental import enable_iterative_imputer
-from sklearn.impute import IterativeImputer
+from sklearn.preprocessing import OrdinalEncoder, StandardScaler
 
 
 def get_full_preprocessor(X: pd.DataFrame, seed: int) -> ColumnTransformer:

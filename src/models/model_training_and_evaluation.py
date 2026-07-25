@@ -1,23 +1,23 @@
-# %% Imports
+"""Hyperparameter search spaces and training/evaluation helpers."""
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from scipy.stats import uniform, loguniform, randint
+from scipy.stats import loguniform, randint, uniform
 
 from sklearn.metrics import (
     accuracy_score,
-    precision_score,
-    recall_score,
-    f1_score,
-    roc_auc_score,
-    roc_curve,
-    precision_recall_curve,
     average_precision_score,
     auc,
+    precision_score,
+    precision_recall_curve,
+    recall_score,
+    roc_auc_score,
+    roc_curve,
+    f1_score,
 )
 from sklearn.model_selection import cross_validate, RandomizedSearchCV
 
-# %% Hyperparameters search space
 clinical_hyperparameters_search_space = {
     # Elastic Net Logistic Regression
     "EN": {

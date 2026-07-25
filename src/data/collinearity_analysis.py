@@ -1,12 +1,12 @@
-import pandas as pd
+"""Correlation and collinearity diagnostics."""
+
 import numpy as np
+import pandas as pd
 import scipy.stats as stats
-import matplotlib.pyplot as plt
-import seaborn as sns
 import statsmodels.api as sm
 
 
-def compute_num_corr_matrix(df):
+def compute_num_corr_matrix(df: pd.DataFrame) -> pd.DataFrame:
     """
     Compute numeric correlation matrix for all numeric columns in the dataframe.
     """
@@ -16,7 +16,7 @@ def compute_num_corr_matrix(df):
     return numeric_df.corr(method="spearman")
 
 
-def compute_cramers_v(x, y):
+def _compute_cramers_v(x: pd.Series, y: pd.Series) -> float:
     """
     Compute Cramer's V for two categorical columns.
     """
@@ -36,7 +36,7 @@ def compute_cramers_v(x, y):
     return float(v_value)
 
 
-def compute_cat_corr_matrix(df):
+def compute_cat_corr_matrix(df: pd.DataFrame) -> pd.DataFrame:
     """
     Compute categorical correlation matrix for all categorical columns in the dataframe.
     """
@@ -57,125 +57,24 @@ def compute_cat_corr_matrix(df):
         for j in range(i + 1, n_features):
             col_i = feature_names[i]
             col_j = feature_names[j]
-            association_score = compute_cramers_v(cat_df[col_i], cat_df[col_j])
+            association_score = _compute_cramers_v(cat_df[col_i], cat_df[col_j])
             corr_matrix.loc[col_i, col_j] = association_score
             corr_matrix.loc[col_j, col_i] = association_score
 
     return corr_matrix
 
 
-def plot_corr_matrix(df, dtype="Numeric", threshold=0.5, axis_ticks_size=14):
-    """
-    Plot correlation matrix heatmap (lower triangular masked equivalent).
-    """
-    if dtype == "Numeric":
-        matrix_data = compute_num_corr_matrix(df)
-        if matrix_data.empty:
-            return None
-        vmin, vmax = -1.0, 1.0
-        from matplotlib.colors import LinearSegmentedColormap
+def compute_vif_data(
+    df: pd.DataFrame, threshold: float = 5.0, target_var: str = "AF_recurrence"
+) -> pd.DataFrame:
+    """Compute a VIF/GVIF series ready for plotting."""
 
-        cmap = LinearSegmentedColormap.from_list(
-            "custom_num", ["#3182bd", "white", "#de2d26"]
-        )
-        cbar_label = "s"
-    elif dtype == "Categorical":
-        matrix_data = compute_cat_corr_matrix(df)
-        vmin, vmax = 0.0, 1.0
-        from matplotlib.colors import LinearSegmentedColormap
-
-        cmap = LinearSegmentedColormap.from_list(
-            "custom_cat", ["#fff5f5", "#fecaca", "#ef4444", "#7f1d1d"]
-        )
-        cbar_label = "V"
-    else:
-        raise ValueError(
-            "Invalid dtype parameter. Please specify either 'Numeric' or 'Categorical'."
-        )
-
-    # Mask the upper triangle and keep the lower triangle visible.
-    # The diagonal is hidden so the matrix looks clean and focused on pairwise
-    # relationships between distinct features.
-    mask = np.triu(np.ones_like(matrix_data, dtype=bool))
-
-    plt.figure(figsize=(10, 8))
-
-    # Custom annotations to only show values >= threshold
-    annot_mask = (np.abs(matrix_data) >= threshold) & (~mask)
-    annot_labels = matrix_data.map(lambda v: f"{v:.1f}" if not pd.isna(v) else "")
-    annot_labels = np.where(annot_mask, annot_labels, "")
-
-    ax = sns.heatmap(
-        matrix_data,
-        mask=mask,
-        vmin=vmin,
-        vmax=vmax,
-        cmap=cmap,
-        annot=annot_labels,
-        fmt="",
-        annot_kws={"size": 10, "weight": "bold"},
-        linewidths=0.4,
-        linecolor="#e2e8f0",
-        square=True,
-        cbar_kws={"label": cbar_label, "shrink": 0.8},
-    )
-
-    # Text color styling: white on high values, dark blue on low values
-    for text in ax.texts:
-        if text.get_text():
-            try:
-                val = float(text.get_text())
-                if abs(val) > threshold:
-                    text.set_color("white")
-                else:
-                    text.set_color("#2c3e50")
-            except ValueError:
-                text.set_color("#2c3e50")
-
-    plt.title(
-        f"{dtype} Correlation Matrix",
-        fontsize=16,
-        fontweight="bold",
-        pad=15,
-        loc="left",
-    )
-    plt.xticks(
-        rotation=45,
-        ha="right",
-        fontsize=axis_ticks_size,
-        fontweight="bold",
-        color="#34495e",
-    )
-    plt.yticks(
-        rotation=45,
-        va="top",
-        fontsize=axis_ticks_size,
-        fontweight="bold",
-        color="#34495e",
-    )
-    plt.tight_layout()
-    return plt.gcf()
-
-
-def plot_vif(
-    df,
-    threshold=5.0,
-    target_var="AF_recurrence",
-    title="VIF Diagnostics",
-    x_label="VIF / GVIF^2",
-    y_label=None,
-):
-    """
-    Computes Generalized Variance Inflation Factor (GVIF) equivalent VIF for each feature,
-    and plots a professional horizontal bar chart.
-    """
     temp_data = df.copy()
     if target_var in temp_data.columns:
         temp_data[target_var] = pd.to_numeric(temp_data[target_var], errors="coerce")
 
     complete_cases_subset = temp_data.dropna()
 
-    # Identify invariant columns (nunique < 2) in complete cases
     single_level_features = []
     for col in complete_cases_subset.columns:
         if col != target_var and complete_cases_subset[col].nunique() < 2:
@@ -187,7 +86,6 @@ def plot_vif(
         )
         temp_data = temp_data.drop(columns=single_level_features)
 
-    # Split predictors and dummy-encode them
     if target_var in temp_data.columns:
         X_df = temp_data.drop(columns=[target_var]).dropna()
     else:
@@ -197,12 +95,10 @@ def plot_vif(
         print("Warning: No complete cases available for VIF calculation.")
         return None
 
-    # Compute GVIF for each original feature
     feature_groups = {}
     encoded_dfs = []
 
     for col in X_df.columns:
-        # Check if column is categorical/object/bool
         if X_df[col].dtype.name in ["category", "object", "bool"] or not np.issubdtype(
             X_df[col].dtype, np.number
         ):
@@ -223,7 +119,6 @@ def plot_vif(
     for col, group in feature_groups.items():
         if not group:
             continue
-        idx_group = [cols_all.index(c) for c in group]
         idx_other = [i for i, c in enumerate(cols_all) if c not in group]
 
         if not idx_other:
@@ -252,7 +147,6 @@ def plot_vif(
                 det_all = np.linalg.det(corr_all)
 
                 if det_all == 0 or np.isnan(det_all):
-                    # Add ridge to diagonal if singular
                     ridge = 1e-5 * np.eye(corr_all.shape[0])
                     det_all = np.linalg.det(corr_all + ridge)
                     det_group = np.linalg.det(R_group + 1e-5 * np.eye(R_group.shape[0]))
@@ -262,14 +156,4 @@ def plot_vif(
             except Exception:
                 vif_dict[col] = 1.0
 
-    vif_series = pd.Series(vif_dict).sort_values(ascending=False)
-
-    plt.figure(figsize=(10, max(6, len(vif_series) * 0.35)))
-    sns.barplot(x=vif_series.values, y=vif_series.index, color="#2563eb")
-    plt.axvline(threshold, linestyle="--", color="#e11d48", linewidth=1.2)
-    plt.title(title, fontsize=13, fontweight="bold", pad=20, loc="left")
-    plt.xlabel(x_label, fontsize=11, fontweight="bold", color="#1e293b", labelpad=10)
-    if y_label:
-        plt.ylabel(y_label, fontsize=11, fontweight="bold", color="#1e293b")
-    plt.tight_layout()
-    return plt.gcf()
+    return pd.Series(vif_dict).sort_values(ascending=False)

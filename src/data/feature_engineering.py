@@ -1,8 +1,12 @@
-import pandas as pd
+"""Feature engineering helpers for clinical risk scores."""
+
 import numpy as np
+import pandas as pd
+
+from src.config import TARGET_VARIABLE
 
 
-def compute_hatch_score(df):
+def _compute_hatch_score(df: pd.DataFrame) -> pd.DataFrame:
     """
     Computes the HATCH score for each patient based on their age and comorbidities.
     """
@@ -29,7 +33,7 @@ def compute_hatch_score(df):
     return df_result
 
 
-def compute_chads2_score(df):
+def _compute_chads2_score(df: pd.DataFrame) -> pd.DataFrame:
     """
     Computes the CHADS2 score for each patient based on their age and comorbidities.
     """
@@ -56,7 +60,7 @@ def compute_chads2_score(df):
     return df_result
 
 
-def compute_base_af2_score(df):
+def _compute_base_af2_score(df: pd.DataFrame) -> pd.DataFrame:
     """
     Computes the BASE-AF2 score for each patient based on their comorbidities.
     """
@@ -94,7 +98,7 @@ def compute_base_af2_score(df):
     return df_result
 
 
-def compute_mb_later_score(df):
+def _compute_mb_later_score(df: pd.DataFrame) -> pd.DataFrame:
     """
     Computes the MB-LATER score for each patient based on their comorbidities.
     """
@@ -134,47 +138,19 @@ def compute_mb_later_score(df):
     return df_result
 
 
-def compute_metabolic_syndrome(df):
-    """
-    Computes the metabolic syndrome for each patient based on their comorbidities.
-    """
-    df_result = df.copy()
-
-    # NAs are treated as 0 (not meeting the condition)
-    mets_obesity = np.where(df_result["BMI"] >= 30, 1, 0)
-
-    cond_trig = (df_result["triglycerides"] >= 150) | (df_result["LLA"] == "yes")
-    mets_triglycerides = np.where(cond_trig, 1, 0)
-
-    cond_hdl = ((df_result["sex"] == "male") & (df_result["HDL"] < 40)) | (
-        (df_result["sex"] == "female") & (df_result["HDL"] < 50)
-    )
-    mets_hdl = np.where(cond_hdl, 1, 0)
-
-    mets_hypertension = np.where(df_result["hypertension"] == "yes", 1, 0)
-
-    cond_glucose = (df_result["glucose"] >= 100) | (df_result["diabetes"] == "yes")
-    mets_glucose = np.where(cond_glucose, 1, 0)
-
-    mets_sum = (
-        mets_obesity + mets_triglycerides + mets_hdl + mets_hypertension + mets_glucose
-    )
-
-    # metabolic_syndrome is "yes" if mets_sum >= 3, else "no" (missing maps to "no")
-    df_result["metabolic_syndrome"] = np.where(mets_sum >= 3, "yes", "no")
-
-    return df_result
-
-
-def compute_risk_scores(df):
+def compute_risk_scores(df: pd.DataFrame) -> pd.DataFrame:
     """
     Computes all risk scores for each patient based on their comorbidities.
     """
     df_result = df.copy()
-    df_result = compute_hatch_score(df_result)
-    df_result = compute_chads2_score(df_result)
-    df_result = compute_base_af2_score(df_result)
-    df_result = compute_mb_later_score(df_result)
-    df_result = compute_metabolic_syndrome(df_result)
+    df_result = _compute_hatch_score(df_result)
+    df_result = _compute_chads2_score(df_result)
+    df_result = _compute_base_af2_score(df_result)
+    df_result = _compute_mb_later_score(df_result)
+
+    columns_to_keep = [col for col in df_result.columns if col.startswith("score")] + [
+        TARGET_VARIABLE
+    ]
+    df_result = df_result[columns_to_keep]
 
     return df_result

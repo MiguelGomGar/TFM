@@ -2,15 +2,12 @@
 # DATA & RESULTS
 # ========================
 /data/
-results/
+/results/
 
 # ========================
-# R & RSTUDIO
+# LOGS
 # ========================
-.Rhistory
-.RData
-.Ruserdata
-.Rproj.user/
+/logs/
 
 # ========================
 # PYTHON & JUPYTER
@@ -22,7 +19,7 @@ __pycache__/
 # ========================
 # IDE & OS
 # ========================
-.vscode/
+/.vscode/
 Thumbs.db
 .positai
 
@@ -36,5 +33,5 @@ oryx-build-commands.txt
 # ========================
 # DOCUMENTS
 # ========================
-literature/
+/literature/
 *.docx

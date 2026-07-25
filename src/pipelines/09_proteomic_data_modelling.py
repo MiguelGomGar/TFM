@@ -1,9 +1,11 @@
-# %% Configuration
-print("Loading libraries and setting configurations...")
+"""Train and evaluate the proteomic-data models."""
+
+from pathlib import Path
+
 import sys
+
 import matplotlib.pyplot as plt
 import pandas as pd
-from pandas.api.types import CategoricalDtype
 from sklearn.ensemble import (
     AdaBoostClassifier,
     ExtraTreesClassifier,
@@ -17,11 +19,12 @@ from sklearn.pipeline import Pipeline
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
+from src.utils.io import read_parquet, save_figure
+from src.utils.logging_utils import setup_logger
 from src.utils.paths import (
-    CLEAN_DATA_DIR,
-    CLINICAL_MODELS_DIR,
-    CLINICAL_MODELS_FILTERED_DIR,
+    CLEANED_PROTEOMIC_DATA_PATH,
     PROJECT_ROOT,
+    PROTEOMIC_MODELS_DIR,
 )
 
 PROJECT_PATH = PROJECT_ROOT
@@ -29,7 +32,7 @@ if str(PROJECT_PATH) not in sys.path:
     sys.path.append(str(PROJECT_PATH))
 
 from src.models import (
-    clinical_hyperparameters_search_space,
+    proteomic_hyperparameters_search_space,
     get_full_preprocessor,
     get_relevant_features,
     get_trees_preprocessor,
@@ -44,37 +47,40 @@ from src.models import (
     save_model,
 )
 
-INPUT_FILE = CLEAN_DATA_DIR / "clinical_data.parquet"
+INPUT_FILE = CLEANED_PROTEOMIC_DATA_PATH
 
-enable_filter = (
-    False  # Set to True to enable feature filtering based on Elastic Net results
-)
+enable_filter = True
 
-if enable_filter:
-    results_path = CLINICAL_MODELS_FILTERED_DIR
-else:
-    results_path = CLINICAL_MODELS_DIR
-
+results_path = PROTEOMIC_MODELS_DIR
 results_path.mkdir(parents=True, exist_ok=True)
+
+logger = setup_logger(Path(__file__).stem)
 
 
 # %% Main function
 def main() -> None:
     seed = 7214
-    n_trials = 200
-    n_cv = 5
+    n_trials = 30
+    n_cv = 3
     objective_metric = "PR-AUC"
     scoring_dict = {
         "ROC-AUC": "roc_auc",
         "PR-AUC": "average_precision",
     }
 
-    print(f"Loading data from: {INPUT_FILE}")
-    df = pd.read_parquet(INPUT_FILE)
+    logger.info(f"Loading data from: {INPUT_FILE}")
+    df = read_parquet(INPUT_FILE)
 
-    print("Splitting data into training and testing sets...")
+    for col in df.select_dtypes(include=["object"]).columns:
+        df[col] = df[col].astype("category")
+        logger.info(f"Categories of column '{col}': {df[col].cat.categories.tolist()}")
+
+    logger.info("Splitting data into training and testing sets...")
     X = df.drop(
-        ["AF_recurrence"],
+        [
+            "code",
+            "AF_recurrence",
+        ],
         axis=1,
     )
     y = df["AF_recurrence"].map({"no": 0, "yes": 1})
@@ -87,9 +93,9 @@ def main() -> None:
         shuffle=True,
         stratify=y,
     )
+    # ENCAPSULAR EN UN BUCLE UTILIZANDO UN DICCIONARIO DE MODELOS Y SUS ABREVIATURAS
 
-    print("Starting model training and optimization...")
-    n_cv = 5
+    logger.info("Starting model training and optimization...")
     my_cv = StratifiedKFold(n_splits=n_cv, shuffle=True, random_state=42)
 
     preprocessor_EN = get_full_preprocessor(X_train, seed=seed)
@@ -98,12 +104,12 @@ def main() -> None:
             ("preprocessor", preprocessor_EN),
             (
                 "clf",
-                LogisticRegression(random_state=seed, solver="saga", max_iter=10000),
+                LogisticRegression(random_state=seed, solver="saga", max_iter=1000),
             ),
         ]
     )
-    params_EN = clinical_hyperparameters_search_space["EN"]
-    print("Optimizing model: Elastic Net")
+    params_EN = proteomic_hyperparameters_search_space["EN"]
+    logger.info("Optimizing model: Elastic Net")
     (
         optimized_EN,
         cv_results_EN,
@@ -132,14 +138,17 @@ def main() -> None:
     save_model(fitted_pipeline=optimized_EN, output_dir=results_path, identifier="EN")
 
     relevant_cols, irrelevant_cols = get_relevant_features(optimized_EN)
-    print("Features' coefficients forced out: ", irrelevant_cols)
+    logger.info("Relevant features: %s", relevant_cols)
+    logger.info("Irrelevant features: %s", irrelevant_cols)
     feature_selection_path = save_feature_selection_results(
         relevant_cols=relevant_cols,
         irrelevant_cols=irrelevant_cols,
         output_dir=results_path,
         identifier="EN",
     )
-    print(f"Saved Elastic Net feature selection lists to: {feature_selection_path}")
+    logger.info(
+        f"Saved Elastic Net feature selection lists to: {feature_selection_path}"
+    )
 
     if enable_filter:
         X_train_filtered = X_train.drop(columns=irrelevant_cols)
@@ -152,11 +161,11 @@ def main() -> None:
     pipe_SVM = Pipeline(
         steps=[
             ("preprocessor", preprocessor_SVM),
-            ("clf", SVC(random_state=seed, max_iter=-1)),
+            ("clf", SVC(random_state=seed, max_iter=1000)),
         ]
     )
-    params_dist_SVM = clinical_hyperparameters_search_space["SVM"]
-    print("Optimizing model: SVM")
+    params_dist_SVM = proteomic_hyperparameters_search_space["SVM"]
+    logger.info("Optimizing model: SVM")
     (
         optimized_SVM,
         cv_results_SVM,
@@ -190,8 +199,8 @@ def main() -> None:
             ("clf", DecisionTreeClassifier(random_state=seed)),
         ]
     )
-    params_dist_DT = clinical_hyperparameters_search_space["DT"]
-    print("Optimizing model: Decision Tree")
+    params_dist_DT = proteomic_hyperparameters_search_space["DT"]
+    logger.info("Optimizing model: Decision Tree")
     (
         optimized_DT,
         cv_results_DT,
@@ -225,8 +234,8 @@ def main() -> None:
             ("clf", RandomForestClassifier(random_state=seed)),
         ]
     )
-    params_dist_RF = clinical_hyperparameters_search_space["RF"]
-    print("Optimizing model: Random Forest")
+    params_dist_RF = proteomic_hyperparameters_search_space["RF"]
+    logger.info("Optimizing model: Random Forest")
     (
         optimized_RF,
         cv_results_RF,
@@ -260,8 +269,8 @@ def main() -> None:
             ("clf", ExtraTreesClassifier(random_state=seed)),
         ]
     )
-    params_dist_ET = clinical_hyperparameters_search_space["ET"]
-    print("Optimizing model: Extra Trees")
+    params_dist_ET = proteomic_hyperparameters_search_space["ET"]
+    logger.info("Optimizing model: Extra Trees")
     (
         optimized_ET,
         cv_results_ET,
@@ -301,8 +310,8 @@ def main() -> None:
             ),
         ]
     )
-    params_dist_AB = clinical_hyperparameters_search_space["AB"]
-    print("Optimizing model: AdaBoost")
+    params_dist_AB = proteomic_hyperparameters_search_space["AB"]
+    logger.info("Optimizing model: AdaBoost")
     (
         optimized_AB,
         cv_results_AB,
@@ -336,8 +345,8 @@ def main() -> None:
             ("clf", GradientBoostingClassifier(random_state=seed)),
         ]
     )
-    params_dist_GB = clinical_hyperparameters_search_space["GB"]
-    print("Optimizing model: Gradient Boosting")
+    params_dist_GB = proteomic_hyperparameters_search_space["GB"]
+    logger.info("Optimizing model: Gradient Boosting")
     (
         optimized_GB,
         cv_results_GB,
@@ -379,8 +388,8 @@ def main() -> None:
             ),
         ]
     )
-    params_dist_MLP = clinical_hyperparameters_search_space["MLP"]
-    print("Optimizing model: MLP")
+    params_dist_MLP = proteomic_hyperparameters_search_space["MLP"]
+    logger.info("Optimizing model: MLP")
     (
         optimized_MLP,
         cv_results_MLP,
@@ -429,7 +438,7 @@ def main() -> None:
         "MLP": cv_results_MLP,
     }
 
-    print("Saving results...")
+    logger.info("Saving results...")
     results_df = save_metrics_results(models_dict=models_dict, output_dir=results_path)
 
     roc_auc_baseline = 0.633
@@ -470,54 +479,84 @@ def main() -> None:
     )
 
     # %% 5. Save plots
-    print("Saving plots...")
-    fig_EN.savefig(
-        results_path / "internal_validation_en.png", dpi=300, bbox_inches="tight"
+    logger.info("Saving plots...")
+    save_figure(
+        fig_EN,
+        results_path / "internal_validation_en.png",
+        dpi=300,
+        bbox_inches="tight",
     )
     plt.close(fig_EN)
 
-    fig_SVM.savefig(
-        results_path / "internal_validation_svm.png", dpi=300, bbox_inches="tight"
+    save_figure(
+        fig_SVM,
+        results_path / "internal_validation_svm.png",
+        dpi=300,
+        bbox_inches="tight",
     )
     plt.close(fig_SVM)
 
-    fig_DT.savefig(
-        results_path / "internal_validation_dt.png", dpi=300, bbox_inches="tight"
+    save_figure(
+        fig_DT,
+        results_path / "internal_validation_dt.png",
+        dpi=300,
+        bbox_inches="tight",
     )
     plt.close(fig_DT)
 
-    fig_RF.savefig(
-        results_path / "internal_validation_rf.png", dpi=300, bbox_inches="tight"
+    save_figure(
+        fig_RF,
+        results_path / "internal_validation_rf.png",
+        dpi=300,
+        bbox_inches="tight",
     )
     plt.close(fig_RF)
 
-    fig_ET.savefig(
-        results_path / "internal_validation_et.png", dpi=300, bbox_inches="tight"
+    save_figure(
+        fig_ET,
+        results_path / "internal_validation_et.png",
+        dpi=300,
+        bbox_inches="tight",
     )
     plt.close(fig_ET)
 
-    fig_AB.savefig(
-        results_path / "internal_validation_ab.png", dpi=300, bbox_inches="tight"
+    save_figure(
+        fig_AB,
+        results_path / "internal_validation_ab.png",
+        dpi=300,
+        bbox_inches="tight",
     )
     plt.close(fig_AB)
 
-    fig_GB.savefig(
-        results_path / "internal_validation_gb.png", dpi=300, bbox_inches="tight"
+    save_figure(
+        fig_GB,
+        results_path / "internal_validation_gb.png",
+        dpi=300,
+        bbox_inches="tight",
     )
     plt.close(fig_GB)
 
-    fig_MLP.savefig(
-        results_path / "internal_validation_mlp.png", dpi=300, bbox_inches="tight"
+    save_figure(
+        fig_MLP,
+        results_path / "internal_validation_mlp.png",
+        dpi=300,
+        bbox_inches="tight",
     )
     plt.close(fig_MLP)
 
-    fig_roc_auc.savefig(
-        results_path / "auc_roc_by_model.png", dpi=300, bbox_inches="tight"
+    save_figure(
+        fig_roc_auc,
+        results_path / "auc_roc_by_model.png",
+        dpi=300,
+        bbox_inches="tight",
     )
     plt.close(fig_roc_auc)
 
-    fig_pr_auc.savefig(
-        results_path / "auc_pr_by_model.png", dpi=300, bbox_inches="tight"
+    save_figure(
+        fig_pr_auc,
+        results_path / "auc_pr_by_model.png",
+        dpi=300,
+        bbox_inches="tight",
     )
     plt.close(fig_pr_auc)
 
@@ -525,16 +564,25 @@ def main() -> None:
         roc_results,
         title="ROC curves",
     )
-    fig_roc.savefig(results_path / "curves_roc.png", dpi=300, bbox_inches="tight")
+    save_figure(
+        fig_roc,
+        results_path / "curves_roc.png",
+        dpi=300,
+        bbox_inches="tight",
+    )
     plt.close(fig_roc)
 
-    test_prevalence = y_test.astype(float).mean()
     fig_pr, _ = plot_pr_curves(
         pr_results,
-        baseline=test_prevalence,
+        baseline=pr_auc_baseline,
         title="Precision-Recall curves",
     )
-    fig_pr.savefig(results_path / "curves_pr.png", dpi=300, bbox_inches="tight")
+    save_figure(
+        fig_pr,
+        results_path / "curves_pr.png",
+        dpi=300,
+        bbox_inches="tight",
+    )
     plt.close(fig_pr)
 
 
