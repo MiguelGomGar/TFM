@@ -19,10 +19,15 @@ PIPELINES = [
     ("src.pipelines.03_missing_values_reporting", "Análisis de valores faltantes"),
     ("src.pipelines.04_collinearity_reporting", "Colinealidad"),
     ("src.pipelines.05_clinical_data_cleaning", "Limpieza de datos clínicos"),
-    ("src.pipelines.06_statistical_reporting", "Reporte estadístico"),
-    ("src.pipelines.07_risk_scores_validation", "Validación de risk scores"),
-    # ("src.pipelines.08_clinical_data_modelling", "Modelado con datos clínicos"),
-    # ("src.pipelines.09_proteomic_data_modelling", "Modelado con datos proteómicos"),
+    (
+        "src.pipelines.06_clinical_data_statistical_reporting",
+        "Reporte estadístico clínico",
+    ),
+    (
+        "src.pipelines.07_proteomic_data_statistical_reporting",
+        "Reporte estadístico proteómico",
+    ),
+    ("src.pipelines.08_risk_scores_validation", "Validación de risk scores"),
 ]
 
 

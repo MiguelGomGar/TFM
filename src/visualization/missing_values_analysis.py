@@ -3,11 +3,10 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 from matplotlib.colors import ListedColormap
 import seaborn as sns
 
-from src.config import CATEGORICAL_COLOR_MAP, CATEGORICAL_DISTRIBUTION_COLOR_MAP
+from src.config import CATEGORICAL_COLOR_MAP
 
 
 def plot_row_missingness(
@@ -63,7 +62,7 @@ def plot_row_missingness(
     for label in ax.get_xticklabels() + ax.get_yticklabels():
         label.set_fontweight("bold")
 
-    ax.grid(axis="x", color="#f1f5f9", linewidth=0.5)
+    ax.grid(axis="y", color="#f1f5f9", linewidth=0.5)
     ax.set_axisbelow(True)
     sns.despine(ax=ax, left=True, bottom=True)
     fig.tight_layout()
@@ -138,6 +137,7 @@ def plot_column_missingness(
             fontweight="bold",
             fontsize=10,
             va="bottom",
+            ha="left",
         )
 
     ax.set_xlim(0, max_count * 1.18 if max_count > 0 else 1)
@@ -153,7 +153,7 @@ def plot_column_missingness(
     for label in ax.get_xticklabels() + ax.get_yticklabels():
         label.set_fontweight("bold")
 
-    ax.grid(axis="y", color="#f1f5f9", linewidth=0.5)
+    ax.grid(axis="x", color="#f1f5f9", linewidth=0.5)
     ax.set_axisbelow(True)
     sns.despine(ax=ax, left=True, bottom=True)
     fig.tight_layout()
@@ -174,23 +174,22 @@ def plot_missingness_heatmap(
 
     fig, ax = plt.subplots(figsize=(10, 6))
 
-    cmap = ListedColormap(["#f1f5f9", "#2563eb"])
+    cmap = ListedColormap(["#f1f5f9", "#eb2525"])
 
     matrix_values = na_matrix.astype(int).to_numpy()
     ax.imshow(matrix_values, aspect="auto", cmap=cmap, interpolation="none")
 
-    ax.set_xticks(range(len(na_matrix.columns)))
-    ax.set_xticklabels(
-        na_matrix.columns, rotation=45, fontsize=9, fontweight="bold", color="#475569"
-    )
+    ax.set_xticks(np.arange(na_matrix.shape[1]) + 0.5)
+    ax.set_xticklabels(labels=[])
     ax.set_yticks([])
-
-    if title:
-        ax.set_title(title, fontsize=13, fontweight="bold", pad=20, loc="left")
 
     ax.set_xlabel(x_label, fontsize=11, fontweight="bold", color="#1e293b", labelpad=10)
     ax.set_ylabel(y_label, fontsize=11, fontweight="bold", color="#1e293b", labelpad=10)
 
+    if title:
+        ax.set_title(title, fontsize=13, fontweight="bold", pad=20, loc="left")
+
+    ax.grid(axis="x", color="#000000", linewidth=0.5)
     fig.tight_layout()
     return fig
 
@@ -213,9 +212,7 @@ def plot_stratified_missingness(
     fig, ax = plt.subplots(figsize=(8, max(5, len(stratified_na_pct) * 0.35 + 1.5)))
 
     cat_colors = [
-        CATEGORICAL_DISTRIBUTION_COLOR_MAP.get(
-            col, CATEGORICAL_COLOR_MAP[i % len(CATEGORICAL_COLOR_MAP)]
-        )
+        CATEGORICAL_COLOR_MAP[i % len(CATEGORICAL_COLOR_MAP)]
         for i, col in enumerate(stratified_na_pct.columns)
     ]
 
@@ -231,6 +228,25 @@ def plot_stratified_missingness(
 
     ax.set_xlim(0, 100)
     ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x:.0f}%"))
+
+    # Add percentage labels inside each stacked bar segment
+    # Each label shows the proportion of missing values in that subgroup
+    # relative to the total missing values for that feature (row total)
+    for i, (_, row) in enumerate(stratified_na_pct.iterrows()):
+        cumsum = 0
+        for j, val in enumerate(row):
+            if val > 0:
+                ax.text(
+                    cumsum + val / 2,
+                    i,
+                    f"{val:.1f}%",
+                    ha="center",
+                    va="center",
+                    fontsize=8,
+                    fontweight="bold",
+                    color="white",
+                )
+            cumsum += val
 
     ax.set_yticklabels(
         stratified_na_pct.index, fontsize=10, fontweight="bold", color="#475569"
@@ -250,14 +266,15 @@ def plot_stratified_missingness(
         frameon=True,
         facecolor="#f8fafc",
         edgecolor="#cbd5e1",
-        loc="upper right",
+        loc="upper left",
+        bbox_to_anchor=(1, 1),
     )
 
     ax.tick_params(axis="both", labelcolor="#475569", labelsize=10)
     for label in ax.get_xticklabels() + ax.get_yticklabels():
         label.set_fontweight("bold")
 
-    ax.grid(axis="x", color="#f1f5f9", linewidth=0.5)
+    ax.grid(axis="y", color="#f1f5f9", linewidth=0.5)
     ax.set_axisbelow(True)
     sns.despine(ax=ax, left=True, bottom=True)
     fig.tight_layout()

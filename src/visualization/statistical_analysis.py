@@ -9,7 +9,7 @@ import pandas as pd
 import seaborn as sns
 
 from src.utils.io import save_figure
-from src.config import CATEGORICAL_COLOR_MAP, CATEGORICAL_DISTRIBUTION_COLOR_MAP
+from src.config import CATEGORICAL_COLOR_MAP
 
 
 def plot_numeric_distribution(df_summary: pd.DataFrame, col_name: str) -> plt.Figure:
@@ -90,13 +90,26 @@ def plot_stratified_numeric_distribution(
 ) -> plt.Figure:
     """Render a violin plot from prepared stratified numeric data."""
 
+    levels = list(df_summary[target_var].cat.categories)
+    palette_dict = {
+        str(level): CATEGORICAL_COLOR_MAP[i % len(CATEGORICAL_COLOR_MAP)]
+        for i, level in enumerate(levels)
+    }
+
+    # Use a copy with string types to avoid Seaborn categorical mapping bugs
+    plot_df = df_summary.copy()
+    plot_df[target_var] = plot_df[target_var].astype(str)
+    string_levels = [str(lvl) for lvl in levels]
+
     fig, ax = plt.subplots(figsize=(8, 5))
     sns.violinplot(
-        data=df_summary,
+        data=plot_df,
         y=col_name,
         x=target_var,
         hue=target_var,
-        palette=CATEGORICAL_DISTRIBUTION_COLOR_MAP,
+        palette=palette_dict,
+        order=string_levels,
+        hue_order=string_levels,
         dodge=False,
         inner="quartile",
         cut=0,
@@ -104,17 +117,20 @@ def plot_stratified_numeric_distribution(
         ax=ax,
     )
 
-    handles, labels = ax.get_legend_handles_labels()
-    if handles:
-        ax.legend(
-            handles,
-            labels,
-            title=target_var,
-            loc="center left",
-            bbox_to_anchor=(1.02, 0.5),
-            frameon=True,
-            borderaxespad=0.0,
-        )
+    # Force legend to match our defined categories and colors exactly
+    import matplotlib.patches as mpatches
+
+    handles = [
+        mpatches.Patch(color=palette_dict[str(lvl)], label=str(lvl)) for lvl in levels
+    ]
+    ax.legend(
+        handles=handles,
+        title=target_var,
+        loc="center left",
+        bbox_to_anchor=(1.02, 0.5),
+        frameon=True,
+        borderaxespad=0.0,
+    )
 
     ax.set_title(
         f"Distribution of {col_name} stratified by {target_var}",
@@ -142,18 +158,16 @@ def plot_stratified_categorical_distribution(
     if col_name == target_var:
         return None
 
-    fig, ax = plt.subplots(figsize=(9, len(df_summary) * 0.5 + 2))
-    cat_colors = [
-        CATEGORICAL_DISTRIBUTION_COLOR_MAP.get(
-            col, CATEGORICAL_COLOR_MAP[i % len(CATEGORICAL_COLOR_MAP)]
-        )
-        for i, col in enumerate(df_summary.columns)
+    palette = [
+        CATEGORICAL_COLOR_MAP[i % len(CATEGORICAL_COLOR_MAP)]
+        for i in range(len(df_summary.columns))
     ]
 
+    fig, ax = plt.subplots(figsize=(9, len(df_summary) * 0.5 + 2))
     df_summary.plot(
         kind="barh",
         stacked=True,
-        color=cat_colors,
+        color=palette,
         edgecolor="#2c3e50",
         alpha=0.85,
         linewidth=0.4,

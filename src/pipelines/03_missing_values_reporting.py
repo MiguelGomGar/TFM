@@ -39,7 +39,7 @@ def main() -> None:
     logger.info("Plotting missing values heatmap...")
     heatmap_data = compute_missingness_heatmap_data(df)
     heatmap_plot = plot_missingness_heatmap(heatmap_data)
-    save_figure(heatmap_plot, OUTPUT_DIR / "missing_values_heatmap.png")
+    save_figure(heatmap_plot, OUTPUT_DIR / "missing_values_heatmap_before.png")
 
     logger.info("Plotting missing values per feature...")
     col_na_data = compute_column_missingness_data(df)
@@ -53,7 +53,7 @@ def main() -> None:
     )
     save_figure(strat_na_plot, OUTPUT_DIR / "missing_values_stratified_before.png")
 
-    logger.info("Plotting missing values per row...")
+    logger.info("Plotting missing values distribution per row...")
     row_na_data = compute_row_missingness_data(df)
     row_na_plot = plot_row_missingness(row_na_data)
     save_figure(row_na_plot, OUTPUT_DIR / "missing_values_per_record_before.png")
@@ -64,23 +64,14 @@ def main() -> None:
     logger.info("Dropping rows with high missingness...")
     df_filtered = drop_high_missingness_rows(df_filtered, MISSING_RATE_THRESHOLD)
 
-    logger.info("Plotting missing values per row (after dropping columns)...")
+    logger.info("Plotting missing values per row...")
     row_na_data_filtered = compute_row_missingness_data(df_filtered)
     row_na_plot_filtered = plot_row_missingness(row_na_data_filtered)
     save_figure(
         row_na_plot_filtered, OUTPUT_DIR / "missing_values_per_record_after.png"
     )
 
-    logger.info("Plotting missing values per column (after dropping rows)...")
-    col_na_data_filtered = compute_column_missingness_data(df_filtered)
-    col_na_plot_filtered = plot_column_missingness(col_na_data_filtered)
-    save_figure(
-        col_na_plot_filtered, OUTPUT_DIR / "missing_values_per_feature_after.png"
-    )
-
-    logger.info(
-        f"Plotting missing values stratified by {TARGET_VARIABLE} (after filtering)..."
-    )
+    logger.info(f"Plotting missing values stratified by {TARGET_VARIABLE}...")
     strat_na_data = compute_stratified_missingness_data(
         df_filtered, stratify_by=TARGET_VARIABLE
     )
@@ -88,6 +79,11 @@ def main() -> None:
         strat_na_data, stratify_col_name=TARGET_VARIABLE
     )
     save_figure(strat_na_plot, OUTPUT_DIR / "missing_values_stratified_after.png")
+
+    logger.info("Plotting new missing values heatmap...")
+    heatmap_data_filtered = compute_missingness_heatmap_data(df_filtered)
+    new_heatmap_plot = plot_missingness_heatmap(heatmap_data_filtered)
+    save_figure(new_heatmap_plot, OUTPUT_DIR / "missing_values_heatmap_after.png")
 
 
 if __name__ == "__main__":
