@@ -26,9 +26,14 @@ def compute_row_missingness_data(df):
 def compute_column_missingness_data(df):
     """Calculate column-wise missingness summary for plotting."""
 
-    missing_rate = df.isna().sum() / len(df)
+    missing_count = df.isna().sum()
+    missing_rate = missing_count / len(df)
     na_summary = pd.DataFrame(
-        {"feature": missing_rate.index, "missing_rate": missing_rate.values}
+        {
+            "feature": missing_rate.index,
+            "missing_count": missing_count.values,
+            "missing_rate": missing_rate.values,
+        }
     )
 
     na_summary = na_summary[na_summary["missing_rate"] > 0].sort_values("missing_rate")

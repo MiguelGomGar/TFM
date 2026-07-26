@@ -1,7 +1,6 @@
 """Statistical plots built from prepared data."""
 
 import logging
-import logging
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -10,7 +9,7 @@ import pandas as pd
 import seaborn as sns
 
 from src.utils.io import save_figure
-from src.config import CATEGORICAL_DISTRIBUTION_COLOR_MAP
+from src.config import CATEGORICAL_COLOR_MAP, CATEGORICAL_DISTRIBUTION_COLOR_MAP
 
 
 def plot_numeric_distribution(df_summary: pd.DataFrame, col_name: str) -> plt.Figure:
@@ -144,10 +143,17 @@ def plot_stratified_categorical_distribution(
         return None
 
     fig, ax = plt.subplots(figsize=(9, len(df_summary) * 0.5 + 2))
+    cat_colors = [
+        CATEGORICAL_DISTRIBUTION_COLOR_MAP.get(
+            col, CATEGORICAL_COLOR_MAP[i % len(CATEGORICAL_COLOR_MAP)]
+        )
+        for i, col in enumerate(df_summary.columns)
+    ]
+
     df_summary.plot(
         kind="barh",
         stacked=True,
-        colormap="cividis",
+        color=cat_colors,
         edgecolor="#2c3e50",
         alpha=0.85,
         linewidth=0.4,
@@ -165,7 +171,7 @@ def plot_stratified_categorical_distribution(
                 f"{width:.0f}%",
                 ha="center",
                 va="center",
-                color="black",
+                color="white",
                 fontweight="bold",
                 fontsize=10,
             )

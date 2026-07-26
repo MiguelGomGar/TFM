@@ -200,6 +200,8 @@ CATEGORICAL_SPECS = {
 
 # %% MISSING DATA ANALYSIS — pipeline 03_missing_values_reporting
 MISSING_RATE_THRESHOLD = 0.20
+CATEGORICAL_COLOR_MAP = ["#2563eb", "#e11d48", "#f59e0b", "#10b981", "#8b5cf6"]
+
 
 # %% COLLINEARITY ANALYSIS — pipeline 04_collinearity_reporting
 IDENTIFIER_VARIABLE = "code"
@@ -215,10 +217,12 @@ NON_NORMAL_VARIABLES = ["AF_duration", "triglycerides"]
 
 # %% STATISTICAL ANALYSIS — pipeline 06_statistical_reporting
 CATEGORICAL_DISTRIBUTION_COLOR_MAP = {
-    "no": "#4682b4",
-    "yes": "#800080",
-    "control": "#4682b4",
-    "intervention": "#800080",
+    "no": "#2563eb",
+    "yes": "#e11d48",
+    "control": "#2563eb",
+    "intervention": "#e11d48",
+    0: "#2563eb",
+    1: "#e11d48",
 }
 
 # %% RISK SCORES EVALUATION — pipeline 07_risk_scores_validation

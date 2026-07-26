@@ -10,27 +10,15 @@ import seaborn as sns
 from src.config import (
     VARIABLES_REVIEW_COLOR_MAP,
     VARIABLES_REVIEW_DEFAULT_COLOR,
-    VARIABLES_REVIEW_EXPECTED_COLUMNS,
     VARIABLES_REVIEW_ORIGINAL_LEVELS,
     VARIABLES_REVIEW_SORT_LEVELS,
 )
 
 
-def _validate_clinical_variables_review_data(df: pd.DataFrame) -> pd.DataFrame:
-    """Validate the clinical variables review source columns."""
-
-    if not VARIABLES_REVIEW_EXPECTED_COLUMNS.issubset(df.columns):
-        raise ValueError(
-            f"Expected columns {VARIABLES_REVIEW_EXPECTED_COLUMNS}, got {set(df.columns)}"
-        )
-
-    return df
-
-
 def prepare_clinical_variables_review_data(df: pd.DataFrame) -> pd.DataFrame:
     """Normalize the review table for plotting."""
 
-    prepared_df = _validate_clinical_variables_review_data(df).copy()
+    prepared_df = df.copy()
     prepared_df["Predimar_sort"] = pd.Categorical(
         prepared_df["Predimar"].astype(str),
         categories=VARIABLES_REVIEW_SORT_LEVELS,
