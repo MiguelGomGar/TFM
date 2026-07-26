@@ -11,22 +11,28 @@ from sklearn.preprocessing import OrdinalEncoder, StandardScaler
 
 
 def get_full_preprocessor(X: pd.DataFrame, seed: int) -> ColumnTransformer:
-    """
-    Creates a scikit-learn ColumnTransformer tailored for distance-based
-    geometric models like Support Vector Machines (SVM). Imputes numerical
-    features with the median and scales them using StandardScaler, which is
-    essential since geometry-driven algorithms are highly sensitive to feature
-    magnitudes when computing hyperplanes. Encodes all categorical variables
-    ordinally and scales them with StandardScaler to ensure uniform distance
-    weighting.
+    """Create a preprocessor for distance-based models (SVM, etc.).
 
-    Parameters:
+    Builds a ColumnTransformer with iterative imputation and standardization
+    for numeric features, and ordinal encoding + scaling for categorical
+    features. Essential for distance-sensitive algorithms like SVM where
+    feature magnitude matters.
+
+    Parameters
     ----------
-    - X: The input DataFrame containing the features to be preprocessed.
-    - seed: An integer seed for reproducibility in imputation (if needed).
+    X : pd.DataFrame
+        Input dataframe with numeric and/or categorical columns. Categorical
+        columns must be of dtype 'category' with ordered levels.
+    seed : int
+        Random seed for reproducibility of iterative imputation.
 
-    Returns:
-    - A ColumnTransformer object that can be used in a scikit-learn pipeline
+    Returns
+    -------
+    sklearn.compose.ColumnTransformer
+        Fitted preprocessor that can be used as the first step in a pipeline.
+        Numeric pipeline: IterativeImputer(median) -> StandardScaler.
+        Categorical pipelines: SimpleImputer(most_frequent) -> OrdinalEncoder
+        (preserving pre-defined category order) -> StandardScaler.
     """
     # 1. Dynamically isolate numerical and categorical features
     numeric_features = X.select_dtypes(include=[np.number]).columns.tolist()
@@ -80,12 +86,26 @@ def get_full_preprocessor(X: pd.DataFrame, seed: int) -> ColumnTransformer:
 
 
 def get_trees_preprocessor(X: pd.DataFrame, seed: int) -> ColumnTransformer:
-    """
-    Creates a scikit-learn ColumnTransformer tailored for tree-based bagging
-    ensembles such as Random Forest. Imputes numerical features with the median
-    to satisfy scikit-learn's structural constraints against NaNs, but skips
-    scaling since tree splits are invariant to monotonic transformations.
-    Encodes all categorical variables ordinally.
+    """Create a preprocessor for tree-based ensemble models (Random Forest, etc.).
+
+    Builds a ColumnTransformer with iterative imputation for numeric features
+    and ordinal encoding for categorical features. Omits scaling since tree
+    models are invariant to monotonic transformations.
+
+    Parameters
+    ----------
+    X : pd.DataFrame
+        Input dataframe with numeric and/or categorical columns. Categorical
+        columns must be of dtype 'category' with ordered levels.
+    seed : int
+        Random seed for reproducibility of iterative imputation.
+
+    Returns
+    -------
+    sklearn.compose.ColumnTransformer
+        Fitted preprocessor for tree-based pipelines. Numeric pipeline:
+        IterativeImputer(median) only (no scaling). Categorical pipelines:
+        SimpleImputer(most_frequent) -> OrdinalEncoder (preserving category order).
     """
     # 1. Dynamically isolate numerical and categorical features
     numeric_features = X.select_dtypes(include=[np.number]).columns.tolist()

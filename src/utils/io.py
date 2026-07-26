@@ -13,10 +13,36 @@ logger = logging.getLogger(__name__)
 
 
 def _as_path(file_path: str | Path) -> Path:
+    """Convert a string or Path to an expanded Path object.
+
+    Parameters
+    ----------
+    file_path : str or Path
+        File path as a string or Path object.
+
+    Returns
+    -------
+    Path
+        Expanded Path object with user home directory (~) resolved.
+    """
     return Path(file_path).expanduser()
 
 
 def _prepare_output_path(file_path: str | Path, default_suffix: str) -> Path:
+    """Prepare an output file path and create its parent directory if needed.
+
+    Parameters
+    ----------
+    file_path : str or Path
+        Target file path. If it has no suffix, `default_suffix` is appended.
+    default_suffix : str
+        File extension to append if the path has no suffix (e.g., ".png").
+
+    Returns
+    -------
+    Path
+        Prepared Path object with parent directory created and suffix ensured.
+    """
     path = _as_path(file_path)
     if path.suffix == "":
         path = path.with_suffix(default_suffix)
@@ -25,8 +51,27 @@ def _prepare_output_path(file_path: str | Path, default_suffix: str) -> Path:
 
 
 def read_excel(file_path: str | Path, **kwargs: Any) -> pd.DataFrame:
-    """Read an Excel file into a DataFrame."""
+    """Read an Excel file into a DataFrame.
 
+    Parameters
+    ----------
+    file_path : str or Path
+        Path to the Excel file.
+    **kwargs : dict
+        Additional keyword arguments passed to pandas.read_excel().
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame loaded from the Excel file.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file does not exist.
+    RuntimeError
+        If the file cannot be read due to a backend error.
+    """
     path = _as_path(file_path)
     if not path.exists():
         raise FileNotFoundError(f"Excel file not found: {path}")
@@ -40,8 +85,27 @@ def read_excel(file_path: str | Path, **kwargs: Any) -> pd.DataFrame:
 
 
 def read_dta(file_path: str | Path, **kwargs: Any) -> pd.DataFrame:
-    """Read a Stata .dta file into a DataFrame."""
+    """Read a Stata .dta file into a DataFrame.
 
+    Parameters
+    ----------
+    file_path : str or Path
+        Path to the Stata .dta file.
+    **kwargs : dict
+        Additional keyword arguments passed to pandas.read_stata().
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame loaded from the Stata file.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file does not exist.
+    RuntimeError
+        If the file cannot be read due to a backend error.
+    """
     path = _as_path(file_path)
     if not path.exists():
         raise FileNotFoundError(f"DTA file not found: {path}")
@@ -55,8 +119,27 @@ def read_dta(file_path: str | Path, **kwargs: Any) -> pd.DataFrame:
 
 
 def read_parquet(file_path: str | Path, **kwargs: Any) -> pd.DataFrame:
-    """Read a Parquet file into a DataFrame."""
+    """Read a Parquet file into a DataFrame.
 
+    Parameters
+    ----------
+    file_path : str or Path
+        Path to the Parquet file.
+    **kwargs : dict
+        Additional keyword arguments passed to pandas.read_parquet().
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame loaded from the Parquet file.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file does not exist.
+    RuntimeError
+        If the file cannot be read due to a backend error.
+    """
     path = _as_path(file_path)
     if not path.exists():
         raise FileNotFoundError(f"Parquet file not found: {path}")
@@ -70,8 +153,27 @@ def read_parquet(file_path: str | Path, **kwargs: Any) -> pd.DataFrame:
 
 
 def save_parquet(dataframe: pd.DataFrame, file_path: str | Path, **kwargs: Any) -> Path:
-    """Save a DataFrame to Parquet and return the output path."""
+    """Save a DataFrame to Parquet format and return the output path.
 
+    Parameters
+    ----------
+    dataframe : pd.DataFrame
+        DataFrame to save.
+    file_path : str or Path
+        Output file path. If no suffix, ".parquet" is appended.
+    **kwargs : dict
+        Additional keyword arguments passed to pandas.to_parquet().
+
+    Returns
+    -------
+    Path
+        Path where the file was saved.
+
+    Raises
+    ------
+    RuntimeError
+        If the file cannot be written due to a backend error.
+    """
     path = _prepare_output_path(file_path, ".parquet")
     try:
         dataframe.to_parquet(path, index=False, **kwargs)
@@ -82,8 +184,27 @@ def save_parquet(dataframe: pd.DataFrame, file_path: str | Path, **kwargs: Any) 
 
 
 def read_csv(file_path: str | Path, **kwargs: Any) -> pd.DataFrame:
-    """Read a CSV file into a DataFrame."""
+    """Read a CSV file into a DataFrame.
 
+    Parameters
+    ----------
+    file_path : str or Path
+        Path to the CSV file.
+    **kwargs : dict
+        Additional keyword arguments passed to pandas.read_csv().
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame loaded from the CSV file.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file does not exist.
+    RuntimeError
+        If the file cannot be read due to a backend error.
+    """
     path = _as_path(file_path)
     if not path.exists():
         raise FileNotFoundError(f"CSV file not found: {path}")
@@ -97,8 +218,27 @@ def read_csv(file_path: str | Path, **kwargs: Any) -> pd.DataFrame:
 
 
 def save_csv(dataframe: pd.DataFrame, file_path: str | Path, **kwargs: Any) -> Path:
-    """Save a DataFrame to CSV and return the output path."""
+    """Save a DataFrame to CSV format and return the output path.
 
+    Parameters
+    ----------
+    dataframe : pd.DataFrame
+        DataFrame to save.
+    file_path : str or Path
+        Output file path. If no suffix, ".csv" is appended.
+    **kwargs : dict
+        Additional keyword arguments passed to pandas.to_csv().
+
+    Returns
+    -------
+    Path
+        Path where the file was saved.
+
+    Raises
+    ------
+    RuntimeError
+        If the file cannot be written due to a backend error.
+    """
     path = _prepare_output_path(file_path, ".csv")
     try:
         dataframe.to_csv(path, index=False, **kwargs)
@@ -109,8 +249,25 @@ def save_csv(dataframe: pd.DataFrame, file_path: str | Path, **kwargs: Any) -> P
 
 
 def load_joblib(file_path: str | Path) -> Any:
-    """Load a serialized object from a joblib file."""
+    """Load a serialized object from a joblib file.
 
+    Parameters
+    ----------
+    file_path : str or Path
+        Path to the joblib file.
+
+    Returns
+    -------
+    Any
+        The deserialized Python object.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file does not exist.
+    RuntimeError
+        If the object cannot be deserialized.
+    """
     path = _as_path(file_path)
     if not path.exists():
         raise FileNotFoundError(f"Joblib file not found: {path}")
@@ -124,8 +281,25 @@ def load_joblib(file_path: str | Path) -> Any:
 
 
 def save_joblib(obj: Any, file_path: str | Path) -> Path:
-    """Serialize an object with joblib and return the output path."""
+    """Serialize a Python object to a joblib file and return the output path.
 
+    Parameters
+    ----------
+    obj : Any
+        Python object to serialize.
+    file_path : str or Path
+        Output file path. If no suffix, ".joblib" is appended.
+
+    Returns
+    -------
+    Path
+        Path where the file was saved.
+
+    Raises
+    ------
+    RuntimeError
+        If the object cannot be serialized or written to disk.
+    """
     path = _prepare_output_path(file_path, ".joblib")
     try:
         joblib.dump(obj, path)
@@ -142,8 +316,31 @@ def save_figure(
     bbox_inches: str = "tight",
     close_fig: bool = True,
 ) -> Path:
-    """Save a matplotlib Figure and return the output path."""
+    """Save a matplotlib Figure to disk and return the output path.
 
+    Parameters
+    ----------
+    figure : matplotlib.figure.Figure
+        Matplotlib figure object to save.
+    file_path : str or Path
+        Output file path. If no suffix, ".png" is appended.
+    dpi : int, default 300
+        Dots per inch (resolution) for the saved figure.
+    bbox_inches : str, default "tight"
+        Bounding box setting; "tight" removes excess whitespace.
+    close_fig : bool, default True
+        If True, close the figure after saving to free memory.
+
+    Returns
+    -------
+    Path
+        Path where the figure was saved.
+
+    Raises
+    ------
+    RuntimeError
+        If the figure cannot be saved due to a backend error.
+    """
     path = _prepare_output_path(file_path, ".png")
     try:
         figure.savefig(path, dpi=dpi, bbox_inches=bbox_inches)

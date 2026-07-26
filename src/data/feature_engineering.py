@@ -7,8 +7,22 @@ from src.config import TARGET_VARIABLE
 
 
 def _compute_hatch_score(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Computes the HATCH score for each patient based on their age and comorbidities.
+    """Compute the HATCH risk score for atrial fibrillation ablation recurrence.
+
+    HATCH score is calculated as: age >75 (1 pt) + hypertension (1 pt) +
+    COPD (1 pt) + stroke (2 pts) + heart failure (2 pts).
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Clinical dataframe with columns: 'age', 'hypertension', 'COPD',
+        'stroke', 'heart_failure'.
+
+    Returns
+    -------
+    pd.DataFrame
+        Input dataframe with an added 'score_hatch' column containing
+        computed HATCH scores. Missing values in input columns propagate.
     """
     df_result = df.copy()
 
@@ -34,8 +48,22 @@ def _compute_hatch_score(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _compute_chads2_score(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Computes the CHADS2 score for each patient based on their age and comorbidities.
+    """Compute the CHADS2 stroke risk score for atrial fibrillation.
+
+    CHADS2 score is calculated as: age ≥75 (1 pt) + hypertension (1 pt) +
+    diabetes (1 pt) + stroke/TIA (2 pts) + heart failure (1 pt).
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Clinical dataframe with columns: 'age', 'hypertension', 'diabetes',
+        'stroke', 'heart_failure'.
+
+    Returns
+    -------
+    pd.DataFrame
+        Input dataframe with an added 'score_chads2' column containing
+        computed CHADS2 scores. Missing values in input columns propagate.
     """
     df_result = df.copy()
 
@@ -61,8 +89,23 @@ def _compute_chads2_score(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _compute_base_af2_score(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Computes the BASE-AF2 score for each patient based on their comorbidities.
+    """Compute the BASE-AF2 recurrence risk score for atrial fibrillation ablation.
+
+    BASE-AF2 score is calculated from BMI, left atrial enlargement (sex-specific),
+    smoking, early recurrence after ablation, AF duration >6 months, and
+    persistent AF type.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Clinical dataframe with columns: 'BMI', 'sex', 'LA_enlargment',
+        'smoking_status', 'ERAF', 'AF_duration', 'AF_type'.
+
+    Returns
+    -------
+    pd.DataFrame
+        Input dataframe with an added 'score_baseaf2' column containing
+        computed BASE-AF2 scores. Missing values propagate.
     """
     df_result = df.copy()
 
@@ -99,8 +142,22 @@ def _compute_base_af2_score(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _compute_mb_later_score(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Computes the MB-LATER score for each patient based on their comorbidities.
+    """Compute the MB-LATER recurrence risk score for atrial fibrillation.
+
+    MB-LATER score is calculated from male sex, bundle branch block,
+    left atrial enlargement (sex-specific), persistent AF, and early recurrence.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Clinical dataframe with columns: 'sex', 'RBBB', 'LBBB',
+        'LA_enlargment', 'AF_type', 'ERAF'.
+
+    Returns
+    -------
+    pd.DataFrame
+        Input dataframe with an added 'score_mblater' column containing
+        computed MB-LATER scores. Missing values propagate.
     """
     df_result = df.copy()
 
@@ -139,8 +196,20 @@ def _compute_mb_later_score(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def compute_risk_scores(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Computes all risk scores for each patient based on their comorbidities.
+    """Compute all risk scores (HATCH, CHADS2, BASE-AF2, MB-LATER) for patients.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Clinical dataframe containing all required fields for each risk score
+        (age, sex, hypertension, diabetes, stroke, heart_failure, BMI,
+        LA_enlargment, smoking_status, ERAF, AF_duration, AF_type, RBBB, LBBB).
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with only the target variable and all risk score columns
+        (score_hatch, score_chads2, score_baseaf2, score_mblater).
     """
     df_result = df.copy()
     df_result = _compute_hatch_score(df_result)

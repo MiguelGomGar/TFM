@@ -8,8 +8,20 @@ from src.utils.paths import LOGS_DIR
 
 
 def setup_logger(name: str, log_dir: Path | None = None) -> logging.Logger:
-    """Configure a logger that writes both to the console and to a file."""
+    """Configure a logger that writes to both console and file.
 
+    Parameters
+    ----------
+    name : str
+        Logger name (typically __name__ of the calling module).
+    log_dir : Path or None, default None
+        Directory where log files are written. If None, uses LOGS_DIR.
+
+    Returns
+    -------
+    logging.Logger
+        Configured logger with file and stream handlers at INFO level.
+    """
     target_dir = Path(log_dir) if log_dir is not None else LOGS_DIR
     target_dir.mkdir(parents=True, exist_ok=True)
 

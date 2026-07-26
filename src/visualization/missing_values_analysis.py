@@ -15,8 +15,24 @@ def plot_row_missingness(
     x_label: str = "Amount of Missing Values",
     y_label: str = "Number of Records",
 ):
-    """Render a row missingness bar chart from prepared summary data."""
+    """Plot a bar chart of records by number of missing values.
 
+    Parameters
+    ----------
+    na_summary : pd.DataFrame
+        Summary table with columns ['row_na_count', 'n_records', 'pct_label'].
+    title : str, default 'Missing Values per record'
+        Plot title.
+    x_label : str, default 'Amount of Missing Values'
+        X-axis label.
+    y_label : str, default 'Number of Records'
+        Y-axis label.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        Bar chart figure, or None if na_summary is None or empty.
+    """
     if na_summary is None or na_summary.empty:
         return None
 
@@ -77,8 +93,26 @@ def plot_column_missingness(
     x_label: str = "Number of Missing Values",
     y_label: str = None,
 ):
-    """Render a column missingness bar chart from prepared summary data."""
+    """Plot a horizontal bar chart of missing value counts per feature.
 
+    Parameters
+    ----------
+    na_summary : pd.DataFrame
+        Summary table with columns ['feature', 'missing_count', 'missing_rate'].
+    title : str, default 'Missing Values per feature'
+        Plot title.
+    threshold : float, optional
+        Threshold line to draw (e.g., maximum acceptable missing rate).
+    x_label : str, default 'Number of Missing Values'
+        X-axis label.
+    y_label : str, optional
+        Y-axis label. If None, no label is set.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        Horizontal bar chart figure, or None if na_summary is None or empty.
+    """
     if na_summary is None or na_summary.empty:
         return None
 
@@ -167,8 +201,24 @@ def plot_missingness_heatmap(
     x_label: str = "Features",
     y_label: str = "Records",
 ):
-    """Render a heatmap visualizing missing value patterns across the dataset."""
+    """Plot a heatmap showing missing value patterns across records and features.
 
+    Parameters
+    ----------
+    na_matrix : pd.DataFrame
+        Boolean matrix (rows: records, columns: features, True = NaN).
+    title : str, default 'Missing Values Heatmap'
+        Plot title.
+    x_label : str, default 'Features'
+        X-axis label.
+    y_label : str, default 'Records'
+        Y-axis label.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        Heatmap figure, or None if na_matrix is None or empty.
+    """
     if na_matrix is None or na_matrix.empty:
         return None
 
@@ -201,8 +251,26 @@ def plot_stratified_missingness(
     x_label: str = "Proportion of Missing Values",
     y_label: str = None,
 ):
-    """Render a stacked horizontal bar chart for missing values per feature by subgroup."""
+    """Plot a stacked horizontal bar chart of feature missingness by group.
 
+    Parameters
+    ----------
+    stratified_na : pd.DataFrame
+        Missing value counts per feature per group (rows: features, columns: groups).
+    stratify_col_name : str
+        Name of the stratification variable (used in legend).
+    title : str
+        Plot title.
+    x_label : str, default 'Proportion of Missing Values'
+        X-axis label.
+    y_label : str, optional
+        Y-axis label. If None, no label is set.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        Stacked bar chart figure, or None if stratified_na is None or empty.
+    """
     if stratified_na is None or stratified_na.empty:
         return None
 

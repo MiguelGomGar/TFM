@@ -7,42 +7,50 @@ import pandas as pd
 
 
 def _clean_feature_names(feature_list):
-    """
-    Cleans a list of feature names by removing any prefixes before the double
-    underscore '__'.
+    """Remove pipeline prefixes from feature names.
 
-    Parameters:
+    Strips everything before and including the double underscore ('__')
+    from each feature name (e.g., 'num__age' -> 'age').
+
+    Parameters
     ----------
-    - feature_list : list of str
-        A list of feature names with prefixes (e.g., 'num__age').
+    feature_list : list of str
+        Feature names, potentially with pipeline prefixes.
 
-    Returns:
+    Returns
     -------
-    - list of str
-        A list of cleaned feature names.
-
+    list of str
+        Cleaned feature names with prefixes removed.
     """
-
     return [name.split("__")[-1] for name in feature_list]
 
 
 def get_relevant_features(regularized_model_pipeline):
-    """
-    Extracts and returns a DataFrame of non-zero coefficients from a regularized
-    linear model.
+    """Extract relevant (non-zero) and irrelevant (zero) features from a regularized model.
 
-    Parameters:
+    Separates features based on their coefficients from a fitted regularized
+    linear model (e.g., Elastic Net), sorting relevant features by absolute
+    coefficient magnitude in descending order.
+
+    Parameters
     ----------
-    - regularized_model_pipeline : sklearn.pipeline.Pipeline
-        A fitted pipeline containing a regularized linear model.
+    regularized_model_pipeline : sklearn.pipeline.Pipeline
+        Fitted pipeline containing a 'preprocessor' step and 'clf' (regularized
+        linear model) step with a coef_ attribute.
 
-    Returns:
+    Returns
     -------
-    - relevant_cols : list
-        A list of feature names corresponding to non-zero coefficients in the
-        model.
-    - irrelevant_cols : list
-        A list of feature names corresponding to zero coefficients in the model.
+    relevant_cols : list of str
+        Feature names with non-zero coefficients, sorted by absolute coefficient
+        magnitude (largest first).
+    irrelevant_cols : list of str
+        Feature names with zero coefficients (dropped by regularization).
+
+    Raises
+    ------
+    ValueError
+        If the pipeline does not contain a 'preprocessor' step or if the
+        preprocessor lacks a get_feature_names_out() method.
     """
     # Get the feature names from the model's preprocessing step (if available)
     if (
@@ -89,24 +97,27 @@ def get_relevant_features(regularized_model_pipeline):
 def save_feature_selection_results(
     relevant_cols, irrelevant_cols, output_dir, identifier=None
 ):
-    """
-    Saves the relevant and irrelevant feature lists derived from the Elastic Net
-    regularization step as a joblib artifact.
+    """Save feature selection results (relevant and irrelevant features) to joblib.
 
-    Parameters:
+    Persists the lists of selected and rejected features from a regularized
+    model's feature selection step as a joblib-serialized dictionary.
+
+    Parameters
     ----------
-    - relevant_cols : list
-        List of feature names with non-zero coefficients.
-    - irrelevant_cols : list
-        List of feature names with zero coefficients.
-    - output_dir : str or pathlib.Path
-        Directory where the feature selection artifact will be stored.
-    - identifier : str, optional
-        Optional identifier used to build the filename.
+    relevant_cols : list of str
+        Feature names with non-zero coefficients (selected features).
+    irrelevant_cols : list of str
+        Feature names with zero coefficients (rejected features).
+    output_dir : str or Path
+        Directory where the joblib file will be saved.
+    identifier : str, optional
+        Optional string to uniquely identify the saved file. If provided,
+        filename will be 'feature_selection_{identifier}.joblib'; otherwise,
+        'feature_selection.joblib'.
 
-    Returns:
+    Returns
     -------
-    - pathlib.Path
+    Path
         Path to the saved joblib file.
     """
     output_dir = Path(output_dir)
@@ -127,24 +138,26 @@ def save_feature_selection_results(
 
 
 def save_model(fitted_pipeline, output_dir, identifier=None):
-    """
-    Saves the entire fitted pipeline as a binary file (.joblib), displays its
-    hyperparameters as a formatted pandas DataFrame (excluding default/None
-    values), and returns that DataFrame.
+    """Save a fitted scikit-learn pipeline to disk as a joblib file.
 
-    Parameters:
+    Persists the entire trained pipeline (including preprocessing and classifier),
+    allowing it to be loaded and used for prediction on new data.
+
+    Parameters
     ----------
-    - fitted_pipeline : sklearn.pipeline.Pipeline
-        The fully trained pipeline object to be serialized and saved.
-    - output_dir : str or pathlib.Path
-        The directory path where the binary file will be stored.
-    - identifier : str, optional
-        An optional string to uniquely identify the saved model file (e.g.,
-        "RF").
+    fitted_pipeline : sklearn.pipeline.Pipeline
+        A fully trained pipeline object containing a 'preprocessor' and 'clf'
+        (classifier) step.
+    output_dir : str or Path
+        Directory where the joblib file will be saved.
+    identifier : str, optional
+        Optional string to identify the model in the filename. If provided,
+        filename will be 'optimized_{identifier}.joblib'; otherwise,
+        'optimized_{model_class_name}.joblib'.
 
-    Returns:
+    Returns
     -------
-    - None
+    None
     """
     # ===========================================================================
     # 1. Save the entire fitted pipeline
@@ -165,24 +178,26 @@ def save_model(fitted_pipeline, output_dir, identifier=None):
 
 
 def save_metrics_results(models_dict, output_dir=None):
-    """
-    Unifies multiple long-format model result DataFrames into a single master
-    DataFrame, adds a 'Model' column, removes the 'Fold' column, and saves it as
-    a CSV.
+    """Consolidate cross-validation metrics from multiple models into a master DataFrame.
 
-    Parameters:
+    Combines long-format metric DataFrames from multiple models into a single
+    unified DataFrame with a 'Model' column, and optionally saves to CSV.
+
+    Parameters
     ----------
-    - models_dict : dict
-        A dictionary where keys are model names (str) and values are pandas
-        DataFrames
-        containing ['Metric', 'Dataset', 'Score', 'Fold'] columns.
-    - output_dir : str or pathlib.Path
-        The directory where the output CSV file will be saved.
+    models_dict : dict
+        Dictionary where keys are model names (str) and values are pandas
+        DataFrames with columns ['Metric', 'Dataset', 'Score', 'Fold'].
+    output_dir : str or Path, optional
+        Directory where the output CSV file will be saved. If None, no file
+        is written (only returns the DataFrame).
 
-    Returns:
+    Returns
     -------
-    - df_master : pandas.DataFrame
-        The consolidated master DataFrame ready for global comparison plots.
+    pd.DataFrame
+        Consolidated DataFrame in long format with columns:
+        ['Model', 'Metric', 'Dataset', 'Score']. Suitable for grouped
+        plotting and comparison of model performance.
     """
     processed_dfs = []
 
@@ -220,33 +235,39 @@ def save_metrics_results(models_dict, output_dir=None):
 def save_curves_results(
     model_names, x_list, y_list, curve_type="roc", output_dir=None, filename=None
 ):
-    """
-    Builds a unified long-format DataFrame containing evaluation curve
-    coordinates (ROC or PR)
-    for multiple models and saves it to a CSV file.
+    """Build and save evaluation curve coordinates (ROC or PR) for multiple models.
 
-    Parameters:
+    Consolidates X and Y coordinates for ROC or Precision-Recall curves from
+    multiple models into a single long-format DataFrame, and optionally saves
+    to CSV.
+
+    Parameters
     ----------
-    - model_names : list of str
-        List containing the names of the models.
-    - x_list : list of arrays/lists
-        List containing the X-axis values for each model (FPR for ROC, Recall
-        for PR).
-    - y_list : list of arrays/lists
-        List containing the Y-axis values for each model (TPR for ROC, Precision
-        for PR).
-    - curve_type : str, default='roc'
-        The type of evaluation curve data to build. Options are 'roc' or 'pr'.
-    - output_dir : str or pathlib.Path, optional
-        The directory path where the CSV file will be stored.
-    - filename : str, optional
-        The name of the output CSV file. If None, it dynamically defaults
-        to 'roc_curves' or 'pr_curves' based on curve_type.
+    model_names : list of str
+        Model identifiers (one per curve).
+    x_list : list of array-like
+        X-axis values for each model. For ROC: False Positive Rate; for PR: Recall.
+    y_list : list of array-like
+        Y-axis values for each model. For ROC: True Positive Rate; for PR: Precision.
+    curve_type : str, default 'roc'
+        Type of curve: 'roc' or 'pr' (Precision-Recall).
+    output_dir : str or Path, optional
+        Directory where the CSV will be saved. If None, no file is written.
+    filename : str, optional
+        Output CSV filename. If None, defaults to 'curves_roc.csv' or
+        'curves_pr.csv' based on curve_type.
 
-    Returns:
+    Returns
     -------
-    - df_curve : pandas.DataFrame
-        Unified DataFrame in long format containing the curve coordinates.
+    pd.DataFrame
+        Long-format DataFrame with columns [x_label, y_label, 'Model'].
+        For ROC: ['False Positive Rate', 'True Positive Rate', 'Model'].
+        For PR: ['Recall', 'Precision', 'Model'].
+
+    Raises
+    ------
+    ValueError
+        If curve_type is not 'roc' or 'pr'.
     """
     # Validate the curve type input parameter
     if curve_type.lower() not in ["roc", "pr"]:

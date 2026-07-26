@@ -10,8 +10,28 @@ from sklearn.metrics import (
 
 
 def evaluate_risk_scores(df, target, score_columns):
-    """Evaluate multiple risk scores and return metrics plus curve data."""
+    """Evaluate performance of multiple risk scores (ROC-AUC and PR-AUC).
 
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Dataframe containing the risk score columns.
+    target : pd.Series
+        Binary target variable (1 = event, 0 = no event).
+    score_columns : list of str
+        Names of risk score columns to evaluate.
+
+    Returns
+    -------
+    evaluation_df : pd.DataFrame
+        Summary metrics (columns: 'score', 'n_samples', 'roc_auc', 'average_precision'),
+        sorted by ROC-AUC descending.
+    roc_plot_data : list of tuple
+        List of (score_name, fpr, tpr, roc_auc) for plotting ROC curves.
+    pr_plot_data : list of tuple
+        List of (score_name, recall, precision, average_precision) for plotting
+        PR curves.
+    """
     evaluation_rows = []
     roc_plot_data = []
     pr_plot_data = []

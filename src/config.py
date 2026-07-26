@@ -213,7 +213,7 @@ VIF_THRESHOLD = 5.0
 TARGET_VARIABLE = "AF_recurrence"
 GROUP_ALLOCATION_VARIABLE = "group_allocation"
 STRATIFY_VARIABLES = [TARGET_VARIABLE, GROUP_ALLOCATION_VARIABLE]
-NON_NORMAL_VARIABLES = ["AF_duration", "triglycerides"]
+NON_NORMAL_VARIABLES = ["AF_duration", "triglycerides", "glucose"]
 
 # %% STATISTICAL ANALYSIS — pipeline 06_statistical_reporting
 

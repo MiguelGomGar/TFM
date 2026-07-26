@@ -5,31 +5,51 @@ from src.config import TARGET_VARIABLE, STRATIFY_VARIABLES
 
 
 def get_numeric_columns(df: pd.DataFrame) -> list[str]:
-    """Get the numeric columns of a dataframe.
+    """Get the numeric columns from a dataframe.
 
-    Args:
-        df (pd.DataFrame): Input dataframe.
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe.
 
-    Returns:
-        list[str]: List of numeric columns.
+    Returns
+    -------
+    list of str
+        Column names with numeric dtype (int, float, etc.).
     """
     return df.select_dtypes(include=["number"]).columns.tolist()
 
 
 def get_categorical_columns(df: pd.DataFrame) -> list[str]:
-    """Get the categorical columns of a dataframe.
+    """Get the categorical columns from a dataframe.
 
-    Args:
-        df (pd.DataFrame): Input dataframe.
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe.
 
-    Returns:
-        list[str]: List of categorical columns.
+    Returns
+    -------
+    list of str
+        Column names with categorical dtype (category, object, bool).
     """
     return df.select_dtypes(include=["category", "object", "bool"]).columns.tolist()
 
 
 def get_proteomic_features(df: pd.DataFrame) -> list[str]:
-    """Get the proteomic features of a dataframe."""
+    """Get proteomic features (numeric columns excluding target and stratification vars).
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe containing proteomic and other features.
+
+    Returns
+    -------
+    list of str
+        Column names of numeric proteomic features, excluding the target
+        variable and stratification variables.
+    """
     return [
         col
         for col in df.columns

@@ -3,11 +3,29 @@
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
+from tableone import TableOne
 
 
 def compute_numeric_distribution(df: pd.DataFrame, col_name: str) -> pd.Series:
-    """Return the numeric series to plot for a continuous variable."""
+    """Extract a numeric column and remove missing values.
 
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe.
+    col_name : str
+        Name of a numeric column.
+
+    Returns
+    -------
+    pd.Series
+        Numeric series with NaN values removed.
+
+    Raises
+    ------
+    ValueError
+        If the specified column is not numeric.
+    """
     if not np.issubdtype(df[col_name].dtype, np.number):
         raise ValueError(f"The column {col_name} must be numeric.")
 
@@ -15,8 +33,21 @@ def compute_numeric_distribution(df: pd.DataFrame, col_name: str) -> pd.Series:
 
 
 def compute_categorical_distribution(df: pd.DataFrame, col_name: str) -> pd.DataFrame:
-    """Return summary counts and percentages for a categorical variable."""
+    """Calculate value counts and percentages for a categorical variable.
 
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe.
+    col_name : str
+        Name of a categorical column.
+
+    Returns
+    -------
+    pd.DataFrame
+        Summary table with columns ['feature', 'n', 'pct', 'pct_label'],
+        one row per unique value (excluding NaN).
+    """
     clean_df = df[df[col_name].notna()]
     df_summary = clean_df[col_name].value_counts().reset_index()
     df_summary.columns = [col_name, "n"]
@@ -28,8 +59,27 @@ def compute_categorical_distribution(df: pd.DataFrame, col_name: str) -> pd.Data
 def compute_stratified_numeric_distribution(
     df: pd.DataFrame, col_name: str, target_var: str
 ) -> pd.DataFrame:
-    """Return the cleaned dataframe needed for a stratified numeric plot."""
+    """Extract a numeric column stratified by a grouping variable, removing NaNs.
 
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe.
+    col_name : str
+        Name of a numeric column.
+    target_var : str
+        Name of a categorical stratification variable.
+
+    Returns
+    -------
+    pd.DataFrame
+        Two-column dataframe with col_name and target_var, NaN rows removed.
+
+    Raises
+    ------
+    ValueError
+        If col_name is not numeric.
+    """
     if not np.issubdtype(df[col_name].dtype, np.number):
         raise ValueError(f"The column {col_name} must be numeric.")
 
@@ -38,9 +88,24 @@ def compute_stratified_numeric_distribution(
 
 def compute_stratified_categorical_distribution(
     df: pd.DataFrame, col_name: str, target_var: str
-) -> pd.DataFrame:
-    """Return a normalized cross-tab for a stratified categorical plot."""
+) -> pd.DataFrame | None:
+    """Calculate row-normalized cross-tabulation of a categorical variable by group.
 
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe.
+    col_name : str
+        Name of a categorical feature to cross-tabulate.
+    target_var : str
+        Name of a categorical grouping variable.
+
+    Returns
+    -------
+    pd.DataFrame or None
+        Row-normalized cross-tabulation (0-100) with col_name on rows and
+        target_var on columns. Returns None if col_name == target_var.
+    """
     if col_name == target_var:
         return None
 
@@ -51,8 +116,27 @@ def compute_stratified_categorical_distribution(
 
 
 def compute_qq(df: pd.DataFrame, feature: str, ci_level: float = 0.95):
-    """Compute the data needed for a Q-Q plot with confidence bands."""
+    """Compute Q-Q plot coordinates and confidence bands for a numeric feature.
 
+    Generates theoretical vs. observed quantiles and a confidence band around
+    the normal-fit line for assessing normality.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe.
+    feature : str
+        Name of a numeric column to assess for normality.
+    ci_level : float, default 0.95
+        Confidence level (0-1) for the confidence band.
+
+    Returns
+    -------
+    dict or None
+        Dictionary with keys: 'feature', 'ci_level', 'osm', 'osr' (observed),
+        'slope', 'intercept', 'y_line_x', 'y_line_y' (normal fit), 'y_lower',
+        'y_upper' (confidence band). Returns None if feature has no data.
+    """
     clean_data = df[feature].dropna().sort_values()
     n = len(clean_data)
     if n == 0:
@@ -90,155 +174,46 @@ def create_table1(
     strat_var: str,
     cat_vars=None,
     nonnormal_vars=None,
-    exact_vars=None,
-):
+) -> pd.DataFrame:
+    """Create a Table 1 summary of patient characteristics with statistical tests.
+
+    Stratifies descriptive statistics by a grouping variable and performs
+    appropriate statistical tests (Chi-squared, t-test, Wilcoxon, ANOVA, etc.).
+    Wrapper around the tableone.TableOne library.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Clinical dataframe with all features and the stratification variable.
+    strat_var : str
+        Column name for stratification (typically the outcome/group variable).
+    cat_vars : list of str, optional
+        Categorical variable names. If None, inferred from data types.
+    nonnormal_vars : list of str, optional
+        Continuous variables to treat as non-normal (use non-parametric tests).
+
+    Returns
+    -------
+    pd.DataFrame
+        Table 1 summary with descriptive statistics and p-values from
+        stratified comparisons (Chi-squared for categorical, t-test/Wilcoxon
+        for continuous depending on normality).
     """
-    Create a Table 1 dataframe summarizing patient characteristics stratified by strat_var.
-    Performs standard statistical tests:
-    - Categorical variables: Chi-squared or Fisher's Exact
-    - Normal continuous: Student's t-test or ANOVA
-    - Non-normal continuous: Wilcoxon Rank-Sum or Kruskal-Wallis
-    """
-    if cat_vars is None:
-        cat_vars = []
-    if nonnormal_vars is None:
-        nonnormal_vars = []
-    if exact_vars is None:
-        exact_vars = []
+    columns = [col for col in data.columns if col != strat_var]
+    categorical = (
+        None
+        if cat_vars is None
+        else [col for col in dict.fromkeys(cat_vars) if col != strat_var]
+    )
 
-    strat_groups = data[strat_var].unique()
-    strat_groups = [g for g in strat_groups if pd.notna(g)]
-    strat_groups.sort()
+    table = TableOne(
+        data,
+        columns=columns,
+        categorical=categorical,
+        nonnormal=nonnormal_vars,
+        htest_name=True,
+        pval=True,
+        groupby=strat_var,
+    )
 
-    rows = []
-
-    overall_n = len(data)
-    n_row = {"Feature": "n", "Overall": str(overall_n)}
-    for g in strat_groups:
-        n_row[f"Group: {g}"] = str(len(data[data[strat_var] == g]))
-    n_row["p-value"] = ""
-    n_row["Test"] = ""
-    rows.append(n_row)
-
-    for col in data.columns:
-        if col == strat_var:
-            continue
-
-        is_cat = (
-            col in cat_vars
-            or data[col].dtype.name in ["category", "object", "bool"]
-            or not np.issubdtype(data[col].dtype, np.number)
-        )
-
-        if is_cat:
-            header_row = {"Feature": col, "Overall": "", "p-value": "", "Test": ""}
-            for g in strat_groups:
-                header_row[f"Group: {g}"] = ""
-
-            p_val_str = ""
-            test_name = ""
-            try:
-                ct = pd.crosstab(data[col], data[strat_var])
-                if not ct.empty and ct.shape[0] >= 1 and ct.shape[1] >= 2:
-                    if col in exact_vars and ct.shape == (2, 2):
-                        _, p_val = stats.fisher_exact(ct)
-                        test_name = "Fisher's Exact"
-                    else:
-                        _, p_val, _, _ = stats.chi2_contingency(ct)
-                        test_name = "Chi-squared"
-                    p_val_str = f"{p_val:.3f}" if p_val >= 0.001 else "<0.001"
-            except Exception:
-                pass
-
-            header_row["p-value"] = p_val_str
-            header_row["Test"] = test_name
-            rows.append(header_row)
-
-            levels = sorted(data[col].dropna().unique().tolist(), key=str)
-            for lvl in levels:
-                lvl_row = {"Feature": f"  {lvl}"}
-                count_all = len(data[data[col] == lvl])
-                pct_all = (count_all / data[col].notna().sum()) * 100
-                lvl_row["Overall"] = f"{count_all} ({pct_all:.1f}%)"
-
-                for g in strat_groups:
-                    subset = data[data[strat_var] == g]
-                    count_g = len(subset[subset[col] == lvl])
-                    pct_g = (
-                        (count_g / subset[col].notna().sum() * 100)
-                        if subset[col].notna().sum() > 0
-                        else 0.0
-                    )
-                    lvl_row[f"Group: {g}"] = f"{count_g} ({pct_g:.1f}%)"
-
-                lvl_row["p-value"] = ""
-                lvl_row["Test"] = ""
-                rows.append(lvl_row)
-
-        else:
-            is_nonnormal = col in nonnormal_vars
-            row_data = {"Feature": col}
-
-            p_val_str = ""
-            test_name = ""
-            try:
-                groups_data = [
-                    data[data[strat_var] == g][col].dropna().values
-                    for g in strat_groups
-                ]
-                groups_data = [g for g in groups_data if len(g) > 0]
-
-                if len(groups_data) >= 2:
-                    if is_nonnormal:
-                        if len(groups_data) == 2:
-                            _, p_val = stats.mannwhitneyu(
-                                groups_data[0], groups_data[1]
-                            )
-                            test_name = "Wilcoxon Rank-Sum"
-                        else:
-                            _, p_val = stats.kruskal(*groups_data)
-                            test_name = "Kruskal-Wallis"
-                    else:
-                        if len(groups_data) == 2:
-                            _, p_val = stats.ttest_ind(
-                                groups_data[0], groups_data[1], equal_var=False
-                            )
-                            test_name = "Welch's t-test"
-                        else:
-                            _, p_val = stats.f_oneway(*groups_data)
-                            test_name = "ANOVA"
-                    p_val_str = f"{p_val:.3f}" if p_val >= 0.001 else "<0.001"
-            except Exception:
-                pass
-
-            row_data["p-value"] = p_val_str
-            row_data["Test"] = test_name
-
-            if is_nonnormal:
-                median = data[col].median()
-                q25 = data[col].quantile(0.25)
-                q75 = data[col].quantile(0.75)
-                row_data["Overall"] = f"{median:.2f} [{q25:.2f}, {q75:.2f}]"
-
-                for g in strat_groups:
-                    subset = data[data[strat_var] == g][col]
-                    g_median = subset.median()
-                    g_q25 = subset.quantile(0.25)
-                    g_q75 = subset.quantile(0.75)
-                    row_data[f"Group: {g}"] = (
-                        f"{g_median:.2f} [{g_q25:.2f}, {g_q75:.2f}]"
-                    )
-            else:
-                mean = data[col].mean()
-                sd = data[col].std()
-                row_data["Overall"] = f"{mean:.2f} (±{sd:.2f})"
-
-                for g in strat_groups:
-                    subset = data[data[strat_var] == g][col]
-                    g_mean = subset.mean()
-                    g_sd = subset.std()
-                    row_data[f"Group: {g}"] = f"{g_mean:.2f} (±{g_sd:.2f})"
-
-            rows.append(row_data)
-
-    return pd.DataFrame(rows)
+    return table.tableone

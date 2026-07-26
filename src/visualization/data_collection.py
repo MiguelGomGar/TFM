@@ -16,8 +16,21 @@ from src.config import (
 
 
 def prepare_clinical_variables_review_data(df: pd.DataFrame) -> pd.DataFrame:
-    """Normalize the review table for plotting."""
+    """Prepare clinical variables review dataframe for plotting.
 
+    Converts the Predimar review status to categorical with proper sort and
+    display order, and sorts rows for visualization.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Clinical variables review dataframe with columns ['Variable', 'Predimar', 'Scores'].
+
+    Returns
+    -------
+    pd.DataFrame
+        Prepared dataframe with categorical columns ordered for plotting.
+    """
     prepared_df = df.copy()
     prepared_df["Predimar_sort"] = pd.Categorical(
         prepared_df["Predimar"].astype(str),
@@ -41,8 +54,19 @@ def prepare_clinical_variables_review_data(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_clinical_variables_review_plot(df: pd.DataFrame) -> plt.Figure:
-    """Build the clinical variables review figure."""
+    """Build a horizontal bar chart of clinical variables review scores.
 
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Prepared review dataframe with columns ['Variable', 'Predimar', 'Scores'].
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        Bar chart showing frequency counts (Scores) for each variable,
+        colored by Predimar feasibility status.
+    """
     colors = [
         VARIABLES_REVIEW_COLOR_MAP.get(str(value), VARIABLES_REVIEW_DEFAULT_COLOR)
         for value in df["Predimar"]

@@ -174,43 +174,53 @@ def optimize_model_random_search(
     n_iter=20,
     seed=42,
 ):
-    """
-    Optimizes a model using Randomized Search, trains it, and returns
-    cross-validation metrics (mean and standard deviation) and test metrics to
-    assess overfitting, as well as the data for the Precision-Recall curve.
+    """Optimize hyperparameters via randomized search and evaluate on train/validation/test.
 
-    Parameters:
+    Performs randomized hyperparameter search on training data, evaluates the
+    best model via cross-validation on training data and external validation
+    on test data, and computes ROC and PR curves.
+
+    Parameters
     ----------
-    - pipeline : sklearn.pipeline.Pipeline or estimator
-        The model or pipeline to evaluate.
-    - param_distributions : dict
-        Dictionary containing parameters to sample from.
-    - X_train, y_train : array-like
-        Training data.
-    - X_test, y_test : array-like
-        Test data.
-    - metrics_dict : dict
-        Dictionary of metric names and their corresponding scorer strings (e.g.,
-        {'Accuracy': 'accuracy', ...})
-    - aim : str, default="average_precision"
-        Metric to optimize in the RandomizedSearchCV.
-    - cv : int, default=5
-        Number of partitions (folds) for cross-validation.
-    - n_iter : int, default=20
-        Number of iterations for the Randomized search.
-    - seed : int, default=42
+    pipeline : sklearn.pipeline.Pipeline or estimator
+        Model or pipeline to optimize.
+    param_distributions : dict
+        Hyperparameter distributions for RandomizedSearchCV.
+    X_train : array-like, shape (n_train, n_features)
+        Training feature matrix.
+    y_train : array-like, shape (n_train,)
+        Training target vector.
+    X_test : array-like, shape (n_test, n_features)
+        Test feature matrix.
+    y_test : array-like, shape (n_test,)
+        Test target vector.
+    metrics_dict : dict
+        Mapping of metric names to scorer strings
+        (e.g., {'Accuracy': 'accuracy', 'Precision': 'precision'}).
+    aim : str, default 'average_precision'
+        Optimization objective for RandomizedSearchCV.
+    cv : int, default 5
+        Number of cross-validation folds.
+    n_iter : int, default 20
+        Number of parameter sets to sample.
+    seed : int, default 42
         Random seed for reproducibility.
 
-    Returns:
+    Returns
     -------
-    - best_model : fitted estimator
-    - df_results_complete : pd.DataFrame (unified results across train,
-    validation, and test)
-    - fpr : array (false positive rates for the test ROC curve)
-    - tpr : array (true positive rates for the test ROC curve)
-    - precisions : array (precision values for the test PR curve)
-    - recalls : array (recall values for the test PR curve)
-    - random_search : RandomizedSearchCV (the fitted search object)
+    best_model : sklearn estimator
+        Best model found by RandomizedSearchCV (fitted on all training data).
+    df_results_complete : pd.DataFrame
+        Cross-validation and test metrics in long format
+        (columns: ['Metric', 'Dataset', 'Score', 'Fold']).
+    fpr : ndarray
+        False positive rates for test ROC curve.
+    tpr : ndarray
+        True positive rates for test ROC curve.
+    precisions : ndarray or None
+        Precision values for test PR curve (None if model lacks predict_proba/decision_function).
+    recalls : ndarray or None
+        Recall values for test PR curve (None if model lacks predict_proba/decision_function).
     """
 
     # ---------------------------------------------------------

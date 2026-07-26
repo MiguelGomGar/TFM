@@ -4,8 +4,19 @@ import pandas as pd
 
 
 def compute_row_missingness_data(df):
-    """Calculate row-wise missingness summary for plotting."""
+    """Calculate row-wise (record-level) missingness summary for visualization.
 
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe.
+
+    Returns
+    -------
+    pd.DataFrame or None
+        Summary with columns ['row_na_count', 'n_records', 'pct_label'],
+        one row per count of missing values. Returns None if dataframe is empty.
+    """
     if df.empty:
         print("The dataframe has no rows. Returning None.")
         return None
@@ -24,8 +35,20 @@ def compute_row_missingness_data(df):
 
 
 def compute_column_missingness_data(df):
-    """Calculate column-wise missingness summary for plotting."""
+    """Calculate column-wise (feature-level) missingness summary for visualization.
 
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe.
+
+    Returns
+    -------
+    pd.DataFrame or None
+        Summary with columns ['feature', 'missing_count', 'missing_rate'],
+        one row per feature with >0 missing values, sorted by missing rate.
+        Returns None if no missing values are found.
+    """
     missing_count = df.isna().sum()
     missing_rate = missing_count / len(df)
     na_summary = pd.DataFrame(
@@ -46,8 +69,19 @@ def compute_column_missingness_data(df):
 
 
 def compute_missingness_heatmap_data(df: pd.DataFrame) -> pd.DataFrame | None:
-    """Prepare missingness boolean matrix for heatmap visualization."""
+    """Create a boolean matrix indicating missing values for heatmap plotting.
 
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe.
+
+    Returns
+    -------
+    pd.DataFrame or None
+        Boolean dataframe (True where value is NaN, False otherwise).
+        Returns None if dataframe is empty.
+    """
     if df.empty:
         print("The dataframe has no rows. Returning None.")
         return None
@@ -58,8 +92,22 @@ def compute_missingness_heatmap_data(df: pd.DataFrame) -> pd.DataFrame | None:
 def compute_stratified_missingness_data(
     df: pd.DataFrame, stratify_by: str = "AF_recurrence"
 ) -> pd.DataFrame | None:
-    """Calculate missingness per feature stratified by a target categorical column."""
+    """Calculate feature-level missingness counts stratified by a grouping variable.
 
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe containing features and the stratification variable.
+    stratify_by : str, default "AF_recurrence"
+        Name of the categorical column used for stratification (e.g., outcome).
+
+    Returns
+    -------
+    pd.DataFrame or None
+        Missingness counts per feature per group. Rows are features (excluding
+        stratify_by), columns are group levels. Returns None if dataframe is
+        empty or if the stratification column is not found.
+    """
     if df.empty:
         print("The dataframe has no rows. Returning None.")
         return None

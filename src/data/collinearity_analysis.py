@@ -7,8 +7,18 @@ import statsmodels.api as sm
 
 
 def compute_num_corr_matrix(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Compute numeric correlation matrix for all numeric columns in the dataframe.
+    """Compute Spearman correlation matrix for all numeric columns.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe.
+
+    Returns
+    -------
+    pd.DataFrame
+        Square correlation matrix (numeric columns only) using Spearman's rho.
+        Returns empty DataFrame if no numeric columns are found.
     """
     numeric_df = df.select_dtypes(include=[np.number])
     if numeric_df.empty:
@@ -17,8 +27,20 @@ def compute_num_corr_matrix(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _compute_cramers_v(x: pd.Series, y: pd.Series) -> float:
-    """
-    Compute Cramer's V for two categorical columns.
+    """Compute Cramér's V statistic for association between two categorical variables.
+
+    Parameters
+    ----------
+    x : pd.Series
+        First categorical variable.
+    y : pd.Series
+        Second categorical variable.
+
+    Returns
+    -------
+    float
+        Cramér's V statistic (0-1, where 1 indicates perfect association).
+        Returns 0.0 if contingency table is empty or singular.
     """
     contingency_table = pd.crosstab(x, y)
     n_samples = contingency_table.to_numpy().sum()
@@ -37,8 +59,23 @@ def _compute_cramers_v(x: pd.Series, y: pd.Series) -> float:
 
 
 def compute_cat_corr_matrix(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Compute categorical correlation matrix for all categorical columns in the dataframe.
+    """Compute Cramér's V correlation matrix for all categorical columns.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe with at least 2 categorical columns.
+
+    Returns
+    -------
+    pd.DataFrame
+        Square matrix of Cramér's V values (0-1) for all categorical column
+        pairs, with the diagonal set to 1.0.
+
+    Raises
+    ------
+    ValueError
+        If the dataframe contains fewer than 2 categorical columns.
     """
     cat_df = df.select_dtypes(include=["category", "object", "bool"])
     feature_names = list(cat_df.columns)
@@ -66,9 +103,29 @@ def compute_cat_corr_matrix(df: pd.DataFrame) -> pd.DataFrame:
 
 def compute_vif_data(
     df: pd.DataFrame, threshold: float = 5.0, target_var: str = "AF_recurrence"
-) -> pd.DataFrame:
-    """Compute a VIF/GVIF series ready for plotting."""
+) -> pd.Series | None:
+    """Compute Variance Inflation Factor (VIF) / Generalized VIF for each feature.
 
+    Calculates VIF for numeric features and Generalized VIF (GVIF) for
+    categorical features using OLS regression on the correlation matrix.
+    Handles missing values and invariant features automatically.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe with mixed numeric and categorical columns.
+    threshold : float, default 5.0
+        VIF threshold for flagging collinearity (for reference only, not used
+        to filter output).
+    target_var : str, default "AF_recurrence"
+        Name of the target/outcome column to exclude from VIF computation.
+
+    Returns
+    -------
+    pd.Series or None
+        VIF/GVIF per feature, sorted in descending order. Index is feature
+        names, values are VIF. Returns None if no complete cases available.
+    """
     temp_data = df.copy()
     if target_var in temp_data.columns:
         temp_data[target_var] = pd.to_numeric(temp_data[target_var], errors="coerce")

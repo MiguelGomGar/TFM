@@ -13,8 +13,25 @@ def plot_corr_matrix(
     threshold: float = 0.5,
     axis_ticks_size: int = 14,
 ):
-    """Plot a lower-triangular correlation heatmap."""
+    """Plot a lower-triangular correlation heatmap for numeric or categorical data.
 
+    Parameters
+    ----------
+    matrix_data : pd.DataFrame
+        Square correlation matrix (Spearman for numeric, Cramér's V for categorical).
+    dtype : str, default 'Numeric'
+        Type of correlation: 'Numeric' (Spearman, -1 to 1) or 'Categorical'
+        (Cramér's V, 0 to 1).
+    threshold : float, default 0.5
+        Correlations below this threshold are not annotated on the heatmap.
+    axis_ticks_size : int, default 14
+        Font size for axis tick labels.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        Figure object, or None if matrix_data is empty.
+    """
     if dtype == "Numeric":
         if matrix_data.empty:
             return None
@@ -103,8 +120,26 @@ def plot_vif(
     x_label: str = "VIF / GVIF^2",
     y_label: str = None,
 ):
-    """Render a VIF/GVIF bar chart from prepared values."""
+    """Plot a horizontal bar chart of Variance Inflation Factor (VIF) values.
 
+    Parameters
+    ----------
+    vif_data : pd.Series
+        VIF/GVIF values per feature, index is feature names.
+    threshold : float, default 5.0
+        Collinearity threshold; a reference line is drawn at this value.
+    title : str, default 'VIF Diagnostics'
+        Plot title.
+    x_label : str, default 'VIF / GVIF^2'
+        X-axis label.
+    y_label : str, optional
+        Y-axis label. If None, no label is set.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        Figure object, or None if vif_data is None or empty.
+    """
     if vif_data is None or vif_data.empty:
         return None
 

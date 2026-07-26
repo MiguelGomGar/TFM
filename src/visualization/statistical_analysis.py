@@ -13,8 +13,20 @@ from src.config import CATEGORICAL_COLOR_MAP
 
 
 def plot_numeric_distribution(df_summary: pd.DataFrame, col_name: str) -> plt.Figure:
-    """Render a histogram from a prepared numeric series."""
+    """Plot a histogram for a continuous variable.
 
+    Parameters
+    ----------
+    df_summary : pd.DataFrame or pd.Series
+        Numeric series or dataframe column to plot.
+    col_name : str
+        Column name (used for title and axis labels).
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        Histogram figure.
+    """
     fig, ax = plt.subplots(figsize=(8, 6))
     sns.histplot(
         x=df_summary,
@@ -43,8 +55,20 @@ def plot_numeric_distribution(df_summary: pd.DataFrame, col_name: str) -> plt.Fi
 def plot_categorical_distribution(
     df_summary: pd.DataFrame, col_name: str
 ) -> plt.Figure:
-    """Render a horizontal bar chart from categorical summary data."""
+    """Plot a horizontal bar chart for a categorical variable.
 
+    Parameters
+    ----------
+    df_summary : pd.DataFrame
+        Summary table with columns ['n', 'pct', 'pct_label'], one row per category.
+    col_name : str
+        Column name (used for title and axis labels).
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        Horizontal bar chart figure.
+    """
     fig, ax = plt.subplots(figsize=(8, len(df_summary) * 0.5 + 2))
     bars = ax.barh(
         df_summary[col_name].astype(str),
@@ -88,8 +112,22 @@ def plot_categorical_distribution(
 def plot_stratified_numeric_distribution(
     df_summary: pd.DataFrame, col_name: str, target_var: str
 ) -> plt.Figure:
-    """Render a violin plot from prepared stratified numeric data."""
+    """Plot a violin plot of a numeric variable stratified by groups.
 
+    Parameters
+    ----------
+    df_summary : pd.DataFrame
+        Two-column dataframe with numeric feature and stratification variable.
+    col_name : str
+        Name of the numeric column.
+    target_var : str
+        Name of the categorical stratification column.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        Violin plot figure.
+    """
     levels = list(df_summary[target_var].cat.categories)
     palette_dict = {
         str(level): CATEGORICAL_COLOR_MAP[i % len(CATEGORICAL_COLOR_MAP)]
@@ -152,9 +190,23 @@ def plot_stratified_numeric_distribution(
 
 def plot_stratified_categorical_distribution(
     df_summary: pd.DataFrame, col_name: str, target_var: str
-) -> plt.Figure:
-    """Render a stacked bar chart from prepared stratified categorical data."""
+) -> plt.Figure | None:
+    """Plot a stacked horizontal bar chart of a categorical variable by group.
 
+    Parameters
+    ----------
+    df_summary : pd.DataFrame
+        Cross-tabulation (rows: col_name, columns: target_var levels, values: percentages).
+    col_name : str
+        Name of the categorical feature.
+    target_var : str
+        Name of the categorical stratification variable.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        Stacked bar chart figure, or None if col_name == target_var.
+    """
     if col_name == target_var:
         return None
 
@@ -216,8 +268,21 @@ def plot_stratified_categorical_distribution(
 
 
 def plot_qq(df_summary: dict, ci_level: float = 0.95) -> plt.Figure:
-    """Render a Q-Q plot from prepared quantile data."""
+    """Plot a Q-Q plot with confidence bands for normality assessment.
 
+    Parameters
+    ----------
+    df_summary : dict
+        Dictionary from compute_qq() with keys: 'feature', 'ci_level', 'osm', 'osr',
+        'slope', 'intercept', 'y_line_x', 'y_line_y', 'y_lower', 'y_upper'.
+    ci_level : float, default 0.95
+        Confidence level (unused; taken from df_summary['ci_level']).
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        Q-Q plot with diagonal reference line and confidence band.
+    """
     feature = df_summary["feature"]
     ci_level = df_summary["ci_level"]
 

@@ -4,8 +4,20 @@ import matplotlib.pyplot as plt
 
 
 def plot_roc_curves(roc_plot_data, title="ROC curves for risk scores"):
-    """Render ROC curves from prepared curve data."""
+    """Plot ROC curves for multiple models/scores.
 
+    Parameters
+    ----------
+    roc_plot_data : list of tuple
+        List of (label, fpr, tpr, auc) tuples for each curve.
+    title : str, default 'ROC curves for risk scores'
+        Plot title.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        Figure object containing the ROC curves.
+    """
     fig, ax = plt.subplots(figsize=(7, 6))
     
     for column, fpr, tpr, roc_auc in roc_plot_data:
@@ -23,8 +35,22 @@ def plot_roc_curves(roc_plot_data, title="ROC curves for risk scores"):
 
 
 def plot_pr_curves(pr_plot_data, prevalence, title="Precision-recall curves for risk scores"):
-    """Render Precision-Recall curves from prepared curve data."""
+    """Plot Precision-Recall curves for multiple models/scores.
 
+    Parameters
+    ----------
+    pr_plot_data : list of tuple
+        List of (label, recall, precision, auc) tuples for each curve.
+    prevalence : float
+        Event rate (0-1) for the no-skill baseline reference line.
+    title : str, default 'Precision-recall curves for risk scores'
+        Plot title.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        Figure object containing the PR curves.
+    """
     fig, ax = plt.subplots(figsize=(7, 6))
     
     for column, recall, precision, average_precision in pr_plot_data:

@@ -23,10 +23,10 @@ PIPELINES = [
         "src.pipelines.06_clinical_data_statistical_reporting",
         "Reporte estadístico clínico",
     ),
-    (
-        "src.pipelines.07_proteomic_data_statistical_reporting",
-        "Reporte estadístico proteómico",
-    ),
+    # (
+    #     "src.pipelines.07_proteomic_data_statistical_reporting",
+    #     "Reporte estadístico proteómico",
+    # ),
     ("src.pipelines.08_risk_scores_validation", "Validación de risk scores"),
 ]
 
