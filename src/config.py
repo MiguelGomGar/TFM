@@ -199,7 +199,7 @@ CATEGORICAL_SPECS = {
 }
 
 # %% MISSING DATA ANALYSIS — pipeline 03_missing_values_reporting
-MISSING_RATE_THRESHOLD = 0.25
+MISSING_RATE_THRESHOLD = 0.20
 
 # %% COLLINEARITY ANALYSIS — pipeline 04_collinearity_reporting
 IDENTIFIER_VARIABLE = "code"

@@ -14,16 +14,13 @@ ORCHESTRATOR_LOG_NAME = "orchestrator"
 
 # Lista ordenada de pipelines: (módulo, descripción)
 PIPELINES = [
-    ("src.pipelines.01_clinical_variables_review", "Revisión de variables clínicas"),
-    ("src.pipelines.02_data_collection", "Recolección de datos clínicos"),
+    # ("src.pipelines.01_clinical_variables_review", "Revisión de variables clínicas"),
+    # ("src.pipelines.02_data_collection", "Recolección de datos clínicos"),
     ("src.pipelines.03_missing_values_reporting", "Análisis de valores faltantes"),
-    (
-        "src.pipelines.04_collinearity_reporting",
-        "Colinealidad (correlaciones binarias + VIF)",
-    ),
-    ("src.pipelines.05_clinical_data_cleaning", "Limpieza de datos clínicos"),
-    ("src.pipelines.06_statistical_reporting", "Reporte estadístico (Table 1)"),
-    ("src.pipelines.07_risk_scores_validation", "Validación de risk scores"),
+    # ("src.pipelines.04_collinearity_reporting", "Colinealidad"),
+    # ("src.pipelines.05_clinical_data_cleaning", "Limpieza de datos clínicos"),
+    # ("src.pipelines.06_statistical_reporting", "Reporte estadístico"),
+    # ("src.pipelines.07_risk_scores_validation", "Validación de risk scores"),
     # ("src.pipelines.08_clinical_data_modelling", "Modelado con datos clínicos"),
     # ("src.pipelines.09_proteomic_data_modelling", "Modelado con datos proteómicos"),
 ]

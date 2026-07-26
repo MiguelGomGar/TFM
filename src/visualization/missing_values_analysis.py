@@ -1,7 +1,10 @@
 """Missing-value diagnostic plots."""
 
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+from matplotlib.colors import ListedColormap
 import seaborn as sns
 
 from src.config import MISSING_RATE_THRESHOLD
@@ -81,7 +84,7 @@ def plot_column_missingness(
         return None
 
     fig, ax = plt.subplots(figsize=(8, len(na_summary) * 0.35 + 2))
-    bars = ax.barh(
+    ax.barh(
         na_summary["feature"],
         na_summary["missing_rate"],
         color="#2563eb",
@@ -117,6 +120,108 @@ def plot_column_missingness(
     ax.tick_params(axis="both", labelcolor="#475569", labelsize=10)
     for label in ax.get_xticklabels() + ax.get_yticklabels():
         label.set_fontweight("bold")
+
+    ax.grid(axis="x", color="#f1f5f9", linewidth=0.5)
+    ax.set_axisbelow(True)
+    sns.despine(ax=ax, left=True, bottom=True)
+    fig.tight_layout()
+
+    return fig
+
+
+def plot_missingness_heatmap(
+    na_matrix: pd.DataFrame,
+    title: str = "Missing Values Heatmap",
+    x_label: str = "Features",
+    y_label: str = "Records",
+):
+    """Render a heatmap visualizing missing value patterns across the dataset."""
+
+    if na_matrix is None or na_matrix.empty:
+        return None
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    cmap = ListedColormap(["#f1f5f9", "#2563eb"])
+
+    matrix_values = na_matrix.astype(int).to_numpy()
+    ax.imshow(matrix_values, aspect="auto", cmap=cmap, interpolation="none")
+
+    ax.set_xticks(range(len(na_matrix.columns)))
+    ax.set_xticklabels(
+        na_matrix.columns, rotation=90, fontsize=9, fontweight="bold", color="#475569"
+    )
+    ax.set_yticks([])
+
+    present_patch = mpatches.Patch(
+        facecolor="#f1f5f9", edgecolor="#cbd5e1", label="Present"
+    )
+    missing_patch = mpatches.Patch(facecolor="#2563eb", label="Missing")
+    ax.legend(
+        handles=[present_patch, missing_patch],
+        loc="upper right",
+        frameon=True,
+        facecolor="#f8fafc",
+        edgecolor="#cbd5e1",
+        fontsize=9,
+    )
+
+    if title:
+        ax.set_title(title, fontsize=13, fontweight="bold", pad=20, loc="left")
+
+    ax.set_xlabel(x_label, fontsize=11, fontweight="bold", color="#1e293b", labelpad=10)
+    ax.set_ylabel(y_label, fontsize=11, fontweight="bold", color="#1e293b", labelpad=10)
+
+    fig.tight_layout()
+    return fig
+
+
+def plot_stratified_missingness(
+    stratified_na: pd.DataFrame,
+    stratify_col_name: str,
+    title: str = "Missing Values Stratified by AF Recurrence",
+    x_label: str = "Number of Missing Values",
+    y_label: str = None,
+):
+    """Render a stacked horizontal bar chart for missing values per feature by subgroup."""
+
+    if stratified_na is None or stratified_na.empty:
+        return None
+
+    fig, ax = plt.subplots(figsize=(8, max(5, len(stratified_na) * 0.35 + 1.5)))
+
+    colors = ["#2563eb", "#e11d48", "#f59e0b", "#10b981", "#8b5cf6"]
+    cat_colors = colors[: len(stratified_na.columns)]
+
+    stratified_na.plot(
+        kind="barh",
+        stacked=True,
+        color=cat_colors,
+        edgecolor="#1e3a8a",
+        linewidth=0.4,
+        width=0.75,
+        ax=ax,
+    )
+
+    ax.set_yticklabels(
+        stratified_na.index, fontsize=10, fontweight="bold", color="#475569"
+    )
+
+    if title:
+        ax.set_title(title, fontsize=13, fontweight="bold", pad=20, loc="left")
+
+    ax.set_xlabel(x_label, fontsize=11, fontweight="bold", color="#1e293b", labelpad=10)
+    if y_label:
+        ax.set_ylabel(y_label, fontsize=11, fontweight="bold", color="#1e293b")
+
+    ax.legend(
+        title=stratify_col_name,
+        title_fontsize="10",
+        fontsize="9",
+        frameon=True,
+        facecolor="#f8fafc",
+        edgecolor="#cbd5e1",
+    )
 
     ax.grid(axis="x", color="#f1f5f9", linewidth=0.5)
     ax.set_axisbelow(True)
