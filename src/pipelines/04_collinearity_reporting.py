@@ -7,8 +7,6 @@ This pipeline merges the former 04_binary_correlation_reporting and
 
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-
 from src.data.collinearity_analysis import (
     compute_num_corr_matrix,
     compute_cat_corr_matrix,
@@ -19,7 +17,7 @@ from src.data.data_cleaning import (
     drop_high_missingness_columns,
     drop_columns_by_prefix,
 )
-from src.utils.io import read_parquet, save_figure
+from src.utils.io import read_parquet, save_csv, save_figure
 from src.utils.logging_utils import setup_logger
 from src.utils.paths import CLINICAL_EDA_DIR, INTERMEDIATE_CLINICAL_DATA_PATH
 from src.visualization.collinearity_analysis import plot_corr_matrix, plot_vif
@@ -61,6 +59,7 @@ def main() -> None:
 
     if num_cor_matrix is not None:
         save_figure(num_cor_matrix, OUTPUT_DIR / "correlation_matrix_num.png")
+        save_csv(num_corr_data, OUTPUT_DIR / "correlation_matrix_num.csv", index=True)
 
     logger.info("Computing categorical correlation matrix...")
     cat_corr_data = compute_cat_corr_matrix(df)
@@ -71,6 +70,7 @@ def main() -> None:
     )
     if cat_cor_matrix is not None:
         save_figure(cat_cor_matrix, OUTPUT_DIR / "correlation_matrix_cat.png")
+        save_csv(cat_corr_data, OUTPUT_DIR / "correlation_matrix_cat.csv", index=True)
 
     logger.info("Dropping highly correlated features...")
     df = drop_columns(df, HIGHLY_CORRELATED_FEATURES)
@@ -86,6 +86,11 @@ def main() -> None:
             f"Saving VIF diagnostics plot to {OUTPUT_DIR / 'vif_diagnostics.png'}..."
         )
         save_figure(vif_plot, OUTPUT_DIR / "vif_diagnostics.png")
+        save_csv(
+            vif_series.to_frame(name="VIF"),
+            OUTPUT_DIR / "vif_diagnostics.csv",
+            index=True,
+        )
 
 
 if __name__ == "__main__":

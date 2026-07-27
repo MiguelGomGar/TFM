@@ -149,30 +149,3 @@ def remove_prefix_from_columns(df: pd.DataFrame, prefix: str) -> pd.DataFrame:
     df = df.copy()
     df.columns = [col.removeprefix(prefix) for col in df.columns]
     return df
-
-
-def encode_target_variable(df: pd.DataFrame, target_column: str) -> pd.Series:
-    """Encode the target variable to binary (0/1) using TARGET_ENCODING mapping.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Dataframe containing the target column.
-    target_column : str
-        Name of the column to encode.
-
-    Returns
-    -------
-    pd.Series
-        Encoded target variable as int (0 or 1).
-
-    Raises
-    ------
-    ValueError
-        If unexpected values (not in TARGET_ENCODING) are encountered.
-    """
-    encoded = df[target_column].astype(str).str.strip().str.lower().map(TARGET_ENCODING)
-    if encoded.isna().any():
-        unexpected_values = df.loc[encoded.isna(), target_column].dropna().unique()
-        raise ValueError(f"Unexpected {target_column} values: {unexpected_values}")
-    return encoded

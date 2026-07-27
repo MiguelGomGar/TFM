@@ -6,6 +6,13 @@ from typing import Any
 import joblib
 import pandas as pd
 import gc
+import matplotlib
+
+# Force a non-interactive backend before pyplot is imported anywhere: the reporting
+# pipelines render thousands of figures in a loop, and GUI backends retain a figure
+# manager plus native resources per figure, exhausting memory mid-run.
+matplotlib.use("Agg", force=True)
+
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 
@@ -217,7 +224,7 @@ def read_csv(file_path: str | Path, **kwargs: Any) -> pd.DataFrame:
     return dataframe
 
 
-def save_csv(dataframe: pd.DataFrame, file_path: str | Path, **kwargs: Any) -> Path:
+def save_csv(dataframe: pd.DataFrame, file_path: str | Path, index: bool = False, **kwargs: Any) -> Path:
     """Save a DataFrame to CSV format and return the output path.
 
     Parameters
@@ -226,6 +233,8 @@ def save_csv(dataframe: pd.DataFrame, file_path: str | Path, **kwargs: Any) -> P
         DataFrame to save.
     file_path : str or Path
         Output file path. If no suffix, ".csv" is appended.
+    index : bool, default False
+        Whether to save the DataFrame index as a column.
     **kwargs : dict
         Additional keyword arguments passed to pandas.to_csv().
 
@@ -241,7 +250,7 @@ def save_csv(dataframe: pd.DataFrame, file_path: str | Path, **kwargs: Any) -> P
     """
     path = _prepare_output_path(file_path, ".csv")
     try:
-        dataframe.to_csv(path, index=False, **kwargs)
+        dataframe.to_csv(path, index=index, **kwargs)
     except Exception as exc:  # pragma: no cover - parser errors vary
         raise RuntimeError(f"Unable to write CSV file: {path}") from exc
 

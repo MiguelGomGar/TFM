@@ -170,50 +170,80 @@ def compute_qq(df: pd.DataFrame, feature: str, ci_level: float = 0.95):
 
 
 def create_table1(
-    data: pd.DataFrame,
-    strat_var: str,
-    cat_vars=None,
-    nonnormal_vars=None,
+    df: pd.DataFrame,
+    target_var: str,
+    nonnormal_vars: list[str] | None = None,
 ) -> pd.DataFrame:
-    """Create a Table 1 summary of patient characteristics with statistical tests.
+    """Generate a Table 1 (descriptive statistics table) for clinical studies.
 
-    Stratifies descriptive statistics by a grouping variable and performs
-    appropriate statistical tests (Chi-squared, t-test, Wilcoxon, ANOVA, etc.).
-    Wrapper around the tableone.TableOne library.
+    Automatically identifies numeric and categorical variables and generates
+    summary statistics both overall and stratified by the target variable.
+    Numeric variables use median/IQR for non-normal distributions and
+    mean/SD for normal distributions. Categorical variables show counts
+    and percentages. Variable names are explicitly shown.
 
     Parameters
     ----------
-    data : pd.DataFrame
-        Clinical dataframe with all features and the stratification variable.
-    strat_var : str
-        Column name for stratification (typically the outcome/group variable).
-    cat_vars : list of str, optional
-        Categorical variable names. If None, inferred from data types.
-    nonnormal_vars : list of str, optional
-        Continuous variables to treat as non-normal (use non-parametric tests).
+    df : pd.DataFrame
+        Input dataframe with variables to summarize.
+    target_var : str
+        Name of the categorical stratification variable.
+    nonnormal_vars : list[str], optional
+        List of numeric column names with non-normal distributions.
+        If None, defaults to an empty list.
 
     Returns
     -------
     pd.DataFrame
-        Table 1 summary with descriptive statistics and p-values from
-        stratified comparisons (Chi-squared for categorical, t-test/Wilcoxon
-        for continuous depending on normality).
+        A formatted Table 1 with variable names explicitly displayed,
+        overall and stratified summary statistics, and p-values.
+        Missing column is excluded from the output.
+
+    Examples
+    --------
+    >>> df = pd.DataFrame({
+    ...     'age': [25, 30, 35, 40, 45],
+    ...     'group': ['A', 'B', 'A', 'B', 'A'],
+    ...     'gender': ['M', 'F', 'M', 'F', 'M'],
+    ...     'bmi': [22.5, 24.3, 23.1, 25.2, 22.8]
+    ... })
+    >>> table1 = create_table1(df, target_var='group', nonnormal_vars=['age'])
+    >>> print(table1)
     """
-    columns = [col for col in data.columns if col != strat_var]
-    categorical = (
-        None
-        if cat_vars is None
-        else [col for col in dict.fromkeys(cat_vars) if col != strat_var]
-    )
+    if nonnormal_vars is None:
+        nonnormal_vars = []
 
-    table = TableOne(
-        data,
-        columns=columns,
-        categorical=categorical,
+    if target_var not in df.columns:
+        raise ValueError(f"target_var '{target_var}' not found in dataframe columns.")
+
+    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+    categorical_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
+
+    if target_var in numeric_cols:
+        numeric_cols.remove(target_var)
+    if target_var in categorical_cols:
+        categorical_cols.remove(target_var)
+
+    all_vars = numeric_cols + categorical_cols
+
+    if not all_vars:
+        raise ValueError("No variables to summarize after excluding target_var.")
+
+    table1_obj = TableOne(
+        data=df,
+        columns=all_vars,
+        categorical=categorical_cols,
+        groupby=target_var,
         nonnormal=nonnormal_vars,
-        htest_name=True,
         pval=True,
-        groupby=strat_var,
+        missing=False,
     )
 
-    return table.tableone
+    table1_df = table1_obj.tableone.copy()
+
+    if "Missing" in table1_df.columns:
+        table1_df = table1_df.drop(columns=["Missing"])
+
+    table1_df.index.name = "Variable"
+
+    return table1_df

@@ -2,12 +2,14 @@
 
 from pathlib import Path
 
+import pandas as pd
+
 from src.data.statistical_analysis import (
     compute_numeric_distribution,
     compute_stratified_numeric_distribution,
     compute_qq,
 )
-from src.utils.io import read_parquet, save_figure
+from src.utils.io import read_parquet, save_csv, save_figure
 from src.utils.logging_utils import setup_logger
 from src.utils.paths import (
     CLEANED_PROTEOMIC_DATA_PATH,
@@ -43,12 +45,22 @@ def main() -> None:
         numeric_values = compute_numeric_distribution(proteomic_data, feature)
         fig = plot_numeric_distribution(numeric_values, feature)
         save_figure(fig, OUTPUT_DIR / f"distribution_{feature}.png")
+        save_csv(numeric_values.to_frame(name=feature), OUTPUT_DIR / f"distribution_{feature}.csv")
 
     logger.info("Generating Q-Q plots for proteomic data...")
     for feature in proteomic_features:
         qq_data = compute_qq(proteomic_data, feature)
         fig = plot_qq(qq_data)
         save_figure(fig, OUTPUT_DIR / f"distribution_{feature}_QQ.png")
+        qq_df = pd.DataFrame(
+            {
+                "theoretical_quantiles": qq_data["osm"],
+                "observed_quantiles": qq_data["osr"],
+                "ci_lower": qq_data["y_lower"],
+                "ci_upper": qq_data["y_upper"],
+            }
+        )
+        save_csv(qq_df, OUTPUT_DIR / f"distribution_{feature}_QQ.csv")
 
     logger.info("Plotting stratified distributions for proteomic features...")
     for target_var in [GROUP_ALLOCATION_VARIABLE, TARGET_VARIABLE]:
@@ -62,6 +74,10 @@ def main() -> None:
             save_figure(
                 fig,
                 OUTPUT_DIR / f"distribution_{feature}_stratified_by_{target_var}.png",
+            )
+            save_csv(
+                stratified_data,
+                OUTPUT_DIR / f"distribution_{feature}_stratified_by_{target_var}.csv",
             )
 
 

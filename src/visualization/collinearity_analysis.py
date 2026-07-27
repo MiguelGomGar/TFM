@@ -1,5 +1,10 @@
 """Collinearity and correlation diagnostic plots."""
 
+import matplotlib
+
+# Select a non-interactive backend before pyplot is imported (see io.save_figure).
+matplotlib.use("Agg", force=True)
+
 from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.pyplot as plt
 import numpy as np

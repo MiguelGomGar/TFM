@@ -9,6 +9,35 @@ from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OrdinalEncoder, StandardScaler
 
+from src.config import TARGET_ENCODING
+
+
+def encode_target_variable(df: pd.DataFrame, target_column: str) -> pd.Series:
+    """Encode the target variable to binary (0/1) using TARGET_ENCODING mapping.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Dataframe containing the target column.
+    target_column : str
+        Name of the column to encode.
+
+    Returns
+    -------
+    pd.Series
+        Encoded target variable as int (0 or 1).
+
+    Raises
+    ------
+    ValueError
+        If unexpected values (not in TARGET_ENCODING) are encountered.
+    """
+    encoded = df[target_column].astype(str).str.strip().str.lower().map(TARGET_ENCODING)
+    if encoded.isna().any():
+        unexpected_values = df.loc[encoded.isna(), target_column].dropna().unique()
+        raise ValueError(f"Unexpected {target_column} values: {unexpected_values}")
+    return encoded
+
 
 def get_full_preprocessor(X: pd.DataFrame, seed: int) -> ColumnTransformer:
     """Create a preprocessor for distance-based models (SVM, etc.).

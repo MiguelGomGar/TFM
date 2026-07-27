@@ -1,24 +1,29 @@
 """Statistical plots built from prepared data."""
 
-import logging
 from pathlib import Path
+
+import matplotlib
+
+# Select a non-interactive backend before pyplot is imported. The reporting
+# pipelines render thousands of figures in a loop, and GUI backends retain a
+# figure manager plus native resources per figure, exhausting memory mid-run.
+matplotlib.use("Agg", force=True)
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from src.utils.io import save_figure
 from src.config import CATEGORICAL_COLOR_MAP
 
 
-def plot_numeric_distribution(df_summary: pd.DataFrame, col_name: str) -> plt.Figure:
+def plot_numeric_distribution(series: pd.Series, col_name: str) -> plt.Figure:
     """Plot a histogram for a continuous variable.
 
     Parameters
     ----------
-    df_summary : pd.DataFrame or pd.Series
-        Numeric series or dataframe column to plot.
+    series : pd.Series
+        Numeric series to plot.
     col_name : str
         Column name (used for title and axis labels).
 
@@ -27,9 +32,10 @@ def plot_numeric_distribution(df_summary: pd.DataFrame, col_name: str) -> plt.Fi
     matplotlib.figure.Figure
         Histogram figure.
     """
+    avg = series.mean()
     fig, ax = plt.subplots(figsize=(8, 6))
     sns.histplot(
-        x=df_summary,
+        x=series,
         bins=30,
         color="#16a085",
         edgecolor="white",
@@ -37,7 +43,6 @@ def plot_numeric_distribution(df_summary: pd.DataFrame, col_name: str) -> plt.Fi
         kde=False,
         ax=ax,
     )
-
     ax.set_title(f"Distribution of {col_name}", fontsize=12, fontweight="bold", pad=15)
     ax.set_xlabel(col_name, fontsize=10, fontweight="bold", color="#2c3e50")
     ax.set_ylabel("n", fontsize=10, fontweight="bold", color="#2c3e50")
@@ -182,8 +187,8 @@ def plot_stratified_numeric_distribution(
     ax.tick_params(axis="y", labelsize=10, labelcolor="#34495e")
     ax.grid(axis="x", color="#eaeded", linewidth=0.4)
     ax.set_axisbelow(True)
-    sns.despine()
-    plt.tight_layout(rect=(0, 0, 0.82, 1))
+    sns.despine(ax=ax)
+    fig.tight_layout(rect=(0, 0, 0.82, 1))
 
     return fig
 

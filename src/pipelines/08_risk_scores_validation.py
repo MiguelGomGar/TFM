@@ -2,13 +2,12 @@
 
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-
-from src.data.data_cleaning import encode_target_variable, remove_prefix_from_columns
+from src.models.data_preprocessing import encode_target_variable
 from src.models.risk_scores_validation import evaluate_risk_scores
+from src.data.data_cleaning import remove_prefix_from_columns
 from src.utils.io import read_parquet, save_csv, save_figure
 from src.utils.logging_utils import setup_logger
-from src.visualization.curves import plot_pr_curves, plot_roc_curves
+from src.visualization.models import plot_pr_curves, plot_roc_curves
 from src.config import TARGET_VARIABLE
 from src.utils.paths import (
     RISK_SCORES_DATA_PATH,
@@ -36,6 +35,7 @@ def main() -> None:
 
     # Prepare target variable
     target = encode_target_variable(df, TARGET_VARIABLE)
+    prevalence = target.mean()
 
     # Evaluate each score
     logger.info("Evaluating risk scores...")
@@ -44,18 +44,13 @@ def main() -> None:
     evaluation_df, roc_plot_data, pr_plot_data = evaluate_risk_scores(
         df, target, score_columns
     )
-
     save_csv(evaluation_df, RISK_SCORES_METRICS_PATH)
 
-    prevalence = target.mean()
-
-    # ROC curve
     logger.info("Plotting ROC curves...")
     fig_roc = plot_roc_curves(roc_plot_data)
     save_figure(fig_roc, RISK_SCORES_ROC_CURVE_PATH)
 
-    # Precision-recall curve
-    logger.info("Plotting PR curves...")
+    logger.info("Plotting Precision-Recall curves...")
     fig_pr = plot_pr_curves(pr_plot_data, prevalence)
     save_figure(fig_pr, RISK_SCORES_PR_CURVE_PATH)
 

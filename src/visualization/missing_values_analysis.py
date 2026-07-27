@@ -2,6 +2,11 @@
 
 import pandas as pd
 import numpy as np
+import matplotlib
+
+# Select a non-interactive backend before pyplot is imported (see io.save_figure).
+matplotlib.use("Agg", force=True)
+
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 import seaborn as sns

@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import matplotlib
+
+# Select a non-interactive backend before pyplot is imported (see io.save_figure).
+matplotlib.use("Agg", force=True)
+
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import pandas as pd
