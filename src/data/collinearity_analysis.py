@@ -126,16 +126,17 @@ def compute_vif_data(
         VIF/GVIF per feature, sorted in descending order. Index is feature
         names, values are VIF. Returns None if no complete cases available.
     """
-    temp_data = df.copy()
-    if target_var in temp_data.columns:
-        temp_data[target_var] = pd.to_numeric(temp_data[target_var], errors="coerce")
+    # The target is excluded up front: VIF describes the mutual dependency
+    # between predictors only, so the outcome must not constrain the set of
+    # complete cases nor be coerced to a numeric dtype.
+    temp_data = df.drop(columns=[target_var], errors="ignore").copy()
 
     complete_cases_subset = temp_data.dropna()
 
-    single_level_features = []
-    for col in complete_cases_subset.columns:
-        if col != target_var and complete_cases_subset[col].nunique() < 2:
-            single_level_features.append(col)
+    single_level_features = [
+        col for col in complete_cases_subset.columns
+        if complete_cases_subset[col].nunique() < 2
+    ]
 
     if single_level_features:
         print(
@@ -143,10 +144,7 @@ def compute_vif_data(
         )
         temp_data = temp_data.drop(columns=single_level_features)
 
-    if target_var in temp_data.columns:
-        X_df = temp_data.drop(columns=[target_var]).dropna()
-    else:
-        X_df = temp_data.dropna()
+    X_df = temp_data.dropna()
 
     if X_df.empty:
         print("Warning: No complete cases available for VIF calculation.")
@@ -209,7 +207,13 @@ def compute_vif_data(
                     det_group = np.linalg.det(R_group + 1e-5 * np.eye(R_group.shape[0]))
                     det_other = np.linalg.det(R_other + 1e-5 * np.eye(R_other.shape[0]))
                 gvif = (det_group * det_other) / det_all if det_all != 0 else 1.0
-                vif_dict[col] = float(np.sqrt(abs(gvif)))
+                # Fox & Monette (1992): GVIF must be rescaled by its degrees of
+                # freedom to be comparable across features. GVIF^(1/(2*df)) is
+                # on the scale of sqrt(VIF), so its square, GVIF^(1/df), is on
+                # the scale of VIF and can be compared against the same
+                # threshold used for numeric features.
+                dof = len(group)
+                vif_dict[col] = float(abs(gvif) ** (1.0 / dof))
             except Exception:
                 vif_dict[col] = 1.0
 

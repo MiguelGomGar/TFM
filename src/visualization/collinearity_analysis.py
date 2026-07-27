@@ -155,6 +155,9 @@ def plot_vif(
     ax.set_xlabel(x_label, fontsize=11, fontweight="bold", color="#1e293b", labelpad=10)
     if y_label:
         ax.set_ylabel(y_label, fontsize=11, fontweight="bold", color="#1e293b")
+    ax.grid(axis="x", color="#f1f5f9", linewidth=0.5)
+    ax.grid(axis="y", visible=False)
+    ax.set_axisbelow(True)
     fig.tight_layout()
 
     return fig

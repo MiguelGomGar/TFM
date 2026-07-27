@@ -347,7 +347,8 @@ def plot_stratified_missingness(
     for label in ax.get_xticklabels() + ax.get_yticklabels():
         label.set_fontweight("bold")
 
-    ax.grid(axis="y", color="#f1f5f9", linewidth=0.5)
+    ax.grid(axis="x", color="#f1f5f9", linewidth=0.5)
+    ax.grid(axis="y", visible=False)
     ax.set_axisbelow(True)
     sns.despine(ax=ax, left=True, bottom=True)
     fig.tight_layout()

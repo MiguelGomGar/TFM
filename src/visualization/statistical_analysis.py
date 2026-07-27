@@ -266,6 +266,9 @@ def plot_stratified_categorical_distribution(
     ax.tick_params(axis="both", labelcolor="#34495e", labelsize=10)
     for label in ax.get_xticklabels() + ax.get_yticklabels():
         label.set_fontweight("bold")
+    ax.grid(axis="x", color="#eaeded", linewidth=0.4)
+    ax.grid(axis="y", visible=False)
+    ax.set_axisbelow(True)
     sns.despine(ax=ax)
     fig.tight_layout(rect=(0, 0, 0.82, 1))
 

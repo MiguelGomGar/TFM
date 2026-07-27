@@ -23,6 +23,48 @@ def drop_columns(df: pd.DataFrame, columns: str | list) -> pd.DataFrame:
     return df.drop(columns=columns, errors="ignore")
 
 
+def mask_out_of_range_values(
+    dataframe: pd.DataFrame, ranges: dict[str, tuple[float, float]]
+) -> tuple[pd.DataFrame, dict[str, int]]:
+    """Set physiologically impossible values to missing.
+
+    Values falling outside the plausible range of a feature are recording
+    errors rather than genuine variability. They are replaced by NaN so that
+    the downstream imputation step handles them like any other missing value,
+    instead of being clipped to the bound and treated as observed data.
+
+    Parameters
+    ----------
+    dataframe : pd.DataFrame
+        Input dataframe.
+    ranges : dict of str to tuple of float
+        Mapping of column name to its inclusive (minimum, maximum) bounds.
+        Columns absent from the dataframe are silently ignored.
+
+    Returns
+    -------
+    pd.DataFrame
+        Copy of the dataframe with out-of-range values replaced by NaN.
+    dict of str to int
+        Number of values masked per affected column.
+    """
+    result = dataframe.copy()
+    masked_counts = {}
+
+    for column, (minimum, maximum) in ranges.items():
+        if column not in result.columns:
+            continue
+        out_of_range = result[column].notna() & (
+            (result[column] < minimum) | (result[column] > maximum)
+        )
+        count = int(out_of_range.sum())
+        if count:
+            result.loc[out_of_range, column] = pd.NA
+            masked_counts[column] = count
+
+    return result, masked_counts
+
+
 def drop_columns_by_prefix(df: pd.DataFrame, prefix: str) -> pd.DataFrame:
     """Drop all columns with a specific prefix from the dataframe.
 

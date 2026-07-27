@@ -35,3 +35,9 @@ oryx-build-commands.txt
 # ========================
 /literature/
 *.docx
+
+#=======================
+# CLAUDE    
+#=======================
+CLAUDE.md
+/.claude/

@@ -1,6 +1,7 @@
 """Project-wide configuration constants."""
 
-from src.utils.paths import RAW_DATA_DIR, INTERMEDIATE_DATA_DIR, CLEAN_DATA_DIR
+import numpy as np
+from scipy.stats import uniform, loguniform, randint
 
 # %% RISK FACTORS REVIEW — pipeline 01_clinical_variables_review
 VARIABLES_REVIEW_COLOR_MAP = {
@@ -210,6 +211,20 @@ HIGHLY_CORRELATED_FEATURES = "heart_failure"
 VIF_THRESHOLD = 5.0
 
 # %% CLINICAL DATA CLEANING — pipeline 05_clinical_data_cleaning
+# Physiologically plausible range for each numeric feature, as (minimum, maximum).
+# Values outside these bounds are recording errors rather than real variability,
+# so they are set to missing and left to the imputation step. The bounds are
+# deliberately wide: they are meant to catch impossible values, not outliers.
+PLAUSIBLE_RANGES = {
+    "age": (18.0, 110.0),  # years; adult trial participants
+    "BMI": (12.0, 70.0),  # kg/m2
+    "glucose": (20.0, 600.0),  # mg/dL; below 20 is incompatible with life
+    "HDL": (10.0, 150.0),  # mg/dL
+    "LDL": (20.0, 500.0),  # mg/dL
+    "triglycerides": (10.0, 1500.0),  # mg/dL
+    "AF_duration": (0.0, 60.0),  # years; cannot precede the diagnosis
+}
+
 TARGET_VARIABLE = "AF_recurrence"
 GROUP_ALLOCATION_VARIABLE = "group_allocation"
 STRATIFY_VARIABLES = [TARGET_VARIABLE, GROUP_ALLOCATION_VARIABLE]
@@ -223,6 +238,146 @@ TARGET_ENCODING = {"no": 0, "yes": 1}
 # %% CLINICAL DATA MODELLING — pipeline 08_clinical_data_modelling
 SEED = 42
 
+clinical_hyperparameters_search_space = {
+    # Elastic Net Logistic Regression
+    "EN": {
+        # Avoid very weak regularization values (large C)
+        "clf__l1_ratio": uniform(0.1, 0.9),
+        "clf__C": loguniform(1e-3, 1e1),
+    },
+    # Support Vector Machine
+    "SVM": {
+        "clf__C": loguniform(1e-3, 1e2),
+        "clf__kernel": ["linear", "rbf"],
+        "clf__gamma": ["scale", "auto"] + list(np.logspace(-5, -1, 25)),
+        "clf__class_weight": [None, "balanced"],
+    },
+    # Decision Tree
+    "DT": {
+        "clf__max_depth": randint(2, 13),
+        "clf__min_samples_split": randint(8, 41),
+        "clf__min_samples_leaf": randint(4, 21),
+        "clf__criterion": ["gini", "entropy"],
+        "clf__ccp_alpha": loguniform(1e-6, 1e-2),
+    },
+    # Random Forest
+    "RF": {
+        "clf__max_depth": [None] + list(range(3, 13)),
+        "clf__min_samples_split": randint(8, 31),
+        "clf__min_samples_leaf": randint(3, 16),
+        "clf__criterion": ["gini", "entropy"],
+        "clf__ccp_alpha": loguniform(1e-7, 1e-3),
+        "clf__n_estimators": randint(100, 401),
+        "clf__max_features": ["sqrt", "log2"] + list(np.arange(0.2, 0.7, 0.1)),
+        "clf__class_weight": [None, "balanced", "balanced_subsample"],
+        "clf__max_samples": list(np.arange(0.6, 1.0, 0.1)),
+    },
+    # Extra Trees
+    "ET": {
+        "clf__max_depth": [None] + list(range(3, 13)),
+        "clf__min_samples_split": randint(8, 31),
+        "clf__min_samples_leaf": randint(3, 16),
+        "clf__criterion": ["gini", "entropy"],
+        "clf__ccp_alpha": loguniform(1e-7, 1e-3),
+        "clf__n_estimators": randint(100, 401),
+        "clf__max_features": ["sqrt", "log2"] + list(np.arange(0.2, 0.7, 0.1)),
+        "clf__class_weight": [None, "balanced", "balanced_subsample"],
+        "clf__bootstrap": [True],
+        "clf__max_samples": list(np.arange(0.6, 1.0, 0.1)),
+    },
+    # Adaptive Boosting
+    "AB": {
+        "clf__estimator__max_depth": randint(1, 3),
+        "clf__estimator__max_features": ["sqrt", "log2", None],
+        "clf__estimator__min_samples_split": randint(10, 41),
+        "clf__estimator__min_samples_leaf": randint(4, 16),
+        "clf__estimator__criterion": ["gini", "entropy"],
+        "clf__estimator__ccp_alpha": loguniform(1e-7, 1e-3),
+        "clf__n_estimators": randint(50, 301),
+        "clf__learning_rate": loguniform(0.01, 0.3),
+    },
+    # Gradient Boosting
+    "GB": {
+        "clf__max_depth": randint(2, 4),
+        "clf__max_features": ["sqrt", "log2"] + list(np.arange(0.2, 0.7, 0.1)),
+        "clf__min_samples_split": randint(8, 31),
+        "clf__min_samples_leaf": randint(3, 16),
+        "clf__n_estimators": randint(80, 351),
+        "clf__learning_rate": loguniform(0.01, 0.2),
+        "clf__subsample": uniform(0.6, 0.3),
+    },
+    # Multilayer Perceptron
+    "MLP": {
+        "clf__hidden_layer_sizes": [(32,), (64,), (64, 32), (128, 64)],
+        "clf__alpha": loguniform(1e-4, 1e0),
+        "clf__learning_rate_init": loguniform(1e-4, 5e-3),
+        "clf__batch_size": [16, 32, 64, 128],
+        "clf__activation": ["relu", "tanh", "logistic"],
+        "clf__solver": ["adam", "sgd"],
+    },
+}
+
 # %% PROTEOMIC DATA MODELLING — pipeline 09_proteomic_data_modelling
+proteomic_hyperparameters_search_space = {
+    # Elastic Net Logistic Regression
+    "EN": {"clf__l1_ratio": uniform(0.01, 0.98), "clf__C": loguniform(1e-4, 1e2)},
+    # Support Vector Machine
+    "SVM": {
+        "clf__C": loguniform(1e-3, 1e3),
+        "clf__kernel": ["linear", "rbf"],
+        "clf__gamma": ["scale", "auto"] + list(np.logspace(-4, -1, 10)),
+        "clf__class_weight": [None, "balanced"],
+    },
+    # Decision Tree
+    "DT": {
+        "clf__max_depth": randint(2, 11),
+        "clf__min_samples_split": randint(5, 21),
+        "clf__min_samples_leaf": randint(3, 15),
+        "clf__criterion": ["gini", "entropy"],
+    },
+    # Random Forest
+    "RF": {
+        "clf__n_estimators": randint(50, 301),
+        "clf__max_depth": randint(3, 13),
+        "clf__min_samples_split": randint(5, 21),
+        "clf__min_samples_leaf": randint(3, 15),
+        "clf__max_features": ["sqrt", "log2"],
+        "clf__bootstrap": [True],
+        "clf__max_samples": uniform(0.5, 0.4),
+    },
+    # Extra Trees
+    "ET": {
+        "clf__n_estimators": randint(50, 301),
+        "clf__max_depth": randint(3, 13),
+        "clf__min_samples_split": randint(5, 21),
+        "clf__min_samples_leaf": randint(3, 15),
+        "clf__max_features": ["sqrt", "log2"],
+        "clf__bootstrap": [True],
+        "clf__max_samples": uniform(0.5, 0.4),
+    },
+    # AdaBoost
+    "AB": {
+        "clf__n_estimators": randint(50, 301),
+        "clf__learning_rate": loguniform(1e-3, 0.5),
+        "clf__estimator__max_depth": randint(1, 3),
+    },
+    # Gradient Boosting
+    "GB": {
+        "clf__n_estimators": randint(50, 301),
+        "clf__max_depth": randint(2, 6),
+        "clf__learning_rate": loguniform(1e-3, 0.2),
+        "clf__subsample": uniform(0.5, 0.4),
+        "clf__min_samples_leaf": randint(3, 15),
+        "clf__max_features": ["sqrt", "log2"],
+    },
+    # Multi-layer Perceptron (Neural Network)
+    "MLP": {
+        "clf__hidden_layer_sizes": [(50,), (100,), (50, 50)],
+        "clf__activation": ["relu", "tanh"],
+        "clf__alpha": loguniform(1e-4, 1e0),
+        "clf__learning_rate_init": loguniform(1e-4, 1e-2),
+        "clf__early_stopping": [True],
+    },
+}
 
 # %% MULTIMODAL DATA MODELLING

@@ -11,6 +11,7 @@ from src.data.data_cleaning import (
     drop_high_missingness_rows,
     drop_columns_by_prefix,
     inner_join,
+    mask_out_of_range_values,
 )
 from src.utils.io import read_csv, read_parquet, save_parquet
 from src.utils.logging_utils import setup_logger
@@ -24,6 +25,7 @@ from src.utils.paths import (
 )
 from src.config import (
     MISSING_RATE_THRESHOLD,
+    PLAUSIBLE_RANGES,
     IDENTIFIER_VARIABLE,
     RISK_SCORES_PREFIX,
     HIGHLY_CORRELATED_FEATURES,
@@ -44,6 +46,19 @@ def main() -> None:
 
     logger.info(f"Loading clinical data from {CLINICAL_INPUT_FILE}...")
     clinical_data = read_parquet(CLINICAL_INPUT_FILE)
+
+    logger.info("Masking physiologically implausible values...")
+    clinical_data, masked_counts = mask_out_of_range_values(
+        clinical_data, PLAUSIBLE_RANGES
+    )
+    if masked_counts:
+        for column, count in masked_counts.items():
+            minimum, maximum = PLAUSIBLE_RANGES[column]
+            logger.info(
+                f"  {column}: {count} value(s) outside [{minimum}, {maximum}] set to NaN"
+            )
+    else:
+        logger.info("  no out-of-range values found")
 
     logger.info("Computing risk scores...")
     risk_scores_data = compute_risk_scores(clinical_data)
