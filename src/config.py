@@ -235,11 +235,88 @@ NON_NORMAL_VARIABLES = ["AF_duration", "triglycerides", "glucose"]
 # %% RISK SCORES EVALUATION — pipeline 07_risk_scores_validation
 TARGET_ENCODING = {"no": 0, "yes": 1}
 
-# %% CLINICAL DATA MODELLING — pipeline 08_clinical_data_modelling
+# %% MODELLING — shared configuration (pipelines 09 to 14)
+# Single random seed for the whole project: data splitting, cross-validation,
+# imputation and every estimator that accepts a random_state.
 SEED = 42
 
+# Hold-out external validation set (80/20 split, stratified by the target).
+TEST_SIZE = 0.2
+
+# Internal cross-validation used to assess overfitting within the training set.
+CV_N_SPLITS = 5
+
+# Parallelism for the randomized search (-1 uses every available core).
+N_JOBS = -1
+
+# Metrics reported in every phase. Keys are the labels used in plots and CSV
+# files; values are the scikit-learn scorer names.
+SCORING_METRICS = {
+    "ROC-AUC": "roc_auc",
+    "PR-AUC": "average_precision",
+}
+
+# Metric the randomized search maximizes (see the methodology).
+OBJECTIVE_METRIC = "PR-AUC"
+
+# Models fitted in every phase, in reporting order.
+MODEL_ORDER = ["EN", "SVM", "DT", "RF", "ET", "AB", "GB", "MLP"]
+
+MODEL_DISPLAY_NAMES = {
+    "EN": "Elastic Net",
+    "SVM": "Support Vector Machine",
+    "DT": "Decision Tree",
+    "RF": "Random Forest",
+    "ET": "Extra Trees",
+    "AB": "AdaBoost",
+    "GB": "Gradient Boosting",
+    "MLP": "Multilayer Perceptron",
+}
+
+# Models that need standardized features (get_full_preprocessor); the remaining
+# tree-based models use get_trees_preprocessor.
+SCALED_MODELS = ["EN", "SVM", "MLP"]
+
+# Model used to derive the feature selection filter through its regularization.
+FEATURE_SELECTION_MODEL = "EN"
+
+# Randomized search budget per modelling phase. The high-dimensional phases use
+# a smaller budget because each candidate is much more expensive to fit.
+SEARCH_N_ITER = {
+    "clinical": 200,
+    "clinical_filtered": 200,
+    "proteomic": 50,
+    "clinical_matched": 200,
+    "multimodal": 50,
+}
+
+# BASE-AF2 performance, the best clinical risk score, used as the reference line
+# in the external validation bar plots.
+RISK_SCORE_BASELINE = {"ROC-AUC": 0.632, "PR-AUC": 0.480}
+
+# Plot colors for the modelling results.
+INTERNAL_VALIDATION_COLORS = {"Train": "#2563eb", "Validation": "#f59e0b"}
+BASELINE_COLOR = "#e11d48"
+MODEL_BAR_COLOR = "#16a085"
+MODALITY_COLORS = {"Clinical": "#2563eb", "Multimodal": "#e11d48"}
+MODEL_PALETTE = [
+    "#2563eb",
+    "#e11d48",
+    "#16a085",
+    "#f59e0b",
+    "#7c3aed",
+    "#0891b2",
+    "#65a30d",
+    "#1e3a8a",
+]
+
+# %% CLINICAL DATA MODELLING — pipelines 09 and 10
 clinical_hyperparameters_search_space = {
     # Elastic Net Logistic Regression
+    # l1_ratio must stay strictly above 0: since scikit-learn 1.8 the penalty
+    # type is derived from l1_ratio alone (the `penalty` argument is deprecated),
+    # and l1_ratio=0 would mean a pure L2 penalty, which never drives any
+    # coefficient to zero and would silently disable the feature selection step.
     "EN": {
         # Avoid very weak regularization values (large C)
         "clf__l1_ratio": uniform(0.1, 0.9),
@@ -317,9 +394,9 @@ clinical_hyperparameters_search_space = {
     },
 }
 
-# %% PROTEOMIC DATA MODELLING — pipeline 09_proteomic_data_modelling
+# %% PROTEOMIC DATA MODELLING — pipeline 11
 proteomic_hyperparameters_search_space = {
-    # Elastic Net Logistic Regression
+    # Elastic Net Logistic Regression (see the note on l1_ratio above)
     "EN": {"clf__l1_ratio": uniform(0.01, 0.98), "clf__C": loguniform(1e-4, 1e2)},
     # Support Vector Machine
     "SVM": {
@@ -380,4 +457,71 @@ proteomic_hyperparameters_search_space = {
     },
 }
 
-# %% MULTIMODAL DATA MODELLING
+# %% MULTIMODAL DATA MODELLING — pipeline 13
+# The integrated dataset has a dimensionality comparable to the proteomic one
+# (26 clinical predictors plus 361 proteins), so the same ranges apply. It is
+# defined explicitly rather than aliased so that it can diverge later without
+# side effects on the proteomic phase.
+multimodal_hyperparameters_search_space = {
+    # Elastic Net Logistic Regression (see the note on l1_ratio above)
+    "EN": {"clf__l1_ratio": uniform(0.01, 0.98), "clf__C": loguniform(1e-4, 1e2)},
+    # Support Vector Machine
+    "SVM": {
+        "clf__C": loguniform(1e-3, 1e3),
+        "clf__kernel": ["linear", "rbf"],
+        "clf__gamma": ["scale", "auto"] + list(np.logspace(-4, -1, 10)),
+        "clf__class_weight": [None, "balanced"],
+    },
+    # Decision Tree
+    "DT": {
+        "clf__max_depth": randint(2, 11),
+        "clf__min_samples_split": randint(5, 21),
+        "clf__min_samples_leaf": randint(3, 15),
+        "clf__criterion": ["gini", "entropy"],
+    },
+    # Random Forest
+    "RF": {
+        "clf__n_estimators": randint(50, 301),
+        "clf__max_depth": randint(3, 13),
+        "clf__min_samples_split": randint(5, 21),
+        "clf__min_samples_leaf": randint(3, 15),
+        "clf__max_features": ["sqrt", "log2"],
+        "clf__class_weight": [None, "balanced", "balanced_subsample"],
+        "clf__bootstrap": [True],
+        "clf__max_samples": uniform(0.5, 0.4),
+    },
+    # Extra Trees
+    "ET": {
+        "clf__n_estimators": randint(50, 301),
+        "clf__max_depth": randint(3, 13),
+        "clf__min_samples_split": randint(5, 21),
+        "clf__min_samples_leaf": randint(3, 15),
+        "clf__max_features": ["sqrt", "log2"],
+        "clf__class_weight": [None, "balanced", "balanced_subsample"],
+        "clf__bootstrap": [True],
+        "clf__max_samples": uniform(0.5, 0.4),
+    },
+    # AdaBoost
+    "AB": {
+        "clf__n_estimators": randint(50, 301),
+        "clf__learning_rate": loguniform(1e-3, 0.5),
+        "clf__estimator__max_depth": randint(1, 3),
+    },
+    # Gradient Boosting
+    "GB": {
+        "clf__n_estimators": randint(50, 301),
+        "clf__max_depth": randint(2, 6),
+        "clf__learning_rate": loguniform(1e-3, 0.2),
+        "clf__subsample": uniform(0.5, 0.4),
+        "clf__min_samples_leaf": randint(3, 15),
+        "clf__max_features": ["sqrt", "log2"],
+    },
+    # Multi-layer Perceptron (Neural Network)
+    "MLP": {
+        "clf__hidden_layer_sizes": [(50,), (100,), (50, 50)],
+        "clf__activation": ["relu", "tanh"],
+        "clf__alpha": loguniform(1e-4, 1e0),
+        "clf__learning_rate_init": loguniform(1e-4, 1e-2),
+        "clf__early_stopping": [True],
+    },
+}

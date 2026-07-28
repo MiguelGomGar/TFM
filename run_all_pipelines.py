@@ -30,6 +30,25 @@ PIPELINES = [
     ("src.pipelines.08_risk_scores_validation", "Validación de risk scores"),
 ]
 
+# Pipelines de modelado. Son órdenes de magnitud más lentos que los anteriores
+# (búsqueda aleatoria de hiperparámetros sobre ocho modelos y cuatro fases), así
+# que se mantienen en una lista aparte: para omitirlos, basta con no concatenarla
+# a PIPELINES en main().
+MODELLING_PIPELINES = [
+    ("src.pipelines.09_clinical_data_modelling", "Modelado clínico (fase 1)"),
+    (
+        "src.pipelines.10_clinical_filtered_modelling",
+        "Modelado clínico filtrado (fase 1b)",
+    ),
+    ("src.pipelines.11_proteomic_data_modelling", "Modelado proteómico (fase 2)"),
+    (
+        "src.pipelines.12_multimodal_data_preparation",
+        "Preparación de datos multimodales",
+    ),
+    ("src.pipelines.13_multimodal_data_modelling", "Modelado multimodal (fase 3)"),
+    ("src.pipelines.14_modality_comparison", "Comparación clínico vs multimodal"),
+]
+
 
 def run_pipeline(module_name: str, description: str, logger) -> float:
     """Importa y ejecuta main() del pipeline, retornando duración en segundos."""
@@ -54,6 +73,8 @@ def run_pipeline(module_name: str, description: str, logger) -> float:
 
 def main() -> None:
     overall_start = time.perf_counter()
+
+    pipelines = PIPELINES + MODELLING_PIPELINES
 
     # ── Logger del orquestador (consola + archivo único) ──────────────────────
     log_dir = LOGS_DIR / "orchestrator"
@@ -80,12 +101,12 @@ def main() -> None:
     logger.info(f"Inicio:          {datetime.now().isoformat()}")
     logger.info(f"Log file:        {log_file}")
     logger.info(f"Python:          {sys.version}")
-    logger.info(f"Pipelines a ejecutar: {len(PIPELINES)}")
+    logger.info(f"Pipelines a ejecutar: {len(pipelines)}")
     logger.info("")
 
     results: list[tuple[str, str, float, str]] = []
 
-    for module_name, description in PIPELINES:
+    for module_name, description in pipelines:
         try:
             elapsed = run_pipeline(module_name, description, logger)
             results.append((module_name, description, elapsed, "OK"))
@@ -115,10 +136,10 @@ def main() -> None:
     logger.info(f"{'TOTAL':<45} {'':<8} {overall_elapsed:.1f} s")
 
     ok_count = sum(1 for _, _, _, s in results if s == "OK")
-    logger.info(f"\nPipelines completados: {ok_count} / {len(PIPELINES)}")
+    logger.info(f"\nPipelines completados: {ok_count} / {len(pipelines)}")
 
     log_path_msg = f"\nLog completo guardado en: {log_file}"
-    if ok_count == len(PIPELINES):
+    if ok_count == len(pipelines):
         logger.info(
             f"✅ Todos los pipelines se ejecutaron correctamente.{log_path_msg}"
         )

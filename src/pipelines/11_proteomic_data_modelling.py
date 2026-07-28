@@ -1,4 +1,11 @@
-"""Phase 1: train and evaluate the models on the full clinical dataset."""
+"""Phase 2: train and evaluate the models on the proteomic panel alone.
+
+Restricted to the subcohort with available high-throughput proteomic profiling
+and to the protein abundances themselves, so that the discriminative capability
+of the circulating biomarkers is quantified on its own. Given the high
+dimensionality, the Elastic Net filter is applied before fitting the remaining
+models.
+"""
 
 from pathlib import Path
 
@@ -10,24 +17,22 @@ from src.config import (
     SEED,
     TARGET_VARIABLE,
     TEST_SIZE,
-    clinical_hyperparameters_search_space,
+    proteomic_hyperparameters_search_space,
 )
 from src.models.data_preprocessing import encode_target_variable
 from src.models.model_training import run_modelling_phase
+from src.utils.dataframe_utils import get_proteomic_features
 from src.utils.io import read_parquet
 from src.utils.logging_utils import setup_logger
-from src.utils.paths import CLEANED_CLINICAL_DATA_PATH, CLINICAL_MODELS_DIR
+from src.utils.paths import CLEANED_PROTEOMIC_DATA_PATH, PROTEOMIC_MODELS_DIR
 
-INPUT_FILE = CLEANED_CLINICAL_DATA_PATH
-OUTPUT_DIR = CLINICAL_MODELS_DIR
+INPUT_FILE = CLEANED_PROTEOMIC_DATA_PATH
+OUTPUT_DIR = PROTEOMIC_MODELS_DIR
 
-PHASE_KEY = "clinical"
-PHASE_TITLE = "clinical data"
-SEARCH_SPACE = clinical_hyperparameters_search_space
-
-# Phase 1 is the clinical-only benchmark: every predictor is kept so that the
-# filtered phase can be compared against it.
-APPLY_FILTER = False
+PHASE_KEY = "proteomic"
+PHASE_TITLE = "proteomic data"
+SEARCH_SPACE = proteomic_hyperparameters_search_space
+APPLY_FILTER = True
 
 logger = setup_logger(Path(__file__).stem)
 
@@ -39,9 +44,11 @@ def main() -> None:
     logger.info(f"Loading data from {INPUT_FILE}...")
     df = read_parquet(INPUT_FILE)
 
-    X = df.drop(columns=[TARGET_VARIABLE])
+    # Keep the protein abundances only: the target and the stratification
+    # variables are excluded from the predictors.
+    X = df[get_proteomic_features(df)]
     y = encode_target_variable(df, TARGET_VARIABLE)
-    logger.info(f"Modelling {X.shape[0]} records and {X.shape[1]} features.")
+    logger.info(f"Modelling {X.shape[0]} records and {X.shape[1]} proteins.")
 
     logger.info("Splitting data into training and external validation sets...")
     X_train, X_test, y_train, y_test = train_test_split(

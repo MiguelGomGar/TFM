@@ -1,4 +1,10 @@
-"""Phase 1: train and evaluate the models on the full clinical dataset."""
+"""Phase 1b: clinical models trained on the features kept by the Elastic Net.
+
+The Elastic Net is fitted first on every clinical predictor; the variables whose
+coefficients its regularization shrinks to exactly zero are then dropped, and
+the remaining models are trained only on the surviving ones. The two lists are
+written to features_kept.csv and features_removed.csv.
+"""
 
 from pathlib import Path
 
@@ -16,18 +22,15 @@ from src.models.data_preprocessing import encode_target_variable
 from src.models.model_training import run_modelling_phase
 from src.utils.io import read_parquet
 from src.utils.logging_utils import setup_logger
-from src.utils.paths import CLEANED_CLINICAL_DATA_PATH, CLINICAL_MODELS_DIR
+from src.utils.paths import CLEANED_CLINICAL_DATA_PATH, CLINICAL_MODELS_FILTERED_DIR
 
 INPUT_FILE = CLEANED_CLINICAL_DATA_PATH
-OUTPUT_DIR = CLINICAL_MODELS_DIR
+OUTPUT_DIR = CLINICAL_MODELS_FILTERED_DIR
 
-PHASE_KEY = "clinical"
-PHASE_TITLE = "clinical data"
+PHASE_KEY = "clinical_filtered"
+PHASE_TITLE = "filtered clinical data"
 SEARCH_SPACE = clinical_hyperparameters_search_space
-
-# Phase 1 is the clinical-only benchmark: every predictor is kept so that the
-# filtered phase can be compared against it.
-APPLY_FILTER = False
+APPLY_FILTER = True
 
 logger = setup_logger(Path(__file__).stem)
 
@@ -43,6 +46,8 @@ def main() -> None:
     y = encode_target_variable(df, TARGET_VARIABLE)
     logger.info(f"Modelling {X.shape[0]} records and {X.shape[1]} features.")
 
+    # Same seed, split size and stratification as phase 1, so both phases share
+    # the exact same training and external validation sets.
     logger.info("Splitting data into training and external validation sets...")
     X_train, X_test, y_train, y_test = train_test_split(
         X,

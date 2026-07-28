@@ -74,8 +74,10 @@ def get_relevant_features(regularized_model_pipeline):
 
     # Separate out features with zero coefficients from features with non-zero
     # coefficients
-    df_relevant = df_coefficients[df_coefficients["Coefficient"] != 0]
-    df_irrelevant = df_coefficients[df_coefficients["Coefficient"] == 0]
+    # Copy the slices so that the sorting helper column below is written on an
+    # independent frame (chained assignment is a no-op under copy-on-write).
+    df_relevant = df_coefficients[df_coefficients["Coefficient"] != 0].copy()
+    df_irrelevant = df_coefficients[df_coefficients["Coefficient"] == 0].copy()
 
     # Extract the list of irrelevant feature names
     irrelevant_cols = df_irrelevant["Feature"].tolist()

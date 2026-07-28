@@ -20,6 +20,9 @@ MODELS_DIR = RESULTS_DIR / "models"
 CLINICAL_MODELS_DIR = MODELS_DIR / "clinical_data"
 CLINICAL_MODELS_FILTERED_DIR = MODELS_DIR / "clinical_data_filtered"
 PROTEOMIC_MODELS_DIR = MODELS_DIR / "proteomic_data"
+CLINICAL_MODELS_MATCHED_DIR = MODELS_DIR / "clinical_data_matched"
+MULTIMODAL_MODELS_DIR = MODELS_DIR / "multimodal_data"
+MODALITY_COMPARISON_DIR = MODELS_DIR / "modality_comparison"
 
 RISK_FACTORS_REVIEW_DATA_PATH = RAW_DATA_DIR / "clinical_variables_review.xlsx"
 RAW_CLINICAL_DATA_PATH = RAW_DATA_DIR / "predimar_miguelgomez.dta"
@@ -28,6 +31,7 @@ RISK_SCORES_DATA_PATH = CLEAN_DATA_DIR / "risk_scores_data.parquet"
 CLEANED_CLINICAL_DATA_PATH = CLEAN_DATA_DIR / "clinical_data.parquet"
 RAW_PROTEOMIC_DATA_PATH = RAW_DATA_DIR / "olink_baseline_wide.csv"
 CLEANED_PROTEOMIC_DATA_PATH = CLEAN_DATA_DIR / "proteomic_data.parquet"
+CLEANED_MULTIMODAL_DATA_PATH = CLEAN_DATA_DIR / "multimodal_data.parquet"
 
 MISSING_VALUES_PER_FEATURE_PLOT_PATH = (
     CLINICAL_EDA_DIR / "missing_values_per_feature.png"
