@@ -216,12 +216,6 @@ VIF_THRESHOLD = 5.0
 # so they are set to missing and left to the imputation step. The bounds are
 # deliberately wide: they are meant to catch impossible values, not outliers.
 PLAUSIBLE_RANGES = {
-    "age": (18.0, 110.0),  # years; adult trial participants
-    "BMI": (12.0, 70.0),  # kg/m2
-    "glucose": (20.0, 600.0),  # mg/dL; below 20 is incompatible with life
-    "HDL": (10.0, 150.0),  # mg/dL
-    "LDL": (20.0, 500.0),  # mg/dL
-    "triglycerides": (10.0, 1500.0),  # mg/dL
     "AF_duration": (0.0, 60.0),  # years; cannot precede the diagnosis
 }
 

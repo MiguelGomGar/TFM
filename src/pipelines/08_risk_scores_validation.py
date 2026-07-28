@@ -7,7 +7,7 @@ from src.models.risk_scores_validation import evaluate_risk_scores
 from src.data.data_cleaning import remove_prefix_from_columns
 from src.utils.io import read_parquet, save_csv, save_figure
 from src.utils.logging_utils import setup_logger
-from src.visualization.models import plot_pr_curves, plot_roc_curves
+from src.visualization.risk_scores_validation import plot_pr_curves, plot_roc_curves
 from src.config import TARGET_VARIABLE
 from src.utils.paths import (
     RISK_SCORES_DATA_PATH,
