@@ -89,15 +89,7 @@ def main() -> None:
     sys.stdout.flush()
     sys.stderr.flush()
 
-    logger.info(
-        "╔══════════════════════════════════════════════════════════════════════╗"
-    )
-    logger.info(
-        "║               ORQUESTADOR DE PIPELINES — TFM                       ║"
-    )
-    logger.info(
-        "╚══════════════════════════════════════════════════════════════════════╝"
-    )
+    logger.info(f"Orquestador de pipelines")
     logger.info(f"Inicio:          {datetime.now().isoformat()}")
     logger.info(f"Log file:        {log_file}")
     logger.info(f"Python:          {sys.version}")
@@ -117,15 +109,7 @@ def main() -> None:
     # ── Resumen final ─────────────────────────────────────────────────────────
     overall_elapsed = time.perf_counter() - overall_start
     logger.info("")
-    logger.info(
-        "╔══════════════════════════════════════════════════════════════════════╗"
-    )
-    logger.info(
-        "║                         R E S U M E N                              ║"
-    )
-    logger.info(
-        "╚══════════════════════════════════════════════════════════════════════╝"
-    )
+    logger.info(f"Resumen de ejecución de pipelines")
     logger.info(f"{'Pipeline':<45} {'Estado':<8} {'Tiempo':>8}")
     logger.info("-" * 63)
     for module_name, description, elapsed, status in results:

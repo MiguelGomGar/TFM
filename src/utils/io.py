@@ -3,6 +3,7 @@
 import logging
 from pathlib import Path
 from typing import Any
+
 import joblib
 import pandas as pd
 import gc
@@ -224,7 +225,9 @@ def read_csv(file_path: str | Path, **kwargs: Any) -> pd.DataFrame:
     return dataframe
 
 
-def save_csv(dataframe: pd.DataFrame, file_path: str | Path, index: bool = False, **kwargs: Any) -> Path:
+def save_csv(
+    dataframe: pd.DataFrame, file_path: str | Path, index: bool = False, **kwargs: Any
+) -> Path:
     """Save a DataFrame to CSV format and return the output path.
 
     Parameters

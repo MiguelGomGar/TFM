@@ -29,6 +29,7 @@ Thumbs.db
 venv/
 oryx-build-commands.txt
 .oryx/
+/.devcontainer/
 
 # ========================
 # DOCUMENTS
