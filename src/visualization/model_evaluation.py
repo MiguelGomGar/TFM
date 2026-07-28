@@ -104,7 +104,7 @@ def plot_internal_validation(
         stds = [subset.loc[metric, "Std"] for metric in metrics]
         offsets = positions + (index - (len(datasets) - 1) / 2) * width
 
-        bars = ax.bar(
+        ax.bar(
             offsets,
             means,
             width=width * 0.9,
@@ -118,18 +118,6 @@ def plot_internal_validation(
             error_kw={"ecolor": "#2c3e50", "elinewidth": 0.9},
         )
 
-        for bar, mean in zip(bars, means):
-            ax.text(
-                bar.get_x() + bar.get_width() / 2,
-                0.02,
-                f"{mean:.3f}",
-                ha="center",
-                va="bottom",
-                fontsize=9,
-                fontweight="bold",
-                color="#ffffff",
-            )
-
     ax.set_xticks(positions)
     ax.set_xticklabels(metrics)
     ax.set_ylim(0, 1)
@@ -138,7 +126,7 @@ def plot_internal_validation(
     )
     ax.set_xlabel(None)
     ax.set_ylabel("Score", fontsize=10, fontweight="bold", color="#2c3e50")
-    ax.legend(title=None, fontsize=9, loc="lower right", frameon=True)
+    ax.legend(title=None, fontsize=9, loc="upper right", frameon=True)
     _style_axes(ax)
     fig.tight_layout()
 
@@ -254,7 +242,7 @@ def plot_model_pr_curves(
     ax.set_title(title, fontsize=12, fontweight="bold", pad=15)
     ax.set_xlabel("Recall", fontsize=10, fontweight="bold", color="#2c3e50")
     ax.set_ylabel("Precision", fontsize=10, fontweight="bold", color="#2c3e50")
-    ax.legend(loc="upper right", fontsize=9)
+    ax.legend(loc="lower right", fontsize=9)
     _style_axes(ax, grid_axis="both")
     fig.tight_layout()
 
@@ -322,7 +310,7 @@ def plot_metric_by_model(
             color=BASELINE_COLOR,
             label=f"Best clinical risk score = {baseline:.3f}",
         )
-        ax.legend(loc="lower right", fontsize=9)
+        ax.legend(loc="upper right", fontsize=9)
 
     ax.set_ylim(0, 1)
     ax.set_title(
@@ -415,7 +403,7 @@ def plot_modality_comparison(
     )
     ax.set_xlabel(None)
     ax.set_ylabel("Score", fontsize=10, fontweight="bold", color="#2c3e50")
-    ax.legend(title=None, fontsize=9, loc="lower right", frameon=True)
+    ax.legend(title=None, fontsize=9, loc="upper right", frameon=True)
     _style_axes(ax)
     fig.tight_layout()
 
