@@ -59,11 +59,6 @@ def main() -> None:
         )
         save_figure(figure, OUTPUT_DIR / f"{filename}.png")
 
-    improved = deltas[deltas["Delta"] > 0]
-    logger.info(
-        f"The multimodal arm improved on {len(improved)} of {len(deltas)} "
-        "model/metric combinations."
-    )
     logger.info(f"Results saved to {OUTPUT_DIR}.")
 
 

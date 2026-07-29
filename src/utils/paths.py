@@ -32,6 +32,7 @@ CLEANED_CLINICAL_DATA_PATH = CLEAN_DATA_DIR / "clinical_data.parquet"
 RAW_PROTEOMIC_DATA_PATH = RAW_DATA_DIR / "olink_baseline_wide.csv"
 CLEANED_PROTEOMIC_DATA_PATH = CLEAN_DATA_DIR / "proteomic_data.parquet"
 CLEANED_MULTIMODAL_DATA_PATH = CLEAN_DATA_DIR / "multimodal_data.parquet"
+CLEANED_CLINICAL_MATCHED_DATA_PATH = CLEAN_DATA_DIR / "clinical_data_matched.parquet"
 
 MISSING_VALUES_PER_FEATURE_PLOT_PATH = (
     CLINICAL_EDA_DIR / "missing_values_per_feature.png"

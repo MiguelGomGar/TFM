@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.config import TARGET_VARIABLE
 from src.utils.io import save_csv
 from src.utils.results_saving import (
     _clean_feature_names,
@@ -181,3 +182,28 @@ def apply_feature_filter(X: pd.DataFrame, irrelevant_features, logger=None):
         return X
 
     return X.drop(columns=columns_to_drop)
+
+
+def get_clinical_predictors(multimodal_df, clinical_reference_df) -> list:
+    """List the clinical predictors available in the multi-modal dataset.
+
+    The clinical columns are taken from the cleaned clinical dataset so that the
+    reduced arm uses exactly the same predictors as the earlier phases.
+
+    Parameters
+    ----------
+    multimodal_df : pd.DataFrame
+        Matched multi-modal dataset.
+    clinical_reference_df : pd.DataFrame
+        Cleaned clinical dataset used as the reference for the column list.
+
+    Returns
+    -------
+    list of str
+        Clinical predictor names, excluding the target variable.
+    """
+    return [
+        column
+        for column in clinical_reference_df.columns
+        if column != TARGET_VARIABLE and column in multimodal_df.columns
+    ]

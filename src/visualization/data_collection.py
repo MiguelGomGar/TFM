@@ -104,7 +104,7 @@ def build_clinical_variables_review_plot(df: pd.DataFrame) -> plt.Figure:
     ax.set_xlim(0, max_score + max(1, int(max_score * 0.08)))
     ax.set_title("Risk Score Factors Review", fontweight="bold", fontsize=14, pad=20)
     ax.xaxis.set_tick_params(labelcolor="#475569")
-    ax.grid(axis="x", color="#e2e8f0", linewidth=0.5)
+    ax.grid(axis="x", color="#e2e8f0", linewidth=0.7)
     ax.grid(axis="y", visible=False)
     ax.set_axisbelow(True)
     legend_handles = [

@@ -19,6 +19,7 @@ from src.config import (
     MODEL_BAR_COLOR,
     MODEL_PALETTE,
 )
+from src.visualization.plot_utils import label_bars
 
 
 def _style_axes(ax, grid_axis: str = "y") -> None:
@@ -38,7 +39,7 @@ def _style_axes(ax, grid_axis: str = "y") -> None:
     ax.tick_params(axis="both", labelcolor="#34495e", labelsize=10)
     for label in ax.get_xticklabels() + ax.get_yticklabels():
         label.set_fontweight("bold")
-    ax.grid(axis=grid_axis, color="#eaeded", linewidth=0.4)
+    ax.grid(axis=grid_axis, color="#eaeded", linewidth=0.6)
     ax.set_axisbelow(True)
     sns.despine(ax=ax)
 
@@ -290,17 +291,14 @@ def plot_metric_by_model(
         width=0.65,
     )
 
-    for bar, score in zip(bars, table["Score"]):
-        ax.text(
-            bar.get_x() + bar.get_width() / 2,
-            bar.get_height() + 0.015,
-            f"{score:.3f}",
-            ha="center",
-            va="bottom",
-            fontsize=9.5,
-            fontweight="bold",
-            color="#2c3e50",
-        )
+    label_bars(
+        ax,
+        bars,
+        [f"{score:.3f}" for score in table["Score"]],
+        offset=0.015,
+        fontsize=9.5,
+        color="#2c3e50",
+    )
 
     if baseline is not None:
         ax.axhline(
@@ -380,17 +378,14 @@ def plot_modality_comparison(
             alpha=0.85,
         )
 
-        for bar, score in zip(bars, scores):
-            ax.text(
-                bar.get_x() + bar.get_width() / 2,
-                bar.get_height() + 0.015,
-                f"{score:.3f}",
-                ha="center",
-                va="bottom",
-                fontsize=9,
-                fontweight="bold",
-                color="#2c3e50",
-            )
+        label_bars(
+            ax,
+            bars,
+            [f"{score:.3f}" for score in scores],
+            offset=0.015,
+            fontsize=9,
+            color="#2c3e50",
+        )
 
     ax.set_xticks(positions)
     ax.set_xticklabels(metrics)

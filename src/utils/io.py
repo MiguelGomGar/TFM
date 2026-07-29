@@ -4,7 +4,6 @@ import logging
 from pathlib import Path
 from typing import Any
 
-import joblib
 import pandas as pd
 import gc
 import matplotlib
@@ -256,67 +255,6 @@ def save_csv(
         dataframe.to_csv(path, index=index, **kwargs)
     except Exception as exc:  # pragma: no cover - parser errors vary
         raise RuntimeError(f"Unable to write CSV file: {path}") from exc
-
-    return path
-
-
-def load_joblib(file_path: str | Path) -> Any:
-    """Load a serialized object from a joblib file.
-
-    Parameters
-    ----------
-    file_path : str or Path
-        Path to the joblib file.
-
-    Returns
-    -------
-    Any
-        The deserialized Python object.
-
-    Raises
-    ------
-    FileNotFoundError
-        If the file does not exist.
-    RuntimeError
-        If the object cannot be deserialized.
-    """
-    path = _as_path(file_path)
-    if not path.exists():
-        raise FileNotFoundError(f"Joblib file not found: {path}")
-
-    try:
-        obj = joblib.load(path)
-    except Exception as exc:  # pragma: no cover - object-specific errors vary
-        raise RuntimeError(f"Unable to load joblib file: {path}") from exc
-
-    return obj
-
-
-def save_joblib(obj: Any, file_path: str | Path) -> Path:
-    """Serialize a Python object to a joblib file and return the output path.
-
-    Parameters
-    ----------
-    obj : Any
-        Python object to serialize.
-    file_path : str or Path
-        Output file path. If no suffix, ".joblib" is appended.
-
-    Returns
-    -------
-    Path
-        Path where the file was saved.
-
-    Raises
-    ------
-    RuntimeError
-        If the object cannot be serialized or written to disk.
-    """
-    path = _prepare_output_path(file_path, ".joblib")
-    try:
-        joblib.dump(obj, path)
-    except Exception as exc:  # pragma: no cover - object-specific errors vary
-        raise RuntimeError(f"Unable to write joblib file: {path}") from exc
 
     return path
 

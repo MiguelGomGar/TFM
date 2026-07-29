@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import matplotlib
+from matplotlib import patches as mpatches
 
 # Select a non-interactive backend before pyplot is imported. The reporting
 # pipelines render thousands of figures in a loop, and GUI backends retain a
@@ -15,6 +16,7 @@ import pandas as pd
 import seaborn as sns
 
 from src.config import CATEGORICAL_COLOR_MAP
+from src.visualization.plot_utils import label_bars
 
 
 def plot_numeric_distribution(series: pd.Series, col_name: str) -> plt.Figure:
@@ -49,7 +51,7 @@ def plot_numeric_distribution(series: pd.Series, col_name: str) -> plt.Figure:
     ax.tick_params(axis="both", labelcolor="#34495e", labelsize=10)
     for label in ax.get_xticklabels() + ax.get_yticklabels():
         label.set_fontweight("bold")
-    ax.grid(axis="x", color="#eaeded", linewidth=0.4)
+    ax.grid(visible=False)
     ax.set_axisbelow(True)
     sns.despine(ax=ax)
     fig.tight_layout()
@@ -86,18 +88,15 @@ def plot_categorical_distribution(
     )
 
     max_val = df_summary["n"].max()
-    for bar, label in zip(bars, df_summary["pct_label"]):
-        width = bar.get_width()
-        ax.text(
-            width + (max_val * 0.02),
-            bar.get_y() + bar.get_height() / 2,
-            label,
-            ha="left",
-            va="center",
-            fontsize=9.5,
-            fontweight="bold",
-            color="#2c3e50",
-        )
+    label_bars(
+        ax,
+        bars,
+        df_summary["pct_label"],
+        orientation="horizontal",
+        offset=max_val * 0.02,
+        fontsize=9.5,
+        color="#2c3e50",
+    )
 
     ax.set_xlim(0, max_val * 1.15)
     ax.set_title(f"Distribution of {col_name}", fontsize=12, fontweight="bold", pad=15)
@@ -106,7 +105,7 @@ def plot_categorical_distribution(
     ax.tick_params(axis="both", labelcolor="#34495e", labelsize=10)
     for label in ax.get_xticklabels() + ax.get_yticklabels():
         label.set_fontweight("bold")
-    ax.grid(axis="x", color="#eaeded", linewidth=0.4)
+    ax.grid(visible=False)
     ax.set_axisbelow(True)
     sns.despine(ax=ax, left=True, bottom=True)
     fig.tight_layout()
@@ -160,9 +159,6 @@ def plot_stratified_numeric_distribution(
         ax=ax,
     )
 
-    # Force legend to match our defined categories and colors exactly
-    import matplotlib.patches as mpatches
-
     handles = [
         mpatches.Patch(color=palette_dict[str(lvl)], label=str(lvl)) for lvl in levels
     ]
@@ -185,7 +181,7 @@ def plot_stratified_numeric_distribution(
     ax.set_ylabel(col_name, fontsize=10, fontweight="bold", color="#2c3e50")
     ax.tick_params(axis="x", labelsize=10, labelcolor="#34495e")
     ax.tick_params(axis="y", labelsize=10, labelcolor="#34495e")
-    ax.grid(axis="x", color="#eaeded", linewidth=0.4)
+    ax.grid(visible=False)
     ax.set_axisbelow(True)
     sns.despine(ax=ax)
     fig.tight_layout(rect=(0, 0, 0.82, 1))
@@ -266,7 +262,7 @@ def plot_stratified_categorical_distribution(
     ax.tick_params(axis="both", labelcolor="#34495e", labelsize=10)
     for label in ax.get_xticklabels() + ax.get_yticklabels():
         label.set_fontweight("bold")
-    ax.grid(axis="x", color="#eaeded", linewidth=0.4)
+    ax.grid(visible=False)
     ax.set_axisbelow(True)
     sns.despine(ax=ax)
     fig.tight_layout(rect=(0, 0, 0.82, 1))

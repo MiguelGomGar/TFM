@@ -150,13 +150,20 @@ def plot_vif(
 
     fig, ax = plt.subplots(figsize=(10, max(6, len(vif_data) * 0.35)))
     sns.barplot(x=vif_data.values, y=vif_data.index, color="#2563eb", ax=ax)
-    ax.axvline(threshold, linestyle="--", color="#e11d48", linewidth=1.2)
+    ax.axvline(
+        threshold,
+        linestyle="--",
+        color="#e11d48",
+        linewidth=1.2,
+        label="Significant collinearity",
+    )
     ax.set_title(title, fontsize=13, fontweight="bold", pad=20, loc="left")
     ax.set_xlabel(x_label, fontsize=11, fontweight="bold", color="#1e293b", labelpad=10)
     if y_label:
         ax.set_ylabel(y_label, fontsize=11, fontweight="bold", color="#1e293b")
-    ax.grid(axis="x", color="#f1f5f9", linewidth=0.5)
+    ax.grid(visible=False)
     ax.set_axisbelow(True)
+    ax.legend(fontsize=10, loc="bottom center", frameon=True)
     fig.tight_layout()
 
     return fig

@@ -12,6 +12,7 @@ from matplotlib.colors import ListedColormap
 import seaborn as sns
 
 from src.config import CATEGORICAL_COLOR_MAP
+from src.visualization.plot_utils import label_bars
 
 
 def plot_row_missingness(
@@ -54,18 +55,14 @@ def plot_row_missingness(
         linewidth=0.4,
     )
 
-    for bar, label in zip(bars, na_summary["pct_label"]):
-        height = bar.get_height()
-        ax.text(
-            bar.get_x() + bar.get_width() / 2.0,
-            height + (total_records * 0.015),
-            label,
-            ha="center",
-            va="bottom",
-            fontsize=9,
-            fontweight="bold",
-            color="#1e293b",
-        )
+    label_bars(
+        ax,
+        bars,
+        na_summary["pct_label"],
+        offset=total_records * 0.015,
+        fontsize=9,
+        color="#1e293b",
+    )
 
     max_x = na_summary["row_na_count"].max()
     ax.set_xticks(range(0, int(max_x) + 1))
@@ -83,7 +80,7 @@ def plot_row_missingness(
     for label in ax.get_xticklabels() + ax.get_yticklabels():
         label.set_fontweight("bold")
 
-    ax.grid(axis="x", color="#f1f5f9", linewidth=0.5)
+    ax.grid(axis="y", color="#f1f5f9", linewidth=0.7)
     ax.set_axisbelow(True)
     sns.despine(ax=ax, left=True, bottom=True)
     fig.tight_layout()
@@ -144,19 +141,15 @@ def plot_column_missingness(
     max_count = counts.max()
     offset = max_count * 0.015 if max_count > 0 else 0.1
 
-    for bar, rate in zip(bars, rates):
-        width = bar.get_width()
-        y_pos = bar.get_y() + bar.get_height() / 2.0
-        ax.text(
-            width + offset,
-            y_pos,
-            f"{rate * 100:.1f}%",
-            va="center",
-            ha="left",
-            fontsize=9,
-            fontweight="bold",
-            color="#1e293b",
-        )
+    label_bars(
+        ax,
+        bars,
+        [f"{rate * 100:.1f}%" for rate in rates],
+        orientation="horizontal",
+        offset=offset,
+        fontsize=9,
+        color="#1e293b",
+    )
 
     if threshold is not None:
         if threshold <= 1.0 and (rates > 0).any():
@@ -192,7 +185,7 @@ def plot_column_missingness(
     for label in ax.get_xticklabels() + ax.get_yticklabels():
         label.set_fontweight("bold")
 
-    ax.grid(axis="y", color="#f1f5f9", linewidth=0.5)
+    ax.grid(axis="x", color="#f1f5f9", linewidth=0.7)
     ax.set_axisbelow(True)
     sns.despine(ax=ax, left=True, bottom=True)
     fig.tight_layout()
@@ -347,7 +340,7 @@ def plot_stratified_missingness(
     for label in ax.get_xticklabels() + ax.get_yticklabels():
         label.set_fontweight("bold")
 
-    ax.grid(axis="x", color="#f1f5f9", linewidth=0.5)
+    ax.grid(axis="x", color="#f1f5f9", linewidth=0.7)
     ax.grid(axis="y", visible=False)
     ax.set_axisbelow(True)
     sns.despine(ax=ax, left=True, bottom=True)

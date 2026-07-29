@@ -20,6 +20,7 @@ from src.config import (
     multimodal_hyperparameters_search_space,
 )
 from src.models.data_preprocessing import encode_target_variable
+from src.models.feature_selection import get_clinical_predictors
 from src.models.model_training import run_modelling_phase
 from src.utils.io import read_parquet
 from src.utils.logging_utils import setup_logger
@@ -41,31 +42,6 @@ APPLY_FILTER = True
 logger = setup_logger(Path(__file__).stem)
 
 
-def get_clinical_predictors(multimodal_df, clinical_reference_df) -> list:
-    """List the clinical predictors available in the multi-modal dataset.
-
-    The clinical columns are taken from the cleaned clinical dataset so that the
-    reduced arm uses exactly the same predictors as the earlier phases.
-
-    Parameters
-    ----------
-    multimodal_df : pd.DataFrame
-        Matched multi-modal dataset.
-    clinical_reference_df : pd.DataFrame
-        Cleaned clinical dataset used as the reference for the column list.
-
-    Returns
-    -------
-    list of str
-        Clinical predictor names, excluding the target variable.
-    """
-    return [
-        column
-        for column in clinical_reference_df.columns
-        if column != TARGET_VARIABLE and column in multimodal_df.columns
-    ]
-
-
 # %% Main function
 def main() -> None:
     CLINICAL_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -80,11 +56,6 @@ def main() -> None:
 
     X_multimodal = df.drop(columns=[TARGET_VARIABLE])
     X_clinical = df[clinical_predictors]
-    logger.info(
-        f"Matched subcohort: {df.shape[0]} records, "
-        f"{len(clinical_predictors)} clinical predictors, "
-        f"{X_multimodal.shape[1]} multimodal predictors."
-    )
 
     cv = StratifiedKFold(n_splits=CV_N_SPLITS, shuffle=True, random_state=SEED)
 
