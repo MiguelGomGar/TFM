@@ -115,6 +115,7 @@ def plot_corr_matrix(
         color="#34495e",
     )
     fig.tight_layout()
+    ax.grid(visible=False, which="both")
     return fig
 
 
@@ -161,7 +162,8 @@ def plot_vif(
     ax.set_xlabel(x_label, fontsize=11, fontweight="bold", color="#1e293b", labelpad=10)
     if y_label:
         ax.set_ylabel(y_label, fontsize=11, fontweight="bold", color="#1e293b")
-    ax.grid(visible=False)
+    ax.grid(axis="x", color="#f1f5f9", linewidth=0.7)
+    ax.grid(axis="y", visible=False)
     ax.set_axisbelow(True)
     ax.legend(fontsize=10, loc="lower center", frameon=True)
     fig.tight_layout()

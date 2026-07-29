@@ -116,7 +116,7 @@ def build_clinical_variables_review_plot(df: pd.DataFrame) -> plt.Figure:
         title="PREDIMAR Cohort Feasibility",
         loc="lower right",
         ncol=1,
-        frameon=False,
+        frameon=True,
     )
     plt.setp(
         ax.get_legend().get_title(), fontsize=9.5, fontweight="bold", color="#1e293b"

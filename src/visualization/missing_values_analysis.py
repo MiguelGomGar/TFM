@@ -17,6 +17,7 @@ from src.visualization.plot_utils import label_bars
 
 def plot_row_missingness(
     na_summary: pd.DataFrame,
+    threshold: float | None = None,
     title: str = "Missing Values per record",
     x_label: str = "Amount of Missing Values",
     y_label: str = "Number of Records",
@@ -70,6 +71,15 @@ def plot_row_missingness(
     max_y = na_summary["n_records"].max()
     ax.set_ylim(0, max_y * 1.18)
 
+    if threshold is not None:
+        ax.axvline(
+            x=threshold,
+            color="#e11d48",
+            linestyle="--",
+            linewidth=1.2,
+            label=(f"Threshold ({threshold*100:.0f}%))"),
+        )
+
     if title:
         ax.set_title(title, fontsize=13, fontweight="bold", pad=20, loc="left")
 
@@ -81,7 +91,9 @@ def plot_row_missingness(
         label.set_fontweight("bold")
 
     ax.grid(axis="y", color="#f1f5f9", linewidth=0.7)
+    ax.grid(axis="x", visible=False)
     ax.set_axisbelow(True)
+    ax.legend(fontsize=10, loc="upper right", frameon=True)
     sns.despine(ax=ax, left=True, bottom=True)
     fig.tight_layout()
 
@@ -159,17 +171,12 @@ def plot_column_missingness(
         else:
             threshold_x = threshold
 
-        ax.axvline(x=threshold_x, color="#e11d48", linestyle="--", linewidth=1.2)
-        ax.text(
-            threshold_x,
-            0,
-            f"{threshold*100:.0f}%" if threshold <= 1.0 else f"{threshold}",
+        ax.axvline(
+            x=threshold_x,
             color="#e11d48",
-            style="italic",
-            fontweight="bold",
-            fontsize=10,
-            va="bottom",
-            ha="left",
+            linestyle="--",
+            linewidth=1.2,
+            label=(f"Threshold ({threshold*100:.0f}%)"),
         )
 
     ax.set_xlim(0, max_count * 1.18 if max_count > 0 else 1)
@@ -186,7 +193,9 @@ def plot_column_missingness(
         label.set_fontweight("bold")
 
     ax.grid(axis="x", color="#f1f5f9", linewidth=0.7)
+    ax.grid(axis="y", visible=False)
     ax.set_axisbelow(True)
+    ax.legend(fontsize=10, loc="lower right", frameon=True)
     sns.despine(ax=ax, left=True, bottom=True)
     fig.tight_layout()
 
@@ -340,7 +349,7 @@ def plot_stratified_missingness(
     for label in ax.get_xticklabels() + ax.get_yticklabels():
         label.set_fontweight("bold")
 
-    ax.grid(axis="x", color="#f1f5f9", linewidth=0.7)
+    ax.grid(axis="x", visible=False)
     ax.grid(axis="y", visible=False)
     ax.set_axisbelow(True)
     sns.despine(ax=ax, left=True, bottom=True)

@@ -54,11 +54,13 @@ def main() -> None:
         strat_na_data, stratify_col_name=TARGET_VARIABLE
     )
     save_figure(strat_na_plot, OUTPUT_DIR / "missing_values_stratified_before.png")
-    save_csv(strat_na_data, OUTPUT_DIR / "missing_values_stratified_before.csv", index=True)
+    save_csv(
+        strat_na_data, OUTPUT_DIR / "missing_values_stratified_before.csv", index=True
+    )
 
     logger.info("Plotting missing values distribution per row...")
     row_na_data = compute_row_missingness_data(df)
-    row_na_plot = plot_row_missingness(row_na_data)
+    row_na_plot = plot_row_missingness(row_na_data, threshold=MISSING_RATE_THRESHOLD)
     save_figure(row_na_plot, OUTPUT_DIR / "missing_values_per_record_before.png")
     save_csv(row_na_data, OUTPUT_DIR / "missing_values_per_record_before.csv")
 
@@ -70,7 +72,9 @@ def main() -> None:
 
     logger.info("Plotting missing values per row...")
     row_na_data_filtered = compute_row_missingness_data(df_filtered)
-    row_na_plot_filtered = plot_row_missingness(row_na_data_filtered)
+    row_na_plot_filtered = plot_row_missingness(
+        row_na_data_filtered, threshold=MISSING_RATE_THRESHOLD
+    )
     save_figure(
         row_na_plot_filtered, OUTPUT_DIR / "missing_values_per_record_after.png"
     )
@@ -84,13 +88,19 @@ def main() -> None:
         strat_na_data, stratify_col_name=TARGET_VARIABLE
     )
     save_figure(strat_na_plot, OUTPUT_DIR / "missing_values_stratified_after.png")
-    save_csv(strat_na_data, OUTPUT_DIR / "missing_values_stratified_after.csv", index=True)
+    save_csv(
+        strat_na_data, OUTPUT_DIR / "missing_values_stratified_after.csv", index=True
+    )
 
     logger.info("Plotting new missing values heatmap...")
     heatmap_data_filtered = compute_missingness_heatmap_data(df_filtered)
     new_heatmap_plot = plot_missingness_heatmap(heatmap_data_filtered)
     save_figure(new_heatmap_plot, OUTPUT_DIR / "missing_values_heatmap_after.png")
-    save_csv(heatmap_data_filtered, OUTPUT_DIR / "missing_values_heatmap_after.csv", index=True)
+    save_csv(
+        heatmap_data_filtered,
+        OUTPUT_DIR / "missing_values_heatmap_after.csv",
+        index=True,
+    )
 
 
 if __name__ == "__main__":

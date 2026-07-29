@@ -6,7 +6,7 @@ from src.config import VARIABLES_REVIEW_NROWS, VARIABLES_REVIEW_USECOLS
 from src.utils.io import read_excel, save_csv, save_figure
 from src.utils.logging_utils import setup_logger
 from src.utils.paths import DATA_COLLECTION_DIR, RISK_FACTORS_REVIEW_DATA_PATH
-from src.visualization.data_collection import (
+from src.visualization.clinical_variables_review import (
     build_clinical_variables_review_plot,
     prepare_clinical_variables_review_data,
 )
