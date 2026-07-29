@@ -163,7 +163,7 @@ def plot_vif(
         ax.set_ylabel(y_label, fontsize=11, fontweight="bold", color="#1e293b")
     ax.grid(visible=False)
     ax.set_axisbelow(True)
-    ax.legend(fontsize=10, loc="bottom center", frameon=True)
+    ax.legend(fontsize=10, loc="lower center", frameon=True)
     fig.tight_layout()
 
     return fig

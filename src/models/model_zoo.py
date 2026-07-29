@@ -79,7 +79,7 @@ def get_estimator(abbreviation: str, seed: int) -> BaseEstimator:
         return GradientBoostingClassifier(random_state=seed)
 
     if abbreviation == "MLP":
-        return MLPClassifier(random_state=seed, max_iter=1000)
+        return MLPClassifier(random_state=seed, max_iter=5000)
 
     raise ValueError(
         f"Unknown model abbreviation: {abbreviation!r}. "

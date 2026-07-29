@@ -40,6 +40,7 @@ def _style_axes(ax, grid_axis: str = "y") -> None:
     for label in ax.get_xticklabels() + ax.get_yticklabels():
         label.set_fontweight("bold")
     ax.grid(axis=grid_axis, color="#eaeded", linewidth=0.6)
+    ax.grid(axis="x", visible=False)
     ax.set_axisbelow(True)
     sns.despine(ax=ax)
 
@@ -174,11 +175,15 @@ def plot_model_roc_curves(
             label=f"{model} (AUC = {auc_by_model[model]:.3f})",
         )
 
-    ax.plot([0, 1], [0, 1], linestyle="--", linewidth=1.2, color="#94a3b8", label="Random")
+    ax.plot(
+        [0, 1], [0, 1], linestyle="--", linewidth=1.2, color="#94a3b8", label="Random"
+    )
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.set_title(title, fontsize=12, fontweight="bold", pad=15)
-    ax.set_xlabel("False positive rate", fontsize=10, fontweight="bold", color="#2c3e50")
+    ax.set_xlabel(
+        "False positive rate", fontsize=10, fontweight="bold", color="#2c3e50"
+    )
     ax.set_ylabel("True positive rate", fontsize=10, fontweight="bold", color="#2c3e50")
     ax.legend(loc="lower right", fontsize=9)
     _style_axes(ax, grid_axis="both")

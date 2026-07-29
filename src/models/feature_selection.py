@@ -10,7 +10,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.config import TARGET_VARIABLE
-from src.utils.io import save_csv
+from src.utils.io import read_csv, save_csv
 from src.utils.results_saving import (
     _clean_feature_names,
     get_relevant_features,
@@ -143,8 +143,11 @@ def select_features_with_elastic_net(
 
     if logger is not None:
         logger.info(
-            f"Elastic Net kept {len(relevant_features)} feature(s) and removed "
-            f"{len(irrelevant_features)}: {irrelevant_features}"
+            f"Elastic Net kept {len(relevant_features)} features: {relevant_features}."
+        )
+
+        logger.info(
+            f" Elastic Net removed {len(irrelevant_features)} features: {irrelevant_features}."
         )
 
     return relevant_features, irrelevant_features, coefficients
@@ -182,6 +185,34 @@ def apply_feature_filter(X: pd.DataFrame, irrelevant_features, logger=None):
         return X
 
     return X.drop(columns=columns_to_drop)
+
+
+def load_previously_kept_features(*feature_selection_dirs) -> list:
+    """Collect the predictors surviving earlier Elastic Net filterings.
+
+    Reads the ``features_kept.csv`` written by ``select_features_with_elastic_net``
+    in each of the given directories, so that an already-filtered phase can be
+    used as the starting point for a later one instead of refitting the
+    Elastic Net on the full, high-dimensional feature set.
+
+    Parameters
+    ----------
+    *feature_selection_dirs : str or Path
+        Output directories of earlier modelling phases, each expected to
+        contain a ``features_kept.csv`` file.
+
+    Returns
+    -------
+    list of str
+        Union of the kept feature names across all given directories.
+    """
+    kept_features: list[str] = []
+    for directory in feature_selection_dirs:
+        kept = read_csv(Path(directory) / "features_kept.csv")
+        for feature in kept["Feature"]:
+            if feature not in kept_features:
+                kept_features.append(feature)
+    return kept_features
 
 
 def get_clinical_predictors(multimodal_df, clinical_reference_df) -> list:
