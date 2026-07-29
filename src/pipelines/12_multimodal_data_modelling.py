@@ -27,23 +27,19 @@ from src.config import (
     multimodal_hyperparameters_search_space,
 )
 from src.models.data_preprocessing import encode_target_variable
-from src.models.feature_selection import (
-    get_clinical_predictors,
-    load_previously_kept_features,
-)
+from src.models.feature_selection import load_previously_kept_features
 from src.models.model_training import run_modelling_phase
 from src.utils.io import read_parquet
 from src.utils.logging_utils import setup_logger
 from src.utils.paths import (
-    CLEANED_CLINICAL_DATA_PATH,
     CLEANED_MULTIMODAL_DATA_PATH,
+    CLINICAL_MODELS_FILTERED_DIR,
     CLINICAL_MODELS_MATCHED_DIR,
     MULTIMODAL_MODELS_DIR,
     PROTEOMIC_MODELS_DIR,
 )
 
 INPUT_FILE = CLEANED_MULTIMODAL_DATA_PATH
-CLINICAL_REFERENCE_FILE = CLEANED_CLINICAL_DATA_PATH
 CLINICAL_OUTPUT_DIR = CLINICAL_MODELS_MATCHED_DIR
 MULTIMODAL_OUTPUT_DIR = MULTIMODAL_MODELS_DIR
 
@@ -63,9 +59,9 @@ def main() -> None:
 
     logger.info(f"Loading data from {INPUT_FILE}...")
     df = read_parquet(INPUT_FILE)
-    clinical_reference = read_parquet(CLINICAL_REFERENCE_FILE)
 
-    clinical_predictors = get_clinical_predictors(df, clinical_reference)
+    clinical_predictors = load_previously_kept_features(CLINICAL_MODELS_FILTERED_DIR)
+    clinical_predictors = [col for col in clinical_predictors if col in df.columns]
     y = encode_target_variable(df, TARGET_VARIABLE)
 
     X_clinical = df[clinical_predictors]
@@ -103,11 +99,11 @@ def main() -> None:
     # Arm 2: integrated multi-modal model
     # ------------------------------------------------------------------
     # Instead of refitting the Elastic Net on every clinical predictor plus
-    # every protein, reuse the features already kept by the clinical arm
-    # above and by the standalone proteomic phase (phase 2). This keeps the
+    # every protein, reuse the features already kept by phase 1b (clinical_filtered)
+    # and by the standalone proteomic phase (phase 2). This keeps the
     # multimodal design matrix at a tractable dimensionality from the start.
     previously_kept_features = load_previously_kept_features(
-        CLINICAL_OUTPUT_DIR, PROTEOMIC_MODELS_DIR
+        CLINICAL_MODELS_FILTERED_DIR, PROTEOMIC_MODELS_DIR
     )
     multimodal_predictors = [
         column for column in previously_kept_features if column in df.columns

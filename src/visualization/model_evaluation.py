@@ -331,12 +331,16 @@ def plot_metric_by_model(
 
 
 def plot_modality_comparison(
-    comparison_df: pd.DataFrame, model_name: str, figsize=(8, 6)
+    comparison_df: pd.DataFrame,
+    model_name: str,
+    modality_order: tuple[str, str] = ("Clinical", "Multimodal"),
+    title: str | None = None,
+    figsize=(8, 6),
 ) -> plt.Figure:
-    """Compare the clinical-only and multimodal versions of a single model.
+    """Compare two modelling arms of a single model.
 
     Draws one group of bars per metric, with a series for each modality, so
-    that the added value of the proteomic panel can be read directly.
+    that the added value of the second arm can be read directly.
 
     Parameters
     ----------
@@ -345,6 +349,10 @@ def plot_modality_comparison(
         restricted to a single model.
     model_name : str
         Model name shown in the title.
+    modality_order : tuple of str, default ('Clinical', 'Multimodal')
+        Modalities to plot, in legend and bar order.
+    title : str, optional
+        Plot title. Defaults to '<baseline> vs <comparison>: <model_name>'.
     figsize : tuple, default (8, 6)
         Figure size in inches.
 
@@ -356,7 +364,7 @@ def plot_modality_comparison(
     metrics = list(dict.fromkeys(comparison_df["Metric"]))
     modalities = [
         modality
-        for modality in ("Clinical", "Multimodal")
+        for modality in modality_order
         if modality in set(comparison_df["Modality"])
     ]
 
@@ -396,7 +404,9 @@ def plot_modality_comparison(
     ax.set_xticklabels(metrics)
     ax.set_ylim(0, 1)
     ax.set_title(
-        f"Clinical vs multimodal: {model_name}",
+        title
+        if title is not None
+        else f"{modality_order[0]} vs {modality_order[1]}: {model_name}",
         fontsize=12,
         fontweight="bold",
         pad=15,

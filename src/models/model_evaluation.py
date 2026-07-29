@@ -154,22 +154,29 @@ def summarize_curve_areas(curves_by_model: dict, area_key: str) -> dict:
 
 
 def build_modality_comparison_table(
-    clinical_metrics: pd.DataFrame,
-    multimodal_metrics: pd.DataFrame,
+    baseline_metrics: pd.DataFrame,
+    comparison_metrics: pd.DataFrame,
+    baseline_label: str = "Clinical",
+    comparison_label: str = "Multimodal",
     metrics=("ROC-AUC", "PR-AUC"),
 ) -> pd.DataFrame:
-    """Pair the external validation scores of the clinical and multimodal arms.
+    """Pair the external validation scores of two modelling arms.
 
-    Both arms must have been trained on the same matched subcohort for the
+    Both arms must have been trained on the same cohort and partition for the
     comparison to be meaningful.
 
     Parameters
     ----------
-    clinical_metrics : pd.DataFrame
-        Consolidated metrics of the clinical-only arm, with columns
+    baseline_metrics : pd.DataFrame
+        Consolidated metrics of the reference arm, with columns
         ['Model', 'Metric', 'Dataset', 'Score'].
-    multimodal_metrics : pd.DataFrame
-        Consolidated metrics of the multimodal arm, same layout.
+    comparison_metrics : pd.DataFrame
+        Consolidated metrics of the arm being compared against the baseline,
+        same layout.
+    baseline_label : str, default 'Clinical'
+        Name of the reference arm, used as its 'Modality' value.
+    comparison_label : str, default 'Multimodal'
+        Name of the arm being compared, used as its 'Modality' value.
     metrics : tuple of str, default ('ROC-AUC', 'PR-AUC')
         Metrics to compare.
 
@@ -181,8 +188,8 @@ def build_modality_comparison_table(
     """
     frames = []
     for modality, metrics_df in (
-        ("Clinical", clinical_metrics),
-        ("Multimodal", multimodal_metrics),
+        (baseline_label, baseline_metrics),
+        (comparison_label, comparison_metrics),
     ):
         selection = metrics_df[
             (metrics_df["Dataset"] == "Test") & (metrics_df["Metric"].isin(metrics))
@@ -198,41 +205,55 @@ def build_modality_comparison_table(
     comparison["Metric"] = pd.Categorical(
         comparison["Metric"], categories=list(metrics), ordered=True
     )
+    comparison["Modality"] = pd.Categorical(
+        comparison["Modality"],
+        categories=[baseline_label, comparison_label],
+        ordered=True,
+    )
     comparison = comparison.sort_values(by=["Model", "Metric", "Modality"])
     comparison["Model"] = comparison["Model"].astype(str)
     comparison["Metric"] = comparison["Metric"].astype(str)
+    comparison["Modality"] = comparison["Modality"].astype(str)
 
     return comparison[["Model", "Metric", "Modality", "Score"]].reset_index(drop=True)
 
 
-def build_modality_delta_table(comparison: pd.DataFrame) -> pd.DataFrame:
+def build_modality_delta_table(
+    comparison: pd.DataFrame,
+    baseline_label: str = "Clinical",
+    comparison_label: str = "Multimodal",
+) -> pd.DataFrame:
     """Turn the long comparison frame into one row per model and metric.
 
     Parameters
     ----------
     comparison : pd.DataFrame
         Long-format comparison as returned by build_modality_comparison_table.
+    baseline_label : str, default 'Clinical'
+        Name of the reference arm, as used in the 'Modality' column.
+    comparison_label : str, default 'Multimodal'
+        Name of the arm being compared, as used in the 'Modality' column.
 
     Returns
     -------
     pd.DataFrame
-        Columns ['Model', 'Metric', 'Clinical', 'Multimodal', 'Delta'], where
-        Delta is the multimodal score minus the clinical one.
+        Columns ['Model', 'Metric', baseline_label, comparison_label, 'Delta'],
+        where Delta is the comparison score minus the baseline one.
     """
     wide = comparison.pivot_table(
         index=["Model", "Metric"], columns="Modality", values="Score", observed=True
     ).reset_index()
     wide.columns.name = None
 
-    for modality in ("Clinical", "Multimodal"):
+    for modality in (baseline_label, comparison_label):
         if modality not in wide.columns:
             wide[modality] = np.nan
 
-    wide["Delta"] = wide["Multimodal"] - wide["Clinical"]
+    wide["Delta"] = wide[comparison_label] - wide[baseline_label]
     wide["Model"] = pd.Categorical(wide["Model"], categories=MODEL_ORDER, ordered=True)
     wide = wide.sort_values(by=["Model", "Metric"])
     wide["Model"] = wide["Model"].astype(str)
 
-    return wide[["Model", "Metric", "Clinical", "Multimodal", "Delta"]].reset_index(
-        drop=True
-    )
+    return wide[
+        ["Model", "Metric", baseline_label, comparison_label, "Delta"]
+    ].reset_index(drop=True)

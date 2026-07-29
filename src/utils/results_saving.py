@@ -69,25 +69,20 @@ def get_relevant_features(regularized_model_pipeline):
 
     # Create a DataFrame of features and their corresponding coefficients
     df_coefficients = pd.DataFrame(
-        {"Feature": feature_names, "Coefficient": coefficients}
+        {"Feature": feature_names, "Coefficient": coefficients.astype(float).abs()}
     )
 
     # Separate out features with zero coefficients from features with non-zero
     # coefficients
-    # Copy the slices so that the sorting helper column below is written on an
-    # independent frame (chained assignment is a no-op under copy-on-write).
-    df_relevant = df_coefficients[df_coefficients["Coefficient"] != 0].copy()
-    df_irrelevant = df_coefficients[df_coefficients["Coefficient"] == 0].copy()
+    df_relevant = df_coefficients[coefficients != 0].copy()
+    df_irrelevant = df_coefficients[coefficients == 0].copy()
 
     # Extract the list of irrelevant feature names
     irrelevant_cols = df_irrelevant["Feature"].tolist()
     irrelevant_cols = _clean_feature_names(irrelevant_cols)
 
-    # Sort by absolute value of coefficients in descending order
-    df_relevant["Abs_Coefficient"] = df_relevant["Coefficient"].abs()
-    df_relevant = df_relevant.sort_values(by="Abs_Coefficient", ascending=False).drop(
-        columns="Abs_Coefficient"
-    )
+    # Sort by absolute coefficient magnitude in descending order
+    df_relevant = df_relevant.sort_values(by="Coefficient", ascending=False)
 
     # Extract the list of relevant feature names
     relevant_cols = df_relevant["Feature"].tolist()

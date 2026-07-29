@@ -1,9 +1,13 @@
-"""Compare the multi-modal models against the clinical-only ones.
+"""Compare modelling arms trained on the same partition, model by model.
 
-Both sets of metrics come from the two arms of phase 3, trained on the same
-matched subcohort and the same partition, so the difference isolates the
-contribution of the proteomic panel. No model is refitted here: the comparison
-is rebuilt from the metrics tables, so the figures can be regenerated cheaply.
+Two comparisons are run:
+  - Clinical (matched) vs multimodal: the two arms of phase 3, trained on the
+    same matched subcohort. Isolates the contribution of the proteomic panel.
+  - Clinical vs clinical filtered: phases 1 and 1b, trained on the full
+    clinical cohort. Isolates the effect of the Elastic Net feature filtering.
+
+No model is refitted here: each comparison is rebuilt from the metrics
+tables, so the figures can be regenerated cheaply.
 """
 
 from pathlib import Path
@@ -17,35 +21,67 @@ from src.models.model_zoo import get_display_name
 from src.utils.io import read_csv, save_csv, save_figure
 from src.utils.logging_utils import setup_logger
 from src.utils.paths import (
+    CLINICAL_FILTERING_COMPARISON_DIR,
+    CLINICAL_MODELS_DIR,
+    CLINICAL_MODELS_FILTERED_DIR,
     CLINICAL_MODELS_MATCHED_DIR,
     MODALITY_COMPARISON_DIR,
     MULTIMODAL_MODELS_DIR,
 )
 from src.visualization.model_evaluation import plot_modality_comparison
 
-CLINICAL_METRICS_FILE = CLINICAL_MODELS_MATCHED_DIR / "models_metrics.csv"
-MULTIMODAL_METRICS_FILE = MULTIMODAL_MODELS_DIR / "models_metrics.csv"
-OUTPUT_DIR = MODALITY_COMPARISON_DIR
+# Each entry compares two modelling arms trained on the same cohort and split.
+COMPARISONS = [
+    {
+        "baseline_label": "Clinical",
+        "baseline_metrics_file": CLINICAL_MODELS_MATCHED_DIR / "models_metrics.csv",
+        "comparison_label": "Multimodal",
+        "comparison_metrics_file": MULTIMODAL_MODELS_DIR / "models_metrics.csv",
+        "output_dir": MODALITY_COMPARISON_DIR,
+    },
+    {
+        "baseline_label": "Clinical",
+        "baseline_metrics_file": CLINICAL_MODELS_DIR / "models_metrics.csv",
+        "comparison_label": "Clinical filtered",
+        "comparison_metrics_file": CLINICAL_MODELS_FILTERED_DIR / "models_metrics.csv",
+        "output_dir": CLINICAL_FILTERING_COMPARISON_DIR,
+    },
+]
 
 logger = setup_logger(Path(__file__).stem)
 
 
-# %% Main function
-def main() -> None:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+def run_comparison(
+    baseline_label: str,
+    baseline_metrics_file: Path,
+    comparison_label: str,
+    comparison_metrics_file: Path,
+    output_dir: Path,
+) -> None:
+    """Build and plot one modelling-arm comparison, model by model."""
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    logger.info(f"Loading clinical metrics from {CLINICAL_METRICS_FILE}...")
-    clinical_metrics = read_csv(CLINICAL_METRICS_FILE)
+    logger.info(f"Loading {baseline_label} metrics from {baseline_metrics_file}...")
+    baseline_metrics = read_csv(baseline_metrics_file)
 
-    logger.info(f"Loading multimodal metrics from {MULTIMODAL_METRICS_FILE}...")
-    multimodal_metrics = read_csv(MULTIMODAL_METRICS_FILE)
+    logger.info(
+        f"Loading {comparison_label} metrics from {comparison_metrics_file}..."
+    )
+    comparison_metrics = read_csv(comparison_metrics_file)
 
-    logger.info("Building the comparison tables...")
-    comparison = build_modality_comparison_table(clinical_metrics, multimodal_metrics)
-    deltas = build_modality_delta_table(comparison)
-    save_csv(deltas, OUTPUT_DIR / "modality_comparison.csv")
+    logger.info(f"Building the {baseline_label} vs {comparison_label} tables...")
+    comparison = build_modality_comparison_table(
+        baseline_metrics,
+        comparison_metrics,
+        baseline_label=baseline_label,
+        comparison_label=comparison_label,
+    )
+    deltas = build_modality_delta_table(
+        comparison, baseline_label=baseline_label, comparison_label=comparison_label
+    )
+    save_csv(deltas, output_dir / "modality_comparison.csv")
 
-    logger.info("Plotting the comparison for each model...")
+    logger.info(f"Plotting the {baseline_label} vs {comparison_label} comparison...")
     for abbreviation in MODEL_ORDER:
         model_comparison = comparison[comparison["Model"] == abbreviation]
         if model_comparison.empty:
@@ -53,13 +89,21 @@ def main() -> None:
             continue
 
         filename = f"comparison_{abbreviation.lower()}"
-        save_csv(model_comparison, OUTPUT_DIR / f"{filename}.csv")
+        save_csv(model_comparison, output_dir / f"{filename}.csv")
         figure = plot_modality_comparison(
-            model_comparison, model_name=get_display_name(abbreviation)
+            model_comparison,
+            model_name=get_display_name(abbreviation),
+            modality_order=(baseline_label, comparison_label),
         )
-        save_figure(figure, OUTPUT_DIR / f"{filename}.png")
+        save_figure(figure, output_dir / f"{filename}.png")
 
-    logger.info(f"Results saved to {OUTPUT_DIR}.")
+    logger.info(f"Results saved to {output_dir}.")
+
+
+# %% Main function
+def main() -> None:
+    for comparison_spec in COMPARISONS:
+        run_comparison(**comparison_spec)
 
 
 if __name__ == "__main__":

@@ -292,7 +292,11 @@ RISK_SCORE_BASELINE = {"ROC-AUC": 0.632, "PR-AUC": 0.480}
 INTERNAL_VALIDATION_COLORS = {"Train": "#2563eb", "Validation": "#f59e0b"}
 BASELINE_COLOR = "#e11d48"
 MODEL_BAR_COLOR = "#16a085"
-MODALITY_COLORS = {"Clinical": "#2563eb", "Multimodal": "#e11d48"}
+MODALITY_COLORS = {
+    "Clinical": "#2563eb",
+    "Multimodal": "#e11d48",
+    "Clinical filtered": "#f59e0b",
+}
 MODEL_PALETTE = [
     "#2563eb",
     "#e11d48",

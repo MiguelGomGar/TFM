@@ -30,7 +30,7 @@ def _build_coefficient_table(fitted_pipeline) -> pd.DataFrame:
     Returns
     -------
     pd.DataFrame
-        Columns ['Feature', 'Coefficient', 'Abs_Coefficient', 'Selected'],
+        Columns ['Feature', 'Coefficient', 'Selected'],
         sorted by absolute coefficient magnitude (largest first).
     """
     feature_names = fitted_pipeline.named_steps["preprocessor"].get_feature_names_out()
@@ -39,12 +39,11 @@ def _build_coefficient_table(fitted_pipeline) -> pd.DataFrame:
     table = pd.DataFrame(
         {
             "Feature": _clean_feature_names(feature_names),
-            "Coefficient": coefficients,
+            "Coefficient": coefficients.astype(float).abs(),
         }
     )
-    table["Abs_Coefficient"] = table["Coefficient"].abs()
-    table["Selected"] = table["Coefficient"] != 0
-    return table.sort_values(by="Abs_Coefficient", ascending=False).reset_index(
+    table["Selected"] = coefficients != 0
+    return table.sort_values(by="Coefficient", ascending=False).reset_index(
         drop=True
     )
 
@@ -131,15 +130,8 @@ def select_features_with_elastic_net(
     kept.insert(0, "Rank", range(1, len(kept) + 1))
     save_csv(kept, output_dir / "features_kept.csv")
 
-    removed = coefficients.loc[~coefficients["Selected"], ["Feature"]].copy()
+    removed = coefficients.loc[~coefficients["Selected"], ["Feature", "Coefficient"]].copy()
     save_csv(removed, output_dir / "features_removed.csv")
-
-    save_feature_selection_results(
-        relevant_cols=relevant_features,
-        irrelevant_cols=irrelevant_features,
-        output_dir=output_dir,
-        identifier=identifier,
-    )
 
     if logger is not None:
         logger.info(
