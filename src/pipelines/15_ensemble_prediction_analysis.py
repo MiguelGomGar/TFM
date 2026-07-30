@@ -1,21 +1,4 @@
-"""Phase 3b: agreement between the top multimodal models and their ensemble.
-
-Elastic Net (EN), SVM and MLP are the three best-performing models on the
-multimodal test set built by pipeline 12 (see
-``results/models/multimodal_data/models_metrics.csv``): MLP and EN lead on
-PR-AUC, and SVM is kept over the marginally better Random Forest because it
-shows much less overfitting between the training and validation folds (see
-``internal_validation_*.csv``). This phase checks whether the three models
-actually agree with each other on individual patients, compares the
-probabilities they assign before any binarization, and reports the simple
-majority-voting ensemble that follows from combining their predictions.
-
-The three fitted pipelines are reloaded as-is from disk; nothing is retrained
-except one calibrated copy of the SVM (see
-``src.models.ensemble.recalibrate_svm_probabilities``), needed only for the
-probability comparison because the SVM is otherwise fitted with
-``probability=False`` in every other phase.
-"""
+"""Phase 4: agreement between the top multimodal models and their ensemble."""
 
 from pathlib import Path
 
@@ -26,12 +9,10 @@ from src.models.data_preprocessing import encode_target_variable
 from src.models.ensemble import (
     build_agreement_table,
     build_ensemble_curves,
-    build_probability_distribution_table,
+    build_score_distribution_table,
     get_model_feature_columns,
-    get_positive_class_probability,
     load_fitted_pipeline,
     majority_vote,
-    recalibrate_svm_probabilities,
 )
 from src.models.model_evaluation import get_decision_scores
 from src.utils.io import read_parquet, save_csv, save_figure
@@ -41,9 +22,12 @@ from src.utils.paths import (
     ENSEMBLE_ANALYSIS_DIR,
     MULTIMODAL_MODELS_DIR,
 )
-from src.utils.results_saving import save_curves_results
-from src.visualization.ensemble import ensemble_curve_colors, plot_probability_violin
-from src.visualization.model_evaluation import plot_model_pr_curves, plot_model_roc_curves
+from src.models.results_saving import save_curves_results
+from src.visualization.ensemble import ensemble_curve_colors, plot_score_violin
+from src.visualization.model_evaluation import (
+    plot_model_pr_curves,
+    plot_model_roc_curves,
+)
 
 INPUT_FILE = CLEANED_MULTIMODAL_DATA_PATH
 MODELS_DIR = MULTIMODAL_MODELS_DIR
@@ -82,7 +66,7 @@ def main() -> None:
             )
 
     X = df[feature_columns]
-    X_train, X_test, y_train, y_test = train_test_split(
+    _, X_test, _, y_test = train_test_split(
         X, y, test_size=TEST_SIZE, random_state=SEED, shuffle=True, stratify=y
     )
     logger.info(
@@ -91,33 +75,32 @@ def main() -> None:
     )
 
     # ------------------------------------------------------------------
-    # 1. Probability distributions
+    # 1. Score distributions
     # ------------------------------------------------------------------
-    logger.info(
-        "Recalibrating the SVM with Platt scaling for the probability comparison..."
-    )
-    calibrated_svm = recalibrate_svm_probabilities(
-        fitted_models["SVM"], X_train, y_train, seed=SEED
-    )
-
-    probabilities_by_model = {
-        "EN": get_positive_class_probability(fitted_models["EN"], X_test),
-        "SVM": get_positive_class_probability(calibrated_svm, X_test),
-        "MLP": get_positive_class_probability(fitted_models["MLP"], X_test),
+    # EN and MLP contribute calibrated probabilities (predict_proba); the
+    # SVM is fitted with probability=False (see model_zoo.get_estimator), so
+    # it contributes its raw decision_function score instead of being
+    # refitted just for this comparison.
+    logger.info("Scoring each model on the external validation set...")
+    scores_by_model = {
+        abbreviation: get_decision_scores(model, X_test)
+        for abbreviation, model in fitted_models.items()
     }
-    probabilities_df = build_probability_distribution_table(probabilities_by_model)
-    save_csv(probabilities_df, OUTPUT_DIR / "probability_distributions.csv")
 
-    figure = plot_probability_violin(probabilities_df)
-    save_figure(figure, OUTPUT_DIR / "probability_distributions.png")
-    logger.info("Saved the probability distribution table and violin plot.")
+    scores_df = build_score_distribution_table(scores_by_model)
+    save_csv(scores_df, OUTPUT_DIR / "score_distributions.csv")
+
+    figure = plot_score_violin(scores_df)
+    save_figure(figure, OUTPUT_DIR / "score_distributions.png")
+    logger.info("Saved the score distribution table and violin plot.")
 
     # ------------------------------------------------------------------
     # 2. Majority-voting ensemble
     # ------------------------------------------------------------------
     logger.info("Building the majority-voting ensemble...")
     predictions_by_model = {
-        abbreviation: model.predict(X_test) for abbreviation, model in fitted_models.items()
+        abbreviation: model.predict(X_test)
+        for abbreviation, model in fitted_models.items()
     }
     vote_share, ensemble_pred = majority_vote(predictions_by_model)
 
@@ -127,13 +110,9 @@ def main() -> None:
     logger.info(f"The three models agree on {unanimous_rate:.1%} of the test patients.")
 
     # Ranking scores only: each individual model's own decision score
-    # (predict_proba, or decision_function for the non-recalibrated SVM,
-    # exactly as used everywhere else in the project) plus the ensemble's
-    # vote share. No threshold-dependent ('hard') metric is computed here.
-    scores_by_model = {
-        abbreviation: get_decision_scores(model, X_test)
-        for abbreviation, model in fitted_models.items()
-    }
+    # (predict_proba, or decision_function for the SVM, computed in step 1)
+    # plus the ensemble's vote share. No threshold-dependent ('hard') metric
+    # is computed here.
     scores_by_model["Ensemble"] = vote_share
 
     curves_by_model = build_ensemble_curves(y_test, scores_by_model)
@@ -172,7 +151,9 @@ def main() -> None:
         colors=colors,
     )
     save_figure(figure, OUTPUT_DIR / "curves_pr.png")
-    logger.info("Saved the ROC and precision-recall curves (individual models vs. ensemble).")
+    logger.info(
+        "Saved the ROC and precision-recall curves (individual models vs. ensemble)."
+    )
 
     logger.info(f"Ensemble analysis results saved to {OUTPUT_DIR}.")
 

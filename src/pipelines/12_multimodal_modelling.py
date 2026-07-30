@@ -1,16 +1,6 @@
-"""Phase 3: integrated multi-modal models against a reduced clinical model.
-
-Both arms are trained on the exact same matched subcohort and on the exact same
-train/test partition, so the difference in performance can be attributed to the
-proteomic panel rather than to the cohort or the split. The clinical arm uses
-only the clinical predictors; the multimodal arm adds the protein abundances.
-
-Refitting the Elastic Net on the full multimodal design matrix (all proteins
-plus all clinical predictors) is by far the slowest step of the whole
-pipeline. Since phases 1b and 2 already ran that same filtering on the
-clinical and proteomic predictors separately, the multimodal arm reuses their
-``features_kept.csv`` as its starting feature set instead of repeating the
-selection from scratch.
+"""
+Phase 3: integrated multi-modal models against a reduced clinical model on
+the exact same matched subcohort and on the exact same train/test partition
 """
 
 from pathlib import Path

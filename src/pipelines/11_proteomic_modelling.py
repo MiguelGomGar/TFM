@@ -1,11 +1,4 @@
-"""Phase 2: train and evaluate the models on the proteomic panel alone.
-
-Restricted to the subcohort with available high-throughput proteomic profiling
-and to the protein abundances themselves, so that the discriminative capability
-of the circulating biomarkers is quantified on its own. Given the high
-dimensionality, the Elastic Net filter is applied before fitting the remaining
-models.
-"""
+"""Phase 2: train and evaluate the models on the proteomic panel alone."""
 
 from pathlib import Path
 

@@ -9,9 +9,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.config import TARGET_VARIABLE
 from src.utils.io import read_csv, save_csv
-from src.utils.results_saving import _clean_feature_names, get_relevant_features
+from src.models.results_saving import _clean_feature_names, get_relevant_features
 
 
 def _build_coefficient_table(fitted_pipeline) -> pd.DataFrame:
@@ -39,9 +38,7 @@ def _build_coefficient_table(fitted_pipeline) -> pd.DataFrame:
         }
     )
     table["Selected"] = coefficients != 0
-    return table.sort_values(by="Coefficient", ascending=False).reset_index(
-        drop=True
-    )
+    return table.sort_values(by="Coefficient", ascending=False).reset_index(drop=True)
 
 
 def _warn_if_penalty_cannot_shrink(fitted_pipeline, logger=None) -> None:
@@ -126,7 +123,9 @@ def select_features_with_elastic_net(
     kept.insert(0, "Rank", range(1, len(kept) + 1))
     save_csv(kept, output_dir / "features_kept.csv")
 
-    removed = coefficients.loc[~coefficients["Selected"], ["Feature", "Coefficient"]].copy()
+    removed = coefficients.loc[
+        ~coefficients["Selected"], ["Feature", "Coefficient"]
+    ].copy()
     save_csv(removed, output_dir / "features_removed.csv")
 
     if logger is not None:
@@ -201,28 +200,3 @@ def load_previously_kept_features(*feature_selection_dirs) -> list:
             if feature not in kept_features:
                 kept_features.append(feature)
     return kept_features
-
-
-def get_clinical_predictors(multimodal_df, clinical_reference_df) -> list:
-    """List the clinical predictors available in the multi-modal dataset.
-
-    The clinical columns are taken from the cleaned clinical dataset so that the
-    reduced arm uses exactly the same predictors as the earlier phases.
-
-    Parameters
-    ----------
-    multimodal_df : pd.DataFrame
-        Matched multi-modal dataset.
-    clinical_reference_df : pd.DataFrame
-        Cleaned clinical dataset used as the reference for the column list.
-
-    Returns
-    -------
-    list of str
-        Clinical predictor names, excluding the target variable.
-    """
-    return [
-        column
-        for column in clinical_reference_df.columns
-        if column != TARGET_VARIABLE and column in multimodal_df.columns
-    ]

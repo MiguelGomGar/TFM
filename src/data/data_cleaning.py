@@ -2,8 +2,6 @@
 
 import pandas as pd
 
-from src.config import TARGET_ENCODING
-
 
 def drop_columns(df: pd.DataFrame, columns: str | list) -> pd.DataFrame:
     """Drop specified columns from the dataframe.

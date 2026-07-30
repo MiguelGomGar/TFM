@@ -321,7 +321,9 @@ def build_performance_tables(
     for phase in phases:
         if logger is not None:
             logger.info(f"Building the {phase['label']} performance tables...")
-        internal_validation = load_internal_validation(phase["input_dir"], logger=logger)
+        internal_validation = load_internal_validation(
+            phase["input_dir"], logger=logger
+        )
         if not internal_validation:
             if logger is not None:
                 logger.warning(
@@ -331,7 +333,9 @@ def build_performance_tables(
             continue
 
         for metric, slug in metrics.items():
-            table = build_performance_table(internal_validation, metric, decimals=decimals)
+            table = build_performance_table(
+                internal_validation, metric, decimals=decimals
+            )
             filename = f"{phase['output_prefix']}_{slug}.csv"
             save_csv(table, Path(output_dir) / filename)
 

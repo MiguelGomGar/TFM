@@ -13,12 +13,13 @@ reuses their already-fitted pipelines to:
 The SVM is always fitted with ``probability=False`` in the modelling phases
 (see ``model_zoo.get_estimator``), since Platt scaling would slow the
 hyperparameter search down and ranking metrics (ROC-AUC, PR-AUC) do not need
-it. Comparing raw probabilities across models, however, does need a
-calibrated SVM, so this module refits one copy of it, reusing the
-already-selected hyperparameters, with ``probability=True`` enabled. The
-majority vote itself does not depend on this recalibration, since
-``SVC.predict()`` thresholds ``decision_function`` at zero regardless of the
-``probability`` flag.
+it. Rather than refitting it with ``probability=True`` just to compare it
+against the other two models' probabilities, this module scores every model
+with ``model_evaluation.get_decision_scores``, which uses ``predict_proba``
+when available and falls back to ``decision_function`` for the SVM. The
+scores being compared are therefore not all on the same [0, 1] scale: EN and
+MLP contribute calibrated probabilities, while the SVM contributes a
+signed, unbounded distance to the separating hyperplane.
 """
 
 from pathlib import Path
@@ -33,8 +34,6 @@ from sklearn.metrics import (
     roc_curve,
 )
 from sklearn.pipeline import Pipeline
-
-from src.models.model_zoo import build_model_pipeline
 
 
 def load_fitted_pipeline(model_dir, abbreviation: str) -> Pipeline:
@@ -120,69 +119,24 @@ def get_positive_class_probability(model, X) -> np.ndarray:
     return model.predict_proba(X)[:, 1]
 
 
-def recalibrate_svm_probabilities(
-    fitted_svm_pipeline: Pipeline, X_train, y_train, seed: int
-) -> Pipeline:
-    """Refit an already-tuned SVM pipeline with Platt scaling enabled.
-
-    The classifier's hyperparameters (C, kernel, gamma, class_weight) are
-    read off the already-tuned pipeline and reused as-is: no new search is
-    run. Only ``probability`` is switched on, which makes SVC fit an internal
-    5-fold Platt scaling on the training data only, so the external
-    validation set is never touched by the recalibration.
-
-    A fresh pipeline is built with ``model_zoo.build_model_pipeline`` (rather
-    than cloning the loaded pipeline) so that the preprocessor and classifier
-    are constructed by the current, installed scikit-learn version instead of
-    depending on whatever internal state was pickled by the version that
-    originally fitted the model.
+def build_score_distribution_table(scores_by_model: dict) -> pd.DataFrame:
+    """Stack per-model test-set scores into a long-format table.
 
     Parameters
     ----------
-    fitted_svm_pipeline : sklearn.pipeline.Pipeline
-        Already-tuned SVM pipeline (probability=False), as saved by phase 3.
-    X_train : pd.DataFrame
-        Training features, restricted to the columns the SVM was fitted on.
-    y_train : pd.Series
-        Binary training target.
-    seed : int
-        Random seed forwarded to the preprocessor and to the calibration
-        folds.
-
-    Returns
-    -------
-    sklearn.pipeline.Pipeline
-        Newly fitted pipeline with predict_proba available.
-    """
-    tuned_params = fitted_svm_pipeline.named_steps["clf"].get_params()
-    tuned_params["probability"] = True
-    tuned_params["random_state"] = seed
-
-    calibrated_pipeline = build_model_pipeline(X_train, "SVM", seed=seed)
-    calibrated_pipeline.named_steps["clf"].set_params(**tuned_params)
-    calibrated_pipeline.fit(X_train, y_train)
-
-    return calibrated_pipeline
-
-
-def build_probability_distribution_table(probabilities_by_model: dict) -> pd.DataFrame:
-    """Stack per-model test-set probabilities into a long-format table.
-
-    Parameters
-    ----------
-    probabilities_by_model : dict
-        Mapping of model abbreviation to its array of positive-class
-        probabilities on the test set, in the same patient order for every
-        model.
+    scores_by_model : dict
+        Mapping of model abbreviation to its array of positive-class scores
+        on the test set (predict_proba, or decision_function for the SVM),
+        in the same patient order for every model.
 
     Returns
     -------
     pd.DataFrame
-        Columns ['Model', 'Probability'], one row per (model, patient) pair.
+        Columns ['Model', 'Score'], one row per (model, patient) pair.
     """
     frames = [
-        pd.DataFrame({"Model": model, "Probability": probabilities})
-        for model, probabilities in probabilities_by_model.items()
+        pd.DataFrame({"Model": model, "Score": scores})
+        for model, scores in scores_by_model.items()
     ]
     return pd.concat(frames, ignore_index=True)
 

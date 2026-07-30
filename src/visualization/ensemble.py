@@ -14,19 +14,26 @@ from src.config import ENSEMBLE_COLOR
 from src.visualization.model_evaluation import _model_colors, _style_axes
 
 
-def plot_probability_violin(
-    probabilities_df: pd.DataFrame,
-    title: str = "Predicted probability distribution by model",
+def plot_score_violin(
+    scores_df: pd.DataFrame,
+    title: str = "Predicted score distribution by model",
     figsize=(8, 6),
 ) -> plt.Figure:
-    """Plot one violin per model with its test-set positive-class probabilities.
+    """Plot one violin per model with its test-set positive-class scores.
+
+    Each model's score is on its own scale: EN and MLP contribute calibrated
+    probabilities in [0, 1] (decision threshold at 0.5), while the SVM
+    contributes its raw decision_function distance to the separating
+    hyperplane (decision threshold at 0), since it is fitted with
+    probability=False. No shared axis limit or threshold line is drawn, as
+    neither would be meaningful across every violin.
 
     Parameters
     ----------
-    probabilities_df : pd.DataFrame
-        Long-format table with columns ['Model', 'Probability'], as returned
-        by ensemble.build_probability_distribution_table.
-    title : str, default 'Predicted probability distribution by model'
+    scores_df : pd.DataFrame
+        Long-format table with columns ['Model', 'Score'], as returned by
+        ensemble.build_score_distribution_table.
+    title : str, default 'Predicted score distribution by model'
         Plot title.
     figsize : tuple, default (8, 6)
         Figure size in inches.
@@ -36,14 +43,14 @@ def plot_probability_violin(
     matplotlib.figure.Figure
         Violin plot figure, one violin per model.
     """
-    model_names = list(dict.fromkeys(probabilities_df["Model"]))
+    model_names = list(dict.fromkeys(scores_df["Model"]))
     colors = _model_colors(model_names)
 
     fig, ax = plt.subplots(figsize=figsize)
     sns.violinplot(
-        data=probabilities_df,
+        data=scores_df,
         x="Model",
-        y="Probability",
+        y="Score",
         order=model_names,
         hue="Model",
         hue_order=model_names,
@@ -54,9 +61,9 @@ def plot_probability_violin(
         ax=ax,
     )
     sns.stripplot(
-        data=probabilities_df,
+        data=scores_df,
         x="Model",
-        y="Probability",
+        y="Score",
         order=model_names,
         color="#2c3e50",
         size=2.5,
@@ -65,23 +72,14 @@ def plot_probability_violin(
         ax=ax,
     )
 
-    ax.axhline(
-        0.5,
-        linestyle="--",
-        linewidth=1.2,
-        color="#94a3b8",
-        label="Decision threshold = 0.5",
-    )
-    ax.set_ylim(-0.02, 1.02)
     ax.set_title(title, fontsize=12, fontweight="bold", pad=15)
     ax.set_xlabel(None)
     ax.set_ylabel(
-        "Predicted probability of recurrence",
+        "Positive-class score (probability or decision function)",
         fontsize=10,
         fontweight="bold",
         color="#2c3e50",
     )
-    ax.legend(loc="upper right", fontsize=9)
     _style_axes(ax, grid_axis="y")
     fig.tight_layout()
 

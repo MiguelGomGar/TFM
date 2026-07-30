@@ -102,7 +102,7 @@ def main() -> None:
 
     # Build the proteomic dataset by merging with the clinical dataset
     # (AF recurrence and group allocation variables) on the identifier feature.
-    logger.info(f"Extracting merge subset for proteomic data...")
+    logger.info("Extracting merge subset for proteomic data...")
     clinical_merge_subset = clinical_data[
         [IDENTIFIER_VARIABLE, GROUP_ALLOCATION_VARIABLE, TARGET_VARIABLE]
     ]

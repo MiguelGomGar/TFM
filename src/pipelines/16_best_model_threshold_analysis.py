@@ -1,20 +1,12 @@
-"""Phase 3c: threshold sensitivity of the best-performing model (MLP).
-
-MLP on the multimodal data is the best-performing model overall (see
-``results/models/multimodal_data/models_metrics.csv``). Every modelling
-phase elsewhere in the project reports hard metrics at the default 0.5
-threshold only; this phase scores the same fitted MLP pipeline under three
-decision rules:
+"""Phase 3c: threshold sensitivity of the best-performing model (MLP). This
+phase scores the same fitted MLP pipeline under three decision rules:
 
 1. Default: probability > 0.5.
 2. Optimal: the Youden-optimal cut-off (maximizes sensitivity + specificity
-   - 1 on the ROC curve).
-3. Fuzzy: patients whose probability falls inside
-   ``config.FUZZY_THRESHOLD_BAND`` are left out as 'indeterminate'; the hard
-   metrics are computed only on the remaining, more confidently classified
-   patients.
-
-The fitted pipeline is reloaded as-is from disk; nothing is retrained.
+    - 1 on the ROC curve).
+3. Fuzzy: patients whose probability falls within a defined range are left out
+    as 'indeterminate'; the hard metrics are computed only on the remaining,
+    more confidently classified patients.
 """
 
 from pathlib import Path
@@ -23,7 +15,13 @@ import pandas as pd
 from sklearn.metrics import average_precision_score, roc_auc_score
 from sklearn.model_selection import train_test_split
 
-from src.config import BEST_MODEL, FUZZY_THRESHOLD_BAND, SEED, TARGET_VARIABLE, TEST_SIZE
+from src.config import (
+    BEST_MODEL,
+    FUZZY_THRESHOLD_BAND,
+    SEED,
+    TARGET_VARIABLE,
+    TEST_SIZE,
+)
 from src.models.best_model import (
     apply_fuzzy_threshold,
     apply_threshold,
@@ -40,8 +38,15 @@ from src.models.ensemble import (
 from src.models.model_evaluation import compute_hard_metrics
 from src.utils.io import read_parquet, save_csv, save_figure
 from src.utils.logging_utils import setup_logger
-from src.utils.paths import BEST_MODEL_DIR, CLEANED_MULTIMODAL_DATA_PATH, MULTIMODAL_MODELS_DIR
-from src.visualization.best_model import plot_confusion_matrix, plot_threshold_metrics_comparison
+from src.utils.paths import (
+    BEST_MODEL_DIR,
+    CLEANED_MULTIMODAL_DATA_PATH,
+    MULTIMODAL_MODELS_DIR,
+)
+from src.visualization.best_model import (
+    plot_confusion_matrix,
+    plot_threshold_metrics_comparison,
+)
 
 INPUT_FILE = CLEANED_MULTIMODAL_DATA_PATH
 MODEL_SOURCE_DIR = MULTIMODAL_MODELS_DIR
@@ -132,9 +137,9 @@ def main() -> None:
     )
     save_csv(metrics_table, OUTPUT_DIR / "threshold_metrics.csv")
 
-    save_csv(cm_default, OUTPUT_DIR / "confusion_matrix_default.csv")
-    save_csv(cm_optimal, OUTPUT_DIR / "confusion_matrix_optimal.csv")
-    save_csv(cm_fuzzy, OUTPUT_DIR / "confusion_matrix_fuzzy.csv")
+    save_csv(cm_default, OUTPUT_DIR / "confusion_matrix_default.csv", index=True)
+    save_csv(cm_optimal, OUTPUT_DIR / "confusion_matrix_optimal.csv", index=True)
+    save_csv(cm_fuzzy, OUTPUT_DIR / "confusion_matrix_fuzzy.csv", index=True)
 
     threshold_info = pd.DataFrame(
         [

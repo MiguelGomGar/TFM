@@ -1,7 +1,5 @@
 """Statistical plots built from prepared data."""
 
-from pathlib import Path
-
 import matplotlib
 from matplotlib import patches as mpatches
 
@@ -11,7 +9,6 @@ from matplotlib import patches as mpatches
 matplotlib.use("Agg", force=True)
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 import seaborn as sns
 
@@ -34,7 +31,6 @@ def plot_numeric_distribution(series: pd.Series, col_name: str) -> plt.Figure:
     matplotlib.figure.Figure
         Histogram figure.
     """
-    avg = series.mean()
     fig, ax = plt.subplots(figsize=(8, 6))
     sns.histplot(
         x=series,
