@@ -140,6 +140,8 @@ def plot_model_roc_curves(
     auc_by_model: dict,
     title: str = "ROC curves",
     figsize=(7, 6),
+    legend_loc: str = "lower right",
+    colors: dict | None = None,
 ) -> plt.Figure:
     """Plot the external validation ROC curve of every model on one figure.
 
@@ -154,6 +156,11 @@ def plot_model_roc_curves(
         Plot title.
     figsize : tuple, default (7, 6)
         Figure size in inches.
+    legend_loc : str, default 'lower right'
+        Matplotlib legend location.
+    colors : dict, optional
+        Mapping of model name to hex color. Defaults to one color per model
+        from MODEL_PALETTE (see _model_colors).
 
     Returns
     -------
@@ -161,7 +168,7 @@ def plot_model_roc_curves(
         Figure containing one ROC curve per model.
     """
     model_names = list(auc_by_model)
-    colors = _model_colors(model_names)
+    colors = colors if colors is not None else _model_colors(model_names)
 
     fig, ax = plt.subplots(figsize=figsize)
 
@@ -185,7 +192,7 @@ def plot_model_roc_curves(
         "False positive rate", fontsize=10, fontweight="bold", color="#2c3e50"
     )
     ax.set_ylabel("True positive rate", fontsize=10, fontweight="bold", color="#2c3e50")
-    ax.legend(loc="lower right", fontsize=9)
+    ax.legend(loc=legend_loc, fontsize=9)
     _style_axes(ax, grid_axis="both")
     fig.tight_layout()
 
@@ -198,6 +205,8 @@ def plot_model_pr_curves(
     prevalence: float,
     title: str = "Precision-recall curves",
     figsize=(7, 6),
+    legend_loc: str = "lower right",
+    colors: dict | None = None,
 ) -> plt.Figure:
     """Plot the external validation precision-recall curves on one figure.
 
@@ -215,6 +224,11 @@ def plot_model_pr_curves(
         Plot title.
     figsize : tuple, default (7, 6)
         Figure size in inches.
+    legend_loc : str, default 'lower right'
+        Matplotlib legend location.
+    colors : dict, optional
+        Mapping of model name to hex color. Defaults to one color per model
+        from MODEL_PALETTE (see _model_colors).
 
     Returns
     -------
@@ -222,7 +236,7 @@ def plot_model_pr_curves(
         Figure containing one precision-recall curve per model.
     """
     model_names = list(pr_auc_by_model)
-    colors = _model_colors(model_names)
+    colors = colors if colors is not None else _model_colors(model_names)
 
     fig, ax = plt.subplots(figsize=figsize)
 
@@ -248,7 +262,7 @@ def plot_model_pr_curves(
     ax.set_title(title, fontsize=12, fontweight="bold", pad=15)
     ax.set_xlabel("Recall", fontsize=10, fontweight="bold", color="#2c3e50")
     ax.set_ylabel("Precision", fontsize=10, fontweight="bold", color="#2c3e50")
-    ax.legend(loc="lower right", fontsize=9)
+    ax.legend(loc=legend_loc, fontsize=9)
     _style_axes(ax, grid_axis="both")
     fig.tight_layout()
 

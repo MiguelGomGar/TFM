@@ -50,6 +50,36 @@ def get_decision_scores(model, X) -> np.ndarray:
     )
 
 
+def compute_hard_metrics(y_test, y_pred) -> dict:
+    """Compute the threshold-dependent ('hard') classification metrics.
+
+    Factored out of evaluate_on_test so that other callers (e.g. a
+    threshold-sensitivity analysis of a single model) can score an arbitrary
+    binary prediction vector without needing a fitted model or a continuous
+    score.
+
+    Parameters
+    ----------
+    y_test : array-like
+        Binary external validation target (0/1).
+    y_pred : array-like
+        Binary predictions (0/1), already binarized at whatever threshold the
+        caller chose.
+
+    Returns
+    -------
+    dict
+        Keys 'Accuracy', 'Precision', 'Recall', 'Specificity', 'F1'.
+    """
+    return {
+        "Accuracy": accuracy_score(y_test, y_pred),
+        "Precision": precision_score(y_test, y_pred, zero_division=0),
+        "Recall": recall_score(y_test, y_pred, zero_division=0),
+        "Specificity": recall_score(y_test, y_pred, pos_label=0, zero_division=0),
+        "F1": f1_score(y_test, y_pred, zero_division=0),
+    }
+
+
 def evaluate_on_test(model, X_test, y_test):
     """Score a fitted model on the held-out external validation set.
 
@@ -78,11 +108,7 @@ def evaluate_on_test(model, X_test, y_test):
     pr_auc = average_precision_score(y_test, y_score)
 
     scores = {
-        "Accuracy": accuracy_score(y_test, y_pred),
-        "Precision": precision_score(y_test, y_pred, zero_division=0),
-        "Recall": recall_score(y_test, y_pred, zero_division=0),
-        "Specificity": recall_score(y_test, y_pred, pos_label=0, zero_division=0),
-        "F1": f1_score(y_test, y_pred, zero_division=0),
+        **compute_hard_metrics(y_test, y_pred),
         "ROC-AUC": roc_auc,
         "PR-AUC": pr_auc,
     }
