@@ -333,7 +333,7 @@ def plot_metric_by_model(
 def plot_modality_comparison(
     comparison_df: pd.DataFrame,
     model_name: str,
-    modality_order: tuple[str, str] = ("Clinical", "Multimodal"),
+    modality_order: tuple[str, ...] = ("Clinical", "Multimodal"),
     title: str | None = None,
     figsize=(8, 6),
 ) -> plt.Figure:

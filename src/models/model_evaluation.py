@@ -13,7 +13,7 @@ from sklearn.metrics import (
     roc_curve,
 )
 
-from src.config import MODEL_ORDER
+from src.config import MODEL_DISPLAY_NAMES, MODEL_ORDER
 
 
 def get_decision_scores(model, X) -> np.ndarray:
@@ -159,10 +159,11 @@ def build_modality_comparison_table(
     baseline_label: str = "Clinical",
     comparison_label: str = "Multimodal",
     metrics=("ROC-AUC", "PR-AUC"),
+    extra_arms: list[tuple[str, pd.DataFrame]] | None = None,
 ) -> pd.DataFrame:
-    """Pair the external validation scores of two modelling arms.
+    """Pair the external validation scores of two or more modelling arms.
 
-    Both arms must have been trained on the same cohort and partition for the
+    All arms must have been trained on the same cohort and partition for the
     comparison to be meaningful.
 
     Parameters
@@ -179,6 +180,11 @@ def build_modality_comparison_table(
         Name of the arm being compared, used as its 'Modality' value.
     metrics : tuple of str, default ('ROC-AUC', 'PR-AUC')
         Metrics to compare.
+    extra_arms : list of (str, pd.DataFrame), optional
+        Additional modelling arms to include between the baseline and the
+        comparison arm (e.g. a pure proteomic arm alongside clinical and
+        multimodal), each as a (label, metrics_df) pair with the same layout
+        as baseline_metrics.
 
     Returns
     -------
@@ -186,11 +192,15 @@ def build_modality_comparison_table(
         Long-format frame with columns ['Model', 'Metric', 'Modality', 'Score'],
         ordered by MODEL_ORDER and then by the requested metric order.
     """
-    frames = []
-    for modality, metrics_df in (
+    extra_arms = extra_arms or []
+    arms = [
         (baseline_label, baseline_metrics),
+        *extra_arms,
         (comparison_label, comparison_metrics),
-    ):
+    ]
+
+    frames = []
+    for modality, metrics_df in arms:
         selection = metrics_df[
             (metrics_df["Dataset"] == "Test") & (metrics_df["Metric"].isin(metrics))
         ]
@@ -199,6 +209,7 @@ def build_modality_comparison_table(
         frames.append(frame)
 
     comparison = pd.concat(frames, ignore_index=True)
+    modality_order = [label for label, _ in arms]
     comparison["Model"] = pd.Categorical(
         comparison["Model"], categories=MODEL_ORDER, ordered=True
     )
@@ -207,7 +218,7 @@ def build_modality_comparison_table(
     )
     comparison["Modality"] = pd.Categorical(
         comparison["Modality"],
-        categories=[baseline_label, comparison_label],
+        categories=modality_order,
         ordered=True,
     )
     comparison = comparison.sort_values(by=["Model", "Metric", "Modality"])
@@ -257,3 +268,215 @@ def build_modality_delta_table(
     return wide[
         ["Model", "Metric", baseline_label, comparison_label, "Delta"]
     ].reset_index(drop=True)
+
+
+def build_performance_table(
+    internal_validation: dict,
+    metric: str,
+    decimals: int = 3,
+    use_display_names: bool = True,
+) -> pd.DataFrame:
+    """Collapse per-model internal-validation tables into one metric's table.
+
+    Reads the Mean/Std summaries already produced by the cross-validation step
+    (one long-format DataFrame per model, as saved in the
+    ``internal_validation_{model}.csv`` files) and pivots them into a single
+    wide table, one row per model, with a "mean (SD)" column for the Train
+    partition and one for the Validation partition, ready to paste into a
+    manuscript.
+
+    Parameters
+    ----------
+    internal_validation : dict
+        Mapping of model abbreviation to a DataFrame with columns
+        ['Model', 'Metric', 'Dataset', 'Mean', 'Std', 'N_Folds'], as produced
+        by the internal cross-validation step for that model.
+    metric : str
+        Metric to report, e.g. 'ROC-AUC' or 'PR-AUC'.
+    decimals : int, default 3
+        Number of decimals used to format the "mean (SD)" strings.
+    use_display_names : bool, default True
+        If True, the 'Model' column uses the full model names
+        (MODEL_DISPLAY_NAMES) instead of the abbreviations.
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns ['Model', 'Train', 'Validation'], one row per model, ordered
+        by MODEL_ORDER. Each cell is a formatted "mean (SD)" string.
+
+    Raises
+    ------
+    ValueError
+        If internal_validation is empty or the requested metric is not found
+        for either partition.
+    """
+    if not internal_validation:
+        raise ValueError("internal_validation must contain at least one model.")
+
+    partitions = ("Train", "Validation")
+    rows = []
+    for model_name, df_model in internal_validation.items():
+        selection = df_model[df_model["Metric"] == metric]
+        row = {"Model": model_name}
+        for partition in partitions:
+            partition_row = selection[selection["Dataset"] == partition]
+            if partition_row.empty:
+                row[partition] = np.nan
+                continue
+            mean = partition_row["Mean"].iloc[0]
+            std = partition_row["Std"].iloc[0]
+            row[partition] = f"{mean:.{decimals}f} ({std:.{decimals}f})"
+        rows.append(row)
+
+    table = pd.DataFrame(rows)
+    if table.drop(columns="Model").isna().all(axis=None):
+        raise ValueError(f"Metric '{metric}' was not found for either partition.")
+
+    table["Model"] = pd.Categorical(table["Model"], categories=MODEL_ORDER, ordered=True)
+    table = table.sort_values(by="Model").reset_index(drop=True)
+    table["Model"] = table["Model"].astype(str)
+
+    if use_display_names:
+        table["Model"] = table["Model"].map(
+            lambda abbreviation: MODEL_DISPLAY_NAMES.get(abbreviation, abbreviation)
+        )
+
+    return table[["Model", *partitions]]
+
+
+def build_comparison_table(
+    delta_table: pd.DataFrame,
+    metric: str,
+    baseline_label: str,
+    comparison_label: str,
+    decimals: int = 3,
+    use_display_names: bool = True,
+) -> pd.DataFrame:
+    """Reshape a modality/filtering delta table into one metric's table.
+
+    Takes the long ['Model', 'Metric', baseline_label, comparison_label,
+    'Delta'] table produced by build_modality_delta_table, restricts it to
+    one metric, and formats it into one row per model with one column per
+    modality plus a 'Delta' column, so the incremental value of each arm is
+    readable at a glance.
+
+    Parameters
+    ----------
+    delta_table : pd.DataFrame
+        Output of build_modality_delta_table, with columns
+        ['Model', 'Metric', baseline_label, comparison_label, 'Delta'].
+    metric : str
+        Metric to report, e.g. 'ROC-AUC' or 'PR-AUC'.
+    baseline_label : str
+        Name of the reference arm, as used in delta_table's columns.
+    comparison_label : str
+        Name of the arm being compared, as used in delta_table's columns.
+    decimals : int, default 3
+        Number of decimals used to format the scores and the delta.
+    use_display_names : bool, default True
+        If True, the 'Model' column uses the full model names
+        (MODEL_DISPLAY_NAMES) instead of the abbreviations.
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns ['Model', baseline_label, comparison_label, 'Delta'], one row
+        per model, ordered by MODEL_ORDER.
+    """
+    metric_table = delta_table[delta_table["Metric"] == metric]
+
+    rows = []
+    for model_name in MODEL_ORDER:
+        model_row = metric_table[metric_table["Model"] == model_name]
+        if model_row.empty:
+            continue
+        baseline_score = model_row[baseline_label].iloc[0]
+        comparison_score = model_row[comparison_label].iloc[0]
+        delta = model_row["Delta"].iloc[0]
+        sign = "+" if delta >= 0 else ""
+        rows.append(
+            {
+                "Model": model_name,
+                baseline_label: f"{baseline_score:.{decimals}f}",
+                comparison_label: f"{comparison_score:.{decimals}f}",
+                "Delta": f"{sign}{delta:.{decimals}f}",
+            }
+        )
+
+    table = pd.DataFrame(rows)
+
+    if use_display_names:
+        table["Model"] = table["Model"].map(
+            lambda abbreviation: MODEL_DISPLAY_NAMES.get(abbreviation, abbreviation)
+        )
+
+    return table[["Model", baseline_label, comparison_label, "Delta"]]
+
+
+def _clean_parameter_name(parameter: str) -> str:
+    """Strip every pipeline/meta-estimator prefix from a parameter name.
+
+    Parameter names come out of RandomizedSearchCV as scikit-learn paths such
+    as 'clf__C' or, for meta-estimators like AdaBoost, 'clf__estimator__max_depth'.
+    Only the last path segment is kept, since that is the actual hyperparameter
+    name a reader recognizes.
+
+    Parameters
+    ----------
+    parameter : str
+        Raw parameter name, possibly with '__'-separated prefixes.
+
+    Returns
+    -------
+    str
+        The last path segment, e.g. 'C' or 'max_depth'.
+    """
+    return parameter.split("__")[-1]
+
+
+def build_model_hyperparameter_tables(best_params: pd.DataFrame) -> dict:
+    """Split a long best_params table into one Parameter/Value table per model.
+
+    Parameters
+    ----------
+    best_params : pd.DataFrame
+        Long-format table with columns ['Model', 'Parameter', 'Value'], as
+        saved in best_params.csv by the modelling phase. Parameter names may
+        carry scikit-learn pipeline prefixes (e.g. 'clf__C',
+        'clf__estimator__max_depth').
+
+    Returns
+    -------
+    dict
+        Mapping of model abbreviation to a two-column DataFrame
+        ['Parameter', 'Value'], sorted alphabetically by parameter name, with
+        every pipeline prefix stripped from the parameter names (e.g.
+        'clf__estimator__max_depth' -> 'max_depth'). Only models present in
+        best_params are included, in MODEL_ORDER. If two raw parameter names
+        collapse to the same cleaned name for the same model (e.g. a naming
+        collision across estimators), their values are joined with '; '
+        rather than silently dropped.
+    """
+    table = best_params.copy()
+    table["Parameter"] = table["Parameter"].map(_clean_parameter_name)
+
+    # Guard against a cleaned name colliding with another one for the same
+    # model (e.g. two prefixes reducing to the same suffix): join the values
+    # instead of silently keeping only one.
+    table["Value"] = table["Value"].astype(str)
+    table = (
+        table.groupby(["Model", "Parameter"], sort=False)["Value"]
+        .agg(lambda values: "; ".join(dict.fromkeys(values)))
+        .reset_index()
+    )
+
+    tables = {}
+    for model in MODEL_ORDER:
+        model_table = table[table["Model"] == model][["Parameter", "Value"]]
+        if model_table.empty:
+            continue
+        model_table = model_table.sort_values(by="Parameter").reset_index(drop=True)
+        tables[model] = model_table
+
+    return tables

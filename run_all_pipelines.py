@@ -43,6 +43,7 @@ MODELLING_PIPELINES = [
     ("src.pipelines.11_proteomic_data_modelling", "Modelado proteómico (fase 2)"),
     ("src.pipelines.12_multimodal_data_modelling", "Modelado multimodal (fase 3)"),
     ("src.pipelines.13_modality_comparison", "Comparación clínico vs multimodal"),
+    ("src.pipelines.14_publication_tables", "Tablas de resultados para publicación"),
 ]
 
 

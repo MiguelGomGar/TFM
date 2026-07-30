@@ -11,11 +11,7 @@ import pandas as pd
 
 from src.config import TARGET_VARIABLE
 from src.utils.io import read_csv, save_csv
-from src.utils.results_saving import (
-    _clean_feature_names,
-    get_relevant_features,
-    save_feature_selection_results,
-)
+from src.utils.results_saving import _clean_feature_names, get_relevant_features
 
 
 def _build_coefficient_table(fitted_pipeline) -> pd.DataFrame:

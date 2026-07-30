@@ -3,6 +3,16 @@
 import numpy as np
 from scipy.stats import uniform, loguniform, randint
 
+from src.utils.paths import (
+    CLINICAL_FILTERING_COMPARISON_DIR,
+    CLINICAL_MODELS_DIR,
+    CLINICAL_MODELS_FILTERED_DIR,
+    CLINICAL_MODELS_MATCHED_DIR,
+    MODALITY_COMPARISON_DIR,
+    MULTIMODAL_MODELS_DIR,
+    PROTEOMIC_MODELS_DIR,
+)
+
 # %% RISK FACTORS REVIEW — pipeline 01_clinical_variables_review
 VARIABLES_REVIEW_COLOR_MAP = {
     "yes": "#10b981",
@@ -293,9 +303,10 @@ INTERNAL_VALIDATION_COLORS = {"Train": "#2563eb", "Validation": "#f59e0b"}
 BASELINE_COLOR = "#e11d48"
 MODEL_BAR_COLOR = "#16a085"
 MODALITY_COLORS = {
-    "Clinical": "#2563eb",
-    "Multimodal": "#e11d48",
-    "Clinical filtered": "#f59e0b",
+    "Clinical": "#16a085",
+    "Multimodal": "#f59e0b",
+    "Clinical filtered": "#16a085",
+    "Proteomic": "#2563eb",
 }
 MODEL_PALETTE = [
     "#2563eb",
@@ -523,3 +534,88 @@ multimodal_hyperparameters_search_space = {
         "clf__early_stopping": [True],
     },
 }
+
+# %% MODALITY COMPARISON — pipeline 14
+# Each entry compares two or more modelling arms trained on the same cohort
+# and split. "extra_arms" lists additional arms (label, metrics_file) shown
+# between the baseline and the comparison arm, purely for context: the
+# saved delta table and its plotted values still contrast baseline vs
+# comparison only.
+MODALITY_COMPARISONS = [
+    {
+        "baseline_label": "Clinical",
+        "baseline_metrics_file": CLINICAL_MODELS_MATCHED_DIR / "models_metrics.csv",
+        "comparison_label": "Multimodal",
+        "comparison_metrics_file": MULTIMODAL_MODELS_DIR / "models_metrics.csv",
+        "extra_arms": [("Proteomic", PROTEOMIC_MODELS_DIR / "models_metrics.csv")],
+        "output_dir": MODALITY_COMPARISON_DIR,
+    },
+    {
+        "baseline_label": "Clinical",
+        "baseline_metrics_file": CLINICAL_MODELS_DIR / "models_metrics.csv",
+        "comparison_label": "Clinical filtered",
+        "comparison_metrics_file": CLINICAL_MODELS_FILTERED_DIR / "models_metrics.csv",
+        "output_dir": CLINICAL_FILTERING_COMPARISON_DIR,
+    },
+]
+
+# %% PUBLICATION TABLES — pipeline 14
+# Each entry is one modelling phase: where its per-model internal-validation
+# CSVs live, the phase prefix used to name its hyperparameters tables, and
+# the filename prefix of the performance tables it produces (one file per
+# metric, see PUBLICATION_METRICS).
+PERFORMANCE_PHASES = [
+    {
+        "label": "Clinical",
+        "input_dir": CLINICAL_MODELS_DIR,
+        "prefix": "clinical",
+        "output_prefix": "performance_clinical",
+    },
+    {
+        "label": "Clinical filtered",
+        "input_dir": CLINICAL_MODELS_FILTERED_DIR,
+        "prefix": "clinical_filtered",
+        "output_prefix": "performance_clinical_filtered",
+    },
+    {
+        "label": "Proteomic",
+        "input_dir": PROTEOMIC_MODELS_DIR,
+        "prefix": "proteomic",
+        "output_prefix": "performance_proteomic",
+    },
+    {
+        "label": "Multimodal",
+        "input_dir": MULTIMODAL_MODELS_DIR,
+        "prefix": "multimodal",
+        "output_prefix": "performance_multimodal",
+    },
+]
+
+# Each entry reuses the delta table already saved by pipeline 13 and reshapes
+# it into a wide, manuscript-ready comparison table (one file per metric, see
+# PUBLICATION_METRICS).
+COMPARISON_PHASES = [
+    {
+        "label": "Clinical vs Multimodal",
+        "delta_file": MODALITY_COMPARISON_DIR / "modality_comparison.csv",
+        "baseline_label": "Clinical",
+        "comparison_label": "Multimodal",
+        "output_prefix": "comparison_clinical_vs_multimodal",
+    },
+    {
+        "label": "Clinical vs Clinical filtered",
+        "delta_file": CLINICAL_FILTERING_COMPARISON_DIR / "modality_comparison.csv",
+        "baseline_label": "Clinical",
+        "comparison_label": "Clinical filtered",
+        "output_prefix": "comparison_clinical_vs_filtered",
+    },
+]
+
+# Metric name (as used across the modelling CSVs) mapped to the filename slug
+# used when splitting each publication table into one file per metric.
+PUBLICATION_METRICS = {
+    "ROC-AUC": "roc_auc",
+    "PR-AUC": "pr_auc",
+}
+
+PUBLICATION_TABLES_DECIMALS = 3

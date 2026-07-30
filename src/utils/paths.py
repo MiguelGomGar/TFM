@@ -24,6 +24,8 @@ CLINICAL_MODELS_MATCHED_DIR = MODELS_DIR / "clinical_data_matched"
 MULTIMODAL_MODELS_DIR = MODELS_DIR / "multimodal_data"
 MODALITY_COMPARISON_DIR = MODELS_DIR / "modality_comparison"
 CLINICAL_FILTERING_COMPARISON_DIR = MODELS_DIR / "clinical_filtering_comparison"
+PUBLICATION_TABLES_DIR = RESULTS_DIR / "publication_tables"
+HYPERPARAMETERS_TABLES_DIR = PUBLICATION_TABLES_DIR / "hyperparameters"
 
 RISK_FACTORS_REVIEW_DATA_PATH = RAW_DATA_DIR / "clinical_variables_review.xlsx"
 RAW_CLINICAL_DATA_PATH = RAW_DATA_DIR / "predimar_miguelgomez.dta"

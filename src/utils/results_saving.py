@@ -5,6 +5,14 @@ from pathlib import Path
 import joblib
 import pandas as pd
 
+from src.config import MODEL_ORDER
+from src.models.model_evaluation import (
+    build_comparison_table,
+    build_model_hyperparameter_tables,
+    build_performance_table,
+)
+from src.utils.io import read_csv, save_csv
+
 
 def _clean_feature_names(feature_list):
     """Remove pipeline prefixes from feature names.
@@ -89,49 +97,6 @@ def get_relevant_features(regularized_model_pipeline):
     relevant_cols = _clean_feature_names(relevant_cols)
 
     return relevant_cols, irrelevant_cols
-
-
-def save_feature_selection_results(
-    relevant_cols, irrelevant_cols, output_dir, identifier=None
-):
-    """Save feature selection results (relevant and irrelevant features) to joblib.
-
-    Persists the lists of selected and rejected features from a regularized
-    model's feature selection step as a joblib-serialized dictionary.
-
-    Parameters
-    ----------
-    relevant_cols : list of str
-        Feature names with non-zero coefficients (selected features).
-    irrelevant_cols : list of str
-        Feature names with zero coefficients (rejected features).
-    output_dir : str or Path
-        Directory where the joblib file will be saved.
-    identifier : str, optional
-        Optional string to uniquely identify the saved file. If provided,
-        filename will be 'feature_selection_{identifier}.joblib'; otherwise,
-        'feature_selection.joblib'.
-
-    Returns
-    -------
-    Path
-        Path to the saved joblib file.
-    """
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    payload = {
-        "relevant_features": relevant_cols,
-        "irrelevant_features": irrelevant_cols,
-    }
-
-    if identifier is not None:
-        file_path = output_dir / f"feature_selection_{identifier}.joblib"
-    else:
-        file_path = output_dir / "feature_selection.joblib"
-
-    joblib.dump(payload, file_path)
-    return file_path
 
 
 def save_model(fitted_pipeline, output_dir, identifier=None):
@@ -301,3 +266,157 @@ def save_curves_results(
         df_curve.to_csv(file_path, index=False)
 
     return df_curve
+
+
+def load_internal_validation(input_dir: Path, logger=None) -> dict:
+    """Load every internal_validation_{model}.csv file found in input_dir.
+
+    Parameters
+    ----------
+    input_dir : str or Path
+        Directory produced by a modelling phase, containing one
+        internal_validation_{abbreviation}.csv file per model.
+    logger : logging.Logger, optional
+        Logger used to report models that could not be found.
+
+    Returns
+    -------
+    dict
+        Mapping of model abbreviation to its internal-validation DataFrame,
+        restricted to the models listed in MODEL_ORDER that were actually
+        found on disk.
+    """
+    input_dir = Path(input_dir)
+    internal_validation = {}
+    for abbreviation in MODEL_ORDER:
+        file_path = input_dir / f"internal_validation_{abbreviation.lower()}.csv"
+        if not file_path.exists():
+            if logger is not None:
+                logger.warning(f"Missing {file_path}; skipping {abbreviation}.")
+            continue
+        internal_validation[abbreviation] = read_csv(file_path)
+    return internal_validation
+
+
+def build_performance_tables(
+    phases, metrics, output_dir: Path, decimals: int = 3, logger=None
+) -> None:
+    """Build one wide performance table per modelling phase and per metric.
+
+    Parameters
+    ----------
+    phases : list of dict
+        Modelling phases to summarize, each with keys 'label', 'input_dir'
+        and 'output_prefix' (see config.PERFORMANCE_PHASES).
+    metrics : dict
+        Mapping of metric name (e.g. 'ROC-AUC') to the filename slug used to
+        build each table's filename (see config.PUBLICATION_METRICS).
+    output_dir : str or Path
+        Directory where each phase's performance tables are saved.
+    decimals : int, default 3
+        Number of decimals used to format the "mean (SD)" strings.
+    logger : logging.Logger, optional
+        Logger used to report progress and missing input directories.
+    """
+    for phase in phases:
+        if logger is not None:
+            logger.info(f"Building the {phase['label']} performance tables...")
+        internal_validation = load_internal_validation(phase["input_dir"], logger=logger)
+        if not internal_validation:
+            if logger is not None:
+                logger.warning(
+                    f"No internal-validation files found for {phase['label']} in "
+                    f"{phase['input_dir']}; skipping."
+                )
+            continue
+
+        for metric, slug in metrics.items():
+            table = build_performance_table(internal_validation, metric, decimals=decimals)
+            filename = f"{phase['output_prefix']}_{slug}.csv"
+            save_csv(table, Path(output_dir) / filename)
+
+
+def build_comparison_tables(
+    phases, metrics, output_dir: Path, decimals: int = 3, logger=None
+) -> None:
+    """Build one wide incremental-value table per comparison and per metric.
+
+    Parameters
+    ----------
+    phases : list of dict
+        Comparisons to reshape, each with keys 'label', 'delta_file',
+        'baseline_label', 'comparison_label' and 'output_prefix' (see
+        config.COMPARISON_PHASES).
+    metrics : dict
+        Mapping of metric name (e.g. 'ROC-AUC') to the filename slug used to
+        build each table's filename (see config.PUBLICATION_METRICS).
+    output_dir : str or Path
+        Directory where each comparison's tables are saved.
+    decimals : int, default 3
+        Number of decimals used to format the scores and the delta.
+    logger : logging.Logger, optional
+        Logger used to report progress and missing delta files.
+    """
+    for phase in phases:
+        if not phase["delta_file"].exists():
+            if logger is not None:
+                logger.warning(
+                    f"Missing {phase['delta_file']}; run pipeline 13 first. Skipping "
+                    f"{phase['label']}."
+                )
+            continue
+
+        if logger is not None:
+            logger.info(f"Building the {phase['label']} comparison tables...")
+        delta_table = read_csv(phase["delta_file"])
+
+        for metric, slug in metrics.items():
+            table = build_comparison_table(
+                delta_table,
+                metric=metric,
+                baseline_label=phase["baseline_label"],
+                comparison_label=phase["comparison_label"],
+                decimals=decimals,
+            )
+            filename = f"{phase['output_prefix']}_{slug}.csv"
+            save_csv(table, Path(output_dir) / filename)
+
+
+def build_hyperparameters_tables(phases, output_dir: Path, logger=None) -> None:
+    """Build one Parameter/Value hyperparameters table per model per phase.
+
+    Each file is named '{phase}_{model}.csv' (e.g. 'clinical_EN.csv',
+    'multimodal_SVM.csv'), with two columns ['Parameter', 'Value'] and every
+    scikit-learn pipeline prefix stripped from the parameter names.
+
+    Parameters
+    ----------
+    phases : list of dict
+        Modelling phases to summarize, each with keys 'label', 'input_dir'
+        and 'prefix' (see config.PERFORMANCE_PHASES).
+    output_dir : str or Path
+        Directory where the hyperparameters tables are saved.
+    logger : logging.Logger, optional
+        Logger used to report progress and missing best_params files.
+    """
+    for phase in phases:
+        best_params_file = Path(phase["input_dir"]) / "best_params.csv"
+        if not best_params_file.exists():
+            if logger is not None:
+                logger.warning(
+                    f"Missing {best_params_file}; skipping the {phase['label']} "
+                    "hyperparameters tables."
+                )
+            continue
+
+        if logger is not None:
+            logger.info(f"Building the {phase['label']} hyperparameters tables...")
+        # keep_default_na=False: values such as the string "None" (a real,
+        # meaningful hyperparameter setting, e.g. class_weight=None) must not
+        # be silently parsed into a missing value.
+        best_params = read_csv(best_params_file, keep_default_na=False)
+        tables_by_model = build_model_hyperparameter_tables(best_params)
+
+        for model, table in tables_by_model.items():
+            filename = f"{phase['prefix']}_{model}.csv"
+            save_csv(table, Path(output_dir) / filename)
