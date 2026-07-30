@@ -17,7 +17,6 @@ from src.visualization.plot_utils import label_bars
 
 def plot_row_missingness(
     na_summary: pd.DataFrame,
-    threshold: float | None = None,
     title: str = "Missing Values per record",
     x_label: str = "Amount of Missing Values",
     y_label: str = "Number of Records",
@@ -71,15 +70,6 @@ def plot_row_missingness(
     max_y = na_summary["n_records"].max()
     ax.set_ylim(0, max_y * 1.18)
 
-    if threshold is not None:
-        ax.axvline(
-            x=threshold,
-            color="#e11d48",
-            linestyle="--",
-            linewidth=1.2,
-            label=(f"Threshold ({threshold*100:.0f}%))"),
-        )
-
     if title:
         ax.set_title(title, fontsize=13, fontweight="bold", pad=20, loc="left")
 
@@ -93,7 +83,6 @@ def plot_row_missingness(
     ax.grid(axis="y", color="#f1f5f9", linewidth=0.7)
     ax.grid(axis="x", visible=False)
     ax.set_axisbelow(True)
-    ax.legend(fontsize=10, loc="upper right", frameon=True)
     sns.despine(ax=ax, left=True, bottom=True)
     fig.tight_layout()
 

@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import joblib
+import numpy as np
 import pandas as pd
 
 from src.config import MODEL_ORDER
@@ -77,7 +78,7 @@ def get_relevant_features(regularized_model_pipeline):
 
     # Create a DataFrame of features and their corresponding coefficients
     df_coefficients = pd.DataFrame(
-        {"Feature": feature_names, "Coefficient": coefficients.astype(float).abs()}
+        {"Feature": feature_names, "Coefficient": np.abs(coefficients.astype(float))}
     )
 
     # Separate out features with zero coefficients from features with non-zero

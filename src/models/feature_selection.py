@@ -7,6 +7,7 @@ exactly zero is filtered out before the remaining models are trained.
 
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from src.utils.io import read_csv, save_csv
@@ -34,7 +35,7 @@ def _build_coefficient_table(fitted_pipeline) -> pd.DataFrame:
     table = pd.DataFrame(
         {
             "Feature": _clean_feature_names(feature_names),
-            "Coefficient": coefficients.astype(float).abs(),
+            "Coefficient": np.abs(coefficients.astype(float)),
         }
     )
     table["Selected"] = coefficients != 0
