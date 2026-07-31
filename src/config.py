@@ -304,7 +304,7 @@ MODEL_BAR_COLOR = "#16a085"
 MODALITY_COLORS = {
     "Clinical": "#16a085",
     "Multimodal": "#f59e0b",
-    "Clinical filtered": "#16a085",
+    "Clinical filtered": "#7c3aed",
     "Proteomic": "#2563eb",
 }
 MODEL_PALETTE = [
