@@ -17,7 +17,6 @@ from src.utils.io import read_parquet, save_csv, save_figure
 from src.utils.logging_utils import setup_logger
 from src.utils.paths import (
     CLEANED_CLINICAL_DATA_PATH,
-    CLEANED_PROTEOMIC_DATA_PATH,
     CLINICAL_EDA_DIR,
     TABLE1_PATH,
 )
@@ -92,7 +91,7 @@ def main() -> None:
         save_figure(fig, OUTPUT_DIR / f"distribution_{feature}.png")
         save_csv(categorical_summary, OUTPUT_DIR / f"distribution_{feature}.csv")
 
-    logger.info(f"Plotting stratified distributions for categorical features...")
+    logger.info("Plotting stratified distributions for categorical features...")
     for feature in categorical_features:
         if feature == target_var:
             continue

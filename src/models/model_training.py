@@ -25,7 +25,7 @@ from src.models.model_evaluation import (
 )
 from src.models.model_zoo import build_model_pipeline, get_display_name
 from src.utils.io import save_csv, save_figure
-from src.utils.results_saving import (
+from src.models.results_saving import (
     save_curves_results,
     save_metrics_results,
     save_model,
@@ -339,7 +339,10 @@ def run_modelling_phase(
         # Derive the filter right after the selection model has been tuned.
         if abbreviation == selection_model:
             _, irrelevant_features, _ = select_features_with_elastic_net(
-                best_model, output_dir=output_dir, identifier=abbreviation, logger=logger
+                best_model,
+                output_dir=output_dir,
+                identifier=abbreviation,
+                logger=logger,
             )
             if apply_filter:
                 X_train_models = apply_feature_filter(

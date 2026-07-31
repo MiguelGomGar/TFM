@@ -60,7 +60,7 @@ def main() -> None:
 
     logger.info("Plotting missing values distribution per row...")
     row_na_data = compute_row_missingness_data(df)
-    row_na_plot = plot_row_missingness(row_na_data, threshold=MISSING_RATE_THRESHOLD)
+    row_na_plot = plot_row_missingness(row_na_data)
     save_figure(row_na_plot, OUTPUT_DIR / "missing_values_per_record_before.png")
     save_csv(row_na_data, OUTPUT_DIR / "missing_values_per_record_before.csv")
 
@@ -72,9 +72,7 @@ def main() -> None:
 
     logger.info("Plotting missing values per row...")
     row_na_data_filtered = compute_row_missingness_data(df_filtered)
-    row_na_plot_filtered = plot_row_missingness(
-        row_na_data_filtered, threshold=MISSING_RATE_THRESHOLD
-    )
+    row_na_plot_filtered = plot_row_missingness(row_na_data_filtered)
     save_figure(
         row_na_plot_filtered, OUTPUT_DIR / "missing_values_per_record_after.png"
     )

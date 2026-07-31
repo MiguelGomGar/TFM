@@ -1,7 +1,5 @@
 """Clinical dataset collection helpers."""
 
-from pathlib import Path
-
 import pandas as pd
 
 from src.config import (
@@ -9,7 +7,6 @@ from src.config import (
     NEW_FEATURES_NAMES,
     SELECTED_FEATURES,
 )
-from src.utils.io import read_dta, save_parquet
 
 
 def select_clinical_features(dataframe: pd.DataFrame) -> pd.DataFrame:

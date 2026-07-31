@@ -38,20 +38,6 @@ CLEANED_PROTEOMIC_DATA_PATH = CLEAN_DATA_DIR / "proteomic_data.parquet"
 CLEANED_MULTIMODAL_DATA_PATH = CLEAN_DATA_DIR / "multimodal_data.parquet"
 CLEANED_CLINICAL_MATCHED_DATA_PATH = CLEAN_DATA_DIR / "clinical_data_matched.parquet"
 
-MISSING_VALUES_PER_FEATURE_PLOT_PATH = (
-    CLINICAL_EDA_DIR / "missing_values_per_feature.png"
-)
-MISSING_VALUES_PER_RECORD_BEFORE_PLOT_PATH = (
-    CLINICAL_EDA_DIR / "missing_values_per_record_before.png"
-)
-MISSING_VALUES_PER_RECORD_AFTER_PLOT_PATH = (
-    CLINICAL_EDA_DIR / "missing_values_per_record_after.png"
-)
-NUMERIC_CORRELATION_MATRIX_PLOT_PATH = CLINICAL_EDA_DIR / "correlation_matrix_num.png"
-CATEGORICAL_CORRELATION_MATRIX_PLOT_PATH = (
-    CLINICAL_EDA_DIR / "correlation_matrix_cat.png"
-)
-VIF_PLOT_PATH = CLINICAL_EDA_DIR / "vif_plot.png"
 TABLE1_PATH = CLINICAL_EDA_DIR / "table1.csv"
 RISK_SCORES_METRICS_PATH = RISK_SCORES_VALIDATION_DIR / "risk_scores_metrics.csv"
 RISK_SCORES_ROC_CURVE_PATH = RISK_SCORES_VALIDATION_DIR / "risk_scores_roc_curve.png"

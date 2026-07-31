@@ -6,10 +6,9 @@ from src.data.data_collection import (
     cast_clinical_numeric_columns,
     recode_clinical_categories,
     rename_clinical_features,
-    save_parquet,
     select_clinical_features,
 )
-from src.utils.io import read_dta
+from src.utils.io import read_dta, save_parquet
 from src.utils.logging_utils import setup_logger
 from src.utils.paths import INTERMEDIATE_CLINICAL_DATA_PATH, RAW_CLINICAL_DATA_PATH
 
