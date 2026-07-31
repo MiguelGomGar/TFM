@@ -25,6 +25,7 @@ MULTIMODAL_MODELS_DIR = MODELS_DIR / "multimodal_data"
 MODALITY_COMPARISON_DIR = MODELS_DIR / "modality_comparison"
 CLINICAL_FILTERING_COMPARISON_DIR = MODELS_DIR / "clinical_filtering_comparison"
 BEST_MODEL_DIR = MODELS_DIR / "best_model"
+EXPLAINABILITY_DIR = MODELS_DIR / "explainability"
 PUBLICATION_TABLES_DIR = RESULTS_DIR / "publication_tables"
 HYPERPARAMETERS_TABLES_DIR = PUBLICATION_TABLES_DIR / "hyperparameters"
 

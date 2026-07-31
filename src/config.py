@@ -465,7 +465,7 @@ proteomic_hyperparameters_search_space = {
     },
 }
 
-# %% MULTIMODAL DATA MODELLING — pipeline 13
+# %% MULTIMODAL DATA MODELLING — pipeline 12
 # The integrated dataset has a dimensionality comparable to the proteomic one
 # (26 clinical predictors plus 361 proteins), so the same ranges apply. It is
 # defined explicitly rather than aliased so that it can diverge later without
@@ -534,7 +534,7 @@ multimodal_hyperparameters_search_space = {
     },
 }
 
-# %% BEST MODEL THRESHOLD ANALYSIS — pipeline 16
+# %% BEST MODEL THRESHOLD ANALYSIS — pipeline 14
 # Three best-performing models overall (highest PR-AUC on the multimodal test
 # set, see results/models/multimodal_data/models_metrics.csv), in ranking order.
 BEST_MODELS = ["EN", "SVM", "MLP"]
@@ -552,7 +552,47 @@ BEST_MODELS_COLORS = {
     "MLP": "#16a085",
 }
 
-# %% MODALITY COMPARISON — pipeline 14
+# %% MODEL EXPLAINABILITY — pipeline 15
+# SHAP analysis of the three best-performing models on the multimodal arm.
+# Restricted to that arm because it is the only one where the clinical vs
+# proteomic block comparison is possible at all.
+EXPLAINABILITY_MODELS = BEST_MODELS
+
+# Reference ("background") set summarizing the training distribution, against
+# which every SHAP contribution is measured. Drawn with shap.sample and a fixed
+# seed, so the whole analysis is reproducible. 100 of the 390 training patients
+# keeps the KernelExplainer for the MLP at roughly one minute.
+SHAP_BACKGROUND_SIZE = 100
+
+# Number of features displayed in the summary and bar plots.
+SHAP_TOP_FEATURES = 20
+
+# Additivity tolerance for the quality control check
+# (base_value + sum(shap_values) == model output). LinearExplainer is exact, so
+# it is held to machine precision; KernelExplainer estimates the values by
+# weighted regression and only warrants a looser bound.
+SHAP_ADDITIVITY_TOLERANCE = {"exact": 1e-8, "approximate": 1e-2}
+
+# Plot colors for the feature blocks, reusing the modality palette above so the
+# same concept keeps the same color across the whole report.
+FEATURE_BLOCK_COLORS = {
+    "Clinical": MODALITY_COLORS["Clinical"],
+    "Proteomic": MODALITY_COLORS["Proteomic"],
+}
+
+# Individual patients explained with a waterfall plot, selected by rule from the
+# external validation set (see model_explainability.select_local_cases). The
+# false negative is the clinically costliest error: a recurrence the model
+# confidently declared safe.
+SHAP_LOCAL_CASES = [
+    "Confident TP",
+    "Confident TN",
+    "Confident FN",
+    "Confident FP",
+    "Borderline",
+]
+
+# %% MODALITY COMPARISON — pipeline 13
 # Each entry compares two or more modelling arms trained on the same cohort
 # and split. "extra_arms" lists additional arms (label, metrics_file) shown
 # between the baseline and the comparison arm, purely for context: the
@@ -576,7 +616,7 @@ MODALITY_COMPARISONS = [
     },
 ]
 
-# %% PUBLICATION TABLES — pipeline 14
+# %% PUBLICATION TABLES — pipeline _publication_tables
 # Each entry is one modelling phase: where its per-model internal-validation
 # CSVs live, the phase prefix used to name its hyperparameters tables, and
 # the filename prefix of the performance tables it produces (one file per

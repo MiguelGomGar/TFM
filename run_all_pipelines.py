@@ -35,18 +35,22 @@ PIPELINES = [
 # que se mantienen en una lista aparte: para omitirlos, basta con no concatenarla
 # a PIPELINES en main().
 MODELLING_PIPELINES = [
-    ("src.pipelines.09_clinical_data_modelling", "Modelado clínico (fase 1)"),
+    ("src.pipelines.09_clinical_modelling", "Modelado clínico (fase 1)"),
     (
         "src.pipelines.10_clinical_filtered_modelling",
         "Modelado clínico filtrado (fase 1b)",
     ),
-    ("src.pipelines.11_proteomic_data_modelling", "Modelado proteómico (fase 2)"),
-    ("src.pipelines.12_multimodal_data_modelling", "Modelado multimodal (fase 3)"),
+    ("src.pipelines.11_proteomic_modelling", "Modelado proteómico (fase 2)"),
+    ("src.pipelines.12_multimodal_modelling", "Modelado multimodal (fase 3)"),
     ("src.pipelines.13_modality_comparison", "Comparación clínico vs multimodal"),
-    ("src.pipelines.14_publication_tables", "Tablas de resultados para publicación"),
+    ("src.pipelines._publication_tables", "Tablas de resultados para publicación"),
     (
-        "src.pipelines.15_best_model_threshold_analysis",
-        "Análisis de sensibilidad al umbral del mejor modelo (MLP)",
+        "src.pipelines.14_best_model_threshold_analysis",
+        "Análisis de sensibilidad al umbral de los tres mejores modelos",
+    ),
+    (
+        "src.pipelines.15_model_explainability",
+        "Explicabilidad SHAP de los tres mejores modelos",
     ),
 ]
 
