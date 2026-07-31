@@ -14,6 +14,7 @@ from src.config import THRESHOLD_SCENARIO_COLORS
 from src.visualization.model_evaluation import _style_axes
 
 
+
 def plot_confusion_matrix(
     matrix: pd.DataFrame,
     title: str = "Confusion matrix",
@@ -87,8 +88,13 @@ def plot_threshold_metrics_comparison(
     metrics_table: pd.DataFrame,
     title: str = "Hard metrics by threshold scenario",
     figsize=(9, 6),
+    palette: dict | None = None,
 ) -> plt.Figure:
-    """Plot the hard metrics of the three threshold scenarios side by side.
+    """Plot the hard metrics of several scenarios side by side.
+
+    Despite the name, the grouping column ('Scenario') can hold anything the
+    caller wants compared as parallel bar series — threshold scenarios, or
+    (as used by the top-models comparison) model abbreviations.
 
     Parameters
     ----------
@@ -99,6 +105,9 @@ def plot_threshold_metrics_comparison(
         Plot title.
     figsize : tuple, default (9, 6)
         Figure size in inches.
+    palette : dict, optional
+        Mapping of scenario label to color. Defaults to
+        THRESHOLD_SCENARIO_COLORS.
 
     Returns
     -------
@@ -107,7 +116,8 @@ def plot_threshold_metrics_comparison(
     """
     metrics = list(dict.fromkeys(metrics_table["Metric"]))
     scenarios = list(dict.fromkeys(metrics_table["Scenario"]))
-    palette = list(THRESHOLD_SCENARIO_COLORS.values())
+    color_map = palette if palette is not None else THRESHOLD_SCENARIO_COLORS
+    default_palette = list(color_map.values())
 
     positions = np.arange(len(metrics), dtype=float)
     width = 0.8 / max(len(scenarios), 1)
@@ -124,12 +134,13 @@ def plot_threshold_metrics_comparison(
         ]
         offsets = positions + (index - (len(scenarios) - 1) / 2) * width
 
+        color = color_map.get(scenario, default_palette[index % len(default_palette)])
         bars = ax.bar(
             offsets,
             scores,
             width=width * 0.9,
             label=scenario,
-            color=palette[index % len(palette)],
+            color=color,
             edgecolor="#2c3e50",
             linewidth=0.5,
             alpha=0.9,

@@ -1,13 +1,13 @@
-"""Threshold-sensitivity analysis for the project's best-performing model.
+"""Threshold-sensitivity analysis for the project's best-performing models.
 
-MLP on the multimodal (clinical + proteomic) data is the best-performing
-model overall (see ``results/models/multimodal_data/models_metrics.csv``).
-Every modelling phase elsewhere in the project reports its hard metrics at
-the default 0.5 decision threshold only. This module scores the same fitted
-MLP pipeline under two different ways of turning its continuous probability
-into a binary call:
+EN, SVM and MLP on the multimodal (clinical + proteomic) data are the three
+best-performing models overall, ranked by test PR-AUC (see
+``results/models/multimodal_data/models_metrics.csv``). Every modelling
+phase elsewhere in the project reports its hard metrics at the default 0.5
+decision threshold only. This module scores each fitted pipeline under two
+different ways of turning its continuous decision score into a binary call:
 
-1. The default threshold (probability > 0.5).
+1. The default threshold (probability > 0.5, or the SVM decision boundary).
 2. The Youden-optimal threshold: the ROC cut-off that maximizes sensitivity
    + specificity - 1, a standard criterion for choosing clinical risk
    cut-offs.
@@ -71,36 +71,7 @@ def get_model_feature_columns(fitted_pipeline: Pipeline) -> list[str]:
     return list(fitted_pipeline.named_steps["preprocessor"].feature_names_in_)
 
 
-def get_positive_class_probability(model, X) -> np.ndarray:
-    """Return the calibrated probability of the positive class.
-
-    Parameters
-    ----------
-    model : sklearn estimator
-        Fitted classifier or pipeline exposing predict_proba.
-    X : array-like or pd.DataFrame
-        Samples to score.
-
-    Returns
-    -------
-    np.ndarray
-        Positive-class probability per sample.
-
-    Raises
-    ------
-    AttributeError
-        If the model does not expose predict_proba (e.g. an SVM fitted with
-        probability=False).
-    """
-    if not hasattr(model, "predict_proba"):
-        raise AttributeError(
-            f"{type(model).__name__} does not expose predict_proba; the "
-            "probability comparison requires a calibrated model."
-        )
-    return model.predict_proba(X)[:, 1]
-
-
-def compute_youden_threshold(y_test, y_prob) -> dict:
+def compute_youden_threshold(y_test, y_score) -> dict:
     """Find the ROC cut-off that maximizes Youden's J statistic.
 
     Youden's J = sensitivity + specificity - 1 = true positive rate - false
@@ -112,24 +83,27 @@ def compute_youden_threshold(y_test, y_prob) -> dict:
     sensitivity/specificity at that point assume a >= comparison, while
     apply_threshold (used to actually binarize the predictions everywhere in
     this module) is strict (>). Since the Youden threshold is, by
-    construction, one of the observed probability values, the two
-    conventions can disagree by one patient; report sensitivity/specificity
-    from the actually applied predictions (model_evaluation.compute_hard_metrics)
+    construction, one of the observed score values, the two conventions can
+    disagree by one patient; report sensitivity/specificity from the
+    actually applied predictions (model_evaluation.compute_hard_metrics)
     instead.
 
     Parameters
     ----------
     y_test : array-like
         Binary external validation target.
-    y_prob : array-like
-        Predicted probability of the positive class.
+    y_score : array-like
+        Continuous decision score of the positive class, as returned by
+        model_evaluation.get_decision_scores (predict_proba when available,
+        decision_function otherwise, e.g. for an SVM fitted without
+        probability calibration).
 
     Returns
     -------
     dict
         Keys 'threshold' (the selected cut-off) and 'youden_j'.
     """
-    false_positive_rate, true_positive_rate, thresholds = roc_curve(y_test, y_prob)
+    false_positive_rate, true_positive_rate, thresholds = roc_curve(y_test, y_score)
     youden_j = true_positive_rate - false_positive_rate
     best_index = int(np.argmax(youden_j))
     return {
@@ -138,22 +112,23 @@ def compute_youden_threshold(y_test, y_prob) -> dict:
     }
 
 
-def apply_threshold(y_prob, threshold: float) -> np.ndarray:
-    """Binarize probabilities at an arbitrary cut-off.
+def apply_threshold(y_score, threshold: float) -> np.ndarray:
+    """Binarize a continuous decision score at an arbitrary cut-off.
 
     Parameters
     ----------
-    y_prob : array-like
-        Predicted probability of the positive class.
+    y_score : array-like
+        Continuous decision score of the positive class (probability or
+        SVM decision_function value).
     threshold : float
-        Cut-off; probabilities strictly greater than this are labeled 1.
+        Cut-off; scores strictly greater than this are labeled 1.
 
     Returns
     -------
     np.ndarray
         Binary predictions (0/1).
     """
-    return (np.asarray(y_prob) > threshold).astype(int)
+    return (np.asarray(y_score) > threshold).astype(int)
 
 
 def build_confusion_matrix_table(y_true, y_pred, labels=(0, 1)) -> pd.DataFrame:

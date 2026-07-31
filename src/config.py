@@ -535,14 +535,21 @@ multimodal_hyperparameters_search_space = {
 }
 
 # %% BEST MODEL THRESHOLD ANALYSIS — pipeline 16
-# Single best-performing model overall (highest PR-AUC on the multimodal test
-# set, see results/models/multimodal_data/models_metrics.csv).
-BEST_MODEL = "EN"
+# Three best-performing models overall (highest PR-AUC on the multimodal test
+# set, see results/models/multimodal_data/models_metrics.csv), in ranking order.
+BEST_MODELS = ["EN", "SVM", "MLP"]
 
 # Plot colors for the two threshold scenarios, in reporting order.
 THRESHOLD_SCENARIO_COLORS = {
     "Default": "#2563eb",
     "Optimal": "#16a085",
+}
+
+# Plot colors for the top-model comparison, keyed by model abbreviation.
+BEST_MODELS_COLORS = {
+    "EN": "#2563eb",
+    "SVM": "#e11d48",
+    "MLP": "#16a085",
 }
 
 # %% MODALITY COMPARISON — pipeline 14
