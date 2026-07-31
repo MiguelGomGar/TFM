@@ -46,6 +46,7 @@ def plot_confusion_matrix(
 
     fig, ax = plt.subplots(figsize=figsize)
     ax.imshow(values, cmap="Blues", vmin=0)
+    ax.grid(False)
 
     for row in range(values.shape[0]):
         for col in range(values.shape[1]):
@@ -114,14 +115,16 @@ def plot_threshold_metrics_comparison(
     fig, ax = plt.subplots(figsize=figsize)
 
     for index, scenario in enumerate(scenarios):
-        subset = metrics_table[metrics_table["Scenario"] == scenario].set_index("Metric")
+        subset = metrics_table[metrics_table["Scenario"] == scenario].set_index(
+            "Metric"
+        )
         scores = [
             subset.loc[metric, "Score"] if metric in subset.index else np.nan
             for metric in metrics
         ]
         offsets = positions + (index - (len(scenarios) - 1) / 2) * width
 
-        ax.bar(
+        bars = ax.bar(
             offsets,
             scores,
             width=width * 0.9,
@@ -131,14 +134,15 @@ def plot_threshold_metrics_comparison(
             linewidth=0.5,
             alpha=0.9,
         )
+        ax.bar_label(bars, fmt="%.2f", padding=2, fontsize=8, fontweight="bold")
 
     ax.set_xticks(positions)
     ax.set_xticklabels(metrics)
-    ax.set_ylim(0, 1)
+    ax.set_ylim(0, 1.08)
     ax.set_title(title, fontsize=12, fontweight="bold", pad=15)
     ax.set_xlabel(None)
     ax.set_ylabel("Score", fontsize=10, fontweight="bold", color="#2c3e50")
-    ax.legend(title=None, fontsize=9, loc="lower right", frameon=True)
+    ax.legend(title=None, fontsize=9, loc="upper right", frameon=True)
     _style_axes(ax)
     fig.tight_layout()
 

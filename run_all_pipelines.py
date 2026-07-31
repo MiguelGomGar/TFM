@@ -45,11 +45,7 @@ MODELLING_PIPELINES = [
     ("src.pipelines.13_modality_comparison", "Comparación clínico vs multimodal"),
     ("src.pipelines.14_publication_tables", "Tablas de resultados para publicación"),
     (
-        "src.pipelines.15_ensemble_prediction_analysis",
-        "Análisis de ensemble de los mejores modelos multimodales",
-    ),
-    (
-        "src.pipelines.16_best_model_threshold_analysis",
+        "src.pipelines.15_best_model_threshold_analysis",
         "Análisis de sensibilidad al umbral del mejor modelo (MLP)",
     ),
 ]

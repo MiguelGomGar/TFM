@@ -535,34 +535,15 @@ multimodal_hyperparameters_search_space = {
     },
 }
 
-# %% ENSEMBLE PREDICTION ANALYSIS — pipeline 15
-# The three best-performing models on the multimodal test set (see
-# results/models/multimodal_data/models_metrics.csv): MLP and EN lead on
-# PR-AUC, and SVM is kept over the marginally better Random Forest because it
-# shows much less overfitting (see internal_validation_*.csv). Order matters
-# only for plotting; the majority vote itself is order-independent.
-ENSEMBLE_MODELS = ["EN", "SVM", "MLP"]
-
-# Plot color reserved for the ensemble series, distinct from every entry of
-# MODEL_PALETTE so it stands out against the individual models it is built
-# from.
-ENSEMBLE_COLOR = "#111827"
-
 # %% BEST MODEL THRESHOLD ANALYSIS — pipeline 16
 # Single best-performing model overall (highest PR-AUC on the multimodal test
 # set, see results/models/multimodal_data/models_metrics.csv).
-BEST_MODEL = "MLP"
+BEST_MODEL = "EN"
 
-# (low, high): predicted probabilities strictly inside this band are treated
-# as 'indeterminate' in the fuzzy-threshold scenario and excluded from the
-# hard metrics; probabilities > high become 1, probabilities < low become 0.
-FUZZY_THRESHOLD_BAND = (0.4, 0.6)
-
-# Plot colors for the three threshold scenarios, in reporting order.
+# Plot colors for the two threshold scenarios, in reporting order.
 THRESHOLD_SCENARIO_COLORS = {
     "Default": "#2563eb",
     "Optimal": "#16a085",
-    "Fuzzy": "#f59e0b",
 }
 
 # %% MODALITY COMPARISON — pipeline 14
