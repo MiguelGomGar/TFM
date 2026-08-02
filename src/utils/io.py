@@ -35,6 +35,22 @@ def _as_path(file_path: str | Path) -> Path:
     return Path(file_path).expanduser()
 
 
+def slugify(text: str) -> str:
+    """Turn a label into a filename-safe slug.
+
+    Parameters
+    ----------
+    text : str
+        Label, e.g. 'Confident FN'.
+
+    Returns
+    -------
+    str
+        Lowercase, underscore-separated slug, e.g. 'confident_fn'.
+    """
+    return text.lower().replace(" ", "_")
+
+
 def _prepare_output_path(file_path: str | Path, default_suffix: str) -> Path:
     """Prepare an output file path and create its parent directory if needed.
 

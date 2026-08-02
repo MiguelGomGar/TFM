@@ -4,13 +4,9 @@ EN, SVM and MLP on the multimodal (clinical + proteomic) data are the three
 best-performing models overall, ranked by test PR-AUC (see
 ``results/models/multimodal_data/models_metrics.csv``). Every modelling
 phase elsewhere in the project reports its hard metrics at the default 0.5
-decision threshold only. This module scores each fitted pipeline under two
-different ways of turning its continuous decision score into a binary call:
-
-1. The default threshold (probability > 0.5, or the SVM decision boundary).
-2. The Youden-optimal threshold: the ROC cut-off that maximizes sensitivity
-   + specificity - 1, a standard criterion for choosing clinical risk
-   cut-offs.
+decision threshold only. This module rescores each fitted pipeline at its
+Youden-optimal threshold instead: the ROC cut-off that maximizes sensitivity
++ specificity - 1, a standard criterion for choosing clinical risk cut-offs.
 """
 
 from pathlib import Path
@@ -18,8 +14,12 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.metrics import confusion_matrix, roc_curve
+from sklearn.metrics import average_precision_score, confusion_matrix, roc_auc_score, roc_curve
+from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
+
+from src.config import SEED, TEST_SIZE
+from src.models.model_evaluation import compute_hard_metrics, get_decision_scores
 
 
 def load_fitted_pipeline(model_dir, abbreviation: str) -> Pipeline:
@@ -175,3 +175,107 @@ def build_threshold_metrics_table(metrics_by_scenario: dict) -> pd.DataFrame:
         for scenario, metrics in metrics_by_scenario.items()
     ]
     return pd.concat(frames, ignore_index=True)
+
+
+def analyze_model(
+    abbreviation: str,
+    model_dir,
+    df: pd.DataFrame,
+    y: pd.Series,
+    seed: int = SEED,
+    test_size: float = TEST_SIZE,
+    logger=None,
+) -> dict:
+    """Score one fitted pipeline at its Youden-optimal threshold.
+
+    Parameters
+    ----------
+    abbreviation : str
+        Model abbreviation, matching the ``optimized_{abbreviation}.joblib``
+        filename saved by ``results_saving.save_model``.
+    model_dir : str or Path
+        Output directory of the modelling phase the pipeline was fitted in.
+    df : pd.DataFrame
+        Cleaned dataset (predictors + target columns).
+    y : pd.Series
+        Encoded binary target, aligned to df's index.
+    seed : int, default SEED
+        Random seed for the external validation split.
+    test_size : float, default TEST_SIZE
+        Size of the external validation split.
+    logger : logging.Logger, optional
+        Logger for progress and result reporting.
+
+    Returns
+    -------
+    dict
+        Everything the caller needs to save this model's results and feed
+        the cross-model comparison chart: 'ranking_metrics', 'metrics_table',
+        'metrics_optimal', 'cm_optimal', 'threshold_rows' (list of dicts for
+        the combined threshold_info table), 'optimal_label'.
+    """
+    if logger:
+        logger.info(f"Loading the fitted {abbreviation} pipeline from {model_dir}...")
+    model = load_fitted_pipeline(model_dir, abbreviation)
+    feature_columns = get_model_feature_columns(model)
+
+    X = df[feature_columns]
+    _, X_test, _, y_test = train_test_split(
+        X, y, test_size=test_size, random_state=seed, shuffle=True, stratify=y
+    )
+    if logger:
+        logger.info(
+            f"[{abbreviation}] Reconstructed the external validation set: "
+            f"{X_test.shape[0]} patients ({y_test.mean():.1%} recurrence)."
+        )
+
+    y_score = get_decision_scores(model, X_test)
+    # SVC is fitted without probability calibration, so its scores come from
+    # decision_function rather than predict_proba; label whichever applies.
+    score_name = "p" if hasattr(model, "predict_proba") else "score"
+
+    # Threshold-independent ranking performance, kept only as context: it
+    # does not depend on where the cut-off is drawn.
+    ranking_metrics = {
+        "ROC-AUC": roc_auc_score(y_test, y_score),
+        "PR-AUC": average_precision_score(y_test, y_score),
+    }
+
+    # ------------------------------------------------------------------
+    # Youden-optimal threshold
+    # ------------------------------------------------------------------
+    youden = compute_youden_threshold(y_test, y_score)
+    y_pred_optimal = apply_threshold(y_score, youden["threshold"])
+    metrics_optimal = compute_hard_metrics(y_test, y_pred_optimal)
+    cm_optimal = build_confusion_matrix_table(y_test, y_pred_optimal)
+    if logger:
+        logger.info(
+            f"[{abbreviation}] Youden-optimal threshold: {youden['threshold']:.3f} "
+            f"(J = {youden['youden_j']:.3f}); metrics: {metrics_optimal}"
+        )
+
+    optimal_label = f"Optimal (Youden, {score_name} > {youden['threshold']:.3f})"
+
+    metrics_table = build_threshold_metrics_table({optimal_label: metrics_optimal})
+
+    threshold_rows = [
+        {
+            "Model": abbreviation,
+            "Scenario": optimal_label,
+            "Threshold": youden["threshold"],
+            "Method": f"Youden's J = {youden['youden_j']:.3f} "
+            f"(sensitivity = {metrics_optimal['Recall']:.3f}, "
+            f"specificity = {metrics_optimal['Specificity']:.3f})",
+            "N_Test": int(X_test.shape[0]),
+            "N_Scored": int(X_test.shape[0]),
+        },
+    ]
+
+    return {
+        "ranking_metrics": ranking_metrics,
+        "metrics_table": metrics_table,
+        "metrics_optimal": metrics_optimal,
+        "cm_optimal": cm_optimal,
+        "threshold_rows": threshold_rows,
+        "optimal_label": optimal_label,
+    }

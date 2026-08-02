@@ -80,7 +80,7 @@ def plot_row_missingness(
     for label in ax.get_xticklabels() + ax.get_yticklabels():
         label.set_fontweight("bold")
 
-    ax.grid(axis="y", color="#f1f5f9", linewidth=0.7)
+    ax.grid(axis="y", color="#f1f5f9", linewidth=1.2)
     ax.grid(axis="x", visible=False)
     ax.set_axisbelow(True)
     sns.despine(ax=ax, left=True, bottom=True)

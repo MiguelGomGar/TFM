@@ -274,6 +274,7 @@ def run_modelling_phase(
     metrics_by_model = {}
     curves_by_model = {}
     best_params_by_model = {}
+    internal_validation_summaries = []
 
     # The feature selection model is fitted first on every available predictor:
     # its regularization defines the filter applied to the remaining models.
@@ -331,10 +332,7 @@ def run_modelling_phase(
         save_csv(
             summary, output_dir / f"internal_validation_{abbreviation.lower()}.csv"
         )
-        figure = plot_internal_validation(summary, model_name=display_name)
-        save_figure(
-            figure, output_dir / f"internal_validation_{abbreviation.lower()}.png"
-        )
+        internal_validation_summaries.append(summary)
 
         # Derive the filter right after the selection model has been tuned.
         if abbreviation == selection_model:
@@ -359,6 +357,28 @@ def run_modelling_phase(
 
     if logger is not None:
         logger.info("Saving metrics, curves and plots...")
+
+    title_suffix = f" ({phase_title})" if phase_title else ""
+
+    internal_validation_df = pd.concat(
+        internal_validation_summaries, ignore_index=True
+    )
+    internal_validation_df["Model"] = pd.Categorical(
+        internal_validation_df["Model"], categories=model_order, ordered=True
+    )
+    internal_validation_df = internal_validation_df.sort_values(by="Model")
+    internal_validation_df["Model"] = internal_validation_df["Model"].astype(str)
+
+    for metric in scoring:
+        figure = plot_internal_validation(
+            internal_validation_df,
+            metric=metric,
+            title=f"Overfitting analysis: {metric}{title_suffix}",
+        )
+        save_figure(
+            figure,
+            output_dir / f"internal_validation_{metric.lower().replace('-', '_')}.png",
+        )
 
     # Reorder to the reporting order before consolidating the results.
     metrics_by_model = {
@@ -385,8 +405,6 @@ def run_modelling_phase(
         curve_type="pr",
         output_dir=output_dir,
     )
-
-    title_suffix = f" ({phase_title})" if phase_title else ""
 
     figure = plot_model_roc_curves(
         roc_curves,

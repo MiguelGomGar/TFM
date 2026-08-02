@@ -41,9 +41,14 @@ import numpy as np
 import pandas as pd
 import shap
 from scipy.stats import spearmanr
+from sklearn.model_selection import train_test_split
 
-from src.config import SEED, SHAP_ADDITIVITY_TOLERANCE, SHAP_BACKGROUND_SIZE
+from src.config import SEED, SHAP_ADDITIVITY_TOLERANCE, SHAP_BACKGROUND_SIZE, TEST_SIZE
+from src.models.best_model import compute_youden_threshold, get_model_feature_columns, load_fitted_pipeline
+from src.models.model_evaluation import get_decision_scores
 from src.models.results_saving import _clean_feature_names
+from src.utils.dataframe_utils import split_feature_blocks
+from src.utils.io import read_csv
 
 # Guard for the logit transform of the MLP probabilities: a probability of
 # exactly 0 or 1 would map to +/- infinity and poison every SHAP value.
@@ -635,3 +640,194 @@ def check_shap_dimensions(explanation, n_samples, feature_names) -> None:
         raise ValueError("SHAP values contain NaN or infinite entries.")
     if list(explanation.feature_names) != list(feature_names):
         raise ValueError("SHAP feature names do not match the preprocessor output names.")
+
+
+# %% Orchestration
+def load_youden_threshold(abbreviation, threshold_source_file, y_test, y_score, logger=None) -> float:
+    """Reuse the Youden cut-off already chosen by the threshold analysis.
+
+    Reading it back keeps the local cases consistent with the confusion
+    matrices of the threshold analysis phase: a patient labeled a false
+    negative here is the same patient counted as a false negative there.
+    Recomputed on the fly if that phase has not been run yet.
+
+    Parameters
+    ----------
+    abbreviation : str
+        Model abbreviation.
+    threshold_source_file : str or Path
+        Path to the threshold_info.csv saved by the threshold analysis phase.
+    y_test : array-like
+        Binary external validation target.
+    y_score : array-like
+        Continuous decision score from model_evaluation.get_decision_scores.
+    logger : logging.Logger, optional
+        Logger for the fallback warning.
+
+    Returns
+    -------
+    float
+        The Youden-optimal decision threshold.
+    """
+    if threshold_source_file.exists():
+        thresholds = read_csv(threshold_source_file)
+        optimal = thresholds[
+            (thresholds["Model"] == abbreviation)
+            & (thresholds["Scenario"].str.startswith("Optimal"))
+        ]
+        if not optimal.empty:
+            return float(optimal["Threshold"].iloc[0])
+
+    if logger:
+        logger.warning(
+            f"[{abbreviation}] No stored threshold in {threshold_source_file}; recomputing it."
+        )
+    return compute_youden_threshold(y_test, y_score)["threshold"]
+
+
+def explain_model(
+    abbreviation: str,
+    model_dir,
+    threshold_source_file,
+    df: pd.DataFrame,
+    y: pd.Series,
+    seed: int = SEED,
+    test_size: float = TEST_SIZE,
+    background_size: int = SHAP_BACKGROUND_SIZE,
+    logger=None,
+) -> dict:
+    """Run the full SHAP analysis for one fitted pipeline.
+
+    Parameters
+    ----------
+    abbreviation : str
+        Model abbreviation, matching the ``optimized_{abbreviation}.joblib``
+        filename saved by the multimodal modelling phase.
+    model_dir : str or Path
+        Output directory of the modelling phase the pipeline was fitted in.
+    threshold_source_file : str or Path
+        Path to the threshold_info.csv saved by the threshold analysis phase,
+        used to keep the local cases consistent with it.
+    df : pd.DataFrame
+        Cleaned multimodal dataset (predictors + target columns).
+    y : pd.Series
+        Encoded binary target, aligned to df's index.
+    seed : int, default SEED
+        Random seed for the train/test split and the background sample.
+    test_size : float, default TEST_SIZE
+        Size of the external validation split.
+    background_size : int, default SHAP_BACKGROUND_SIZE
+        Number of training patients sampled for the SHAP background set.
+    logger : logging.Logger, optional
+        Logger for progress and result reporting.
+
+    Returns
+    -------
+    dict
+        Keys 'explanation', 'importance', 'blocks', 'block_contribution',
+        'shap_values_table', 'local_cases' and 'validation'.
+    """
+    if logger:
+        logger.info(f"Loading the fitted {abbreviation} pipeline from {model_dir}...")
+    model = load_fitted_pipeline(model_dir, abbreviation)
+    feature_columns = get_model_feature_columns(model)
+
+    # Same seed, test_size and stratification as the multimodal modelling phase,
+    # so the reconstructed partition matches it record by record. Unlike the
+    # threshold analysis, the training half is needed here: it is the reference
+    # distribution the SHAP contributions are measured against.
+    X = df[feature_columns]
+    X_train, X_test, _, y_test = train_test_split(
+        X, y, test_size=test_size, random_state=seed, shuffle=True, stratify=y
+    )
+    if logger:
+        logger.info(
+            f"[{abbreviation}] Reconstructed the partition: {X_train.shape[0]} training and "
+            f"{X_test.shape[0]} external validation patients ({y_test.mean():.1%} recurrence)."
+        )
+
+    # ------------------------------------------------------------------
+    # 1. SHAP values on the transformed matrix
+    # ------------------------------------------------------------------
+    X_train_transformed, X_test_transformed, feature_names = get_transformed_matrices(
+        model, X_train, X_test
+    )
+    background = build_background_set(
+        X_train_transformed, size=background_size, seed=seed, logger=logger
+    )
+    explainer, kind = build_explainer(model, abbreviation, background, logger=logger)
+    explanation = compute_shap_values(explainer, X_test_transformed, feature_names, logger=logger)
+
+    # ------------------------------------------------------------------
+    # 2. Quality control, before anything is derived from the values
+    # ------------------------------------------------------------------
+    check_shap_dimensions(explanation, X_test_transformed.shape[0], feature_names)
+    output_function, output_label = get_explained_output(model, abbreviation)
+    validation = check_shap_additivity(
+        explanation, output_function(X_test_transformed), abbreviation, kind
+    )
+    if logger:
+        logger.info(
+            f"[{abbreviation}] Additivity on {output_label}: max error "
+            f"{validation['Max_Abs_Error'].iloc[0]:.2e} vs tolerance "
+            f"{validation['Tolerance'].iloc[0]:.0e} -> "
+            f"{'PASSED' if validation['Passed'].iloc[0] else 'FAILED'}; "
+            f"{validation['Zero_Fraction'].iloc[0]:.1%} of the values are exactly zero."
+        )
+        if not validation["Passed"].iloc[0]:
+            logger.error(
+                f"[{abbreviation}] SHAP values do not reconstruct the model output; "
+                f"treat this model's explanations as unreliable."
+            )
+        if validation["Zero_Fraction"].iloc[0] > 0.05:
+            logger.warning(
+                f"[{abbreviation}] An unexpectedly large share of the SHAP values is exactly "
+                f"zero, which suggests the explainer truncated the attributions; the "
+                f"importance ranking and the block shares would be biased."
+            )
+
+    # ------------------------------------------------------------------
+    # 3. Global importance and block contribution
+    # ------------------------------------------------------------------
+    importance = build_global_importance_table(explanation, abbreviation)
+    blocks = split_feature_blocks(feature_names)
+    if not blocks["Clinical"] or not blocks["Proteomic"]:
+        raise ValueError(
+            f"[{abbreviation}] Expected both feature blocks to be non-empty, got "
+            f"{len(blocks['Clinical'])} clinical and {len(blocks['Proteomic'])} proteomic."
+        )
+    if logger:
+        logger.info(
+            f"[{abbreviation}] Feature blocks: {len(blocks['Clinical'])} clinical, "
+            f"{len(blocks['Proteomic'])} proteomic (total {len(feature_names)})."
+        )
+    block_contribution = build_block_contribution_table(explanation, abbreviation, blocks)
+    if logger:
+        for _, row in block_contribution.iterrows():
+            logger.info(
+                f"[{abbreviation}] {row['Block']}: {row['Share']:.1%} of total |SHAP| across "
+                f"{int(row['N_Features'])} predictors "
+                f"({row['Mean_Abs_SHAP_Per_Feature']:.4f} per predictor)."
+            )
+
+    # ------------------------------------------------------------------
+    # 4. Local cases, selected in the threshold analysis' score space
+    # ------------------------------------------------------------------
+    y_score = get_decision_scores(model, X_test)
+    threshold = load_youden_threshold(abbreviation, threshold_source_file, y_test, y_score, logger=logger)
+    local_cases = select_local_cases(y_test, y_score, threshold)
+    if logger:
+        logger.info(
+            f"[{abbreviation}] Selected {len(local_cases)} local cases at threshold "
+            f"{threshold:.4f}: {', '.join(local_cases['Case'])}."
+        )
+
+    return {
+        "explanation": explanation,
+        "importance": importance,
+        "blocks": blocks,
+        "block_contribution": block_contribution,
+        "shap_values_table": build_shap_values_table(explanation, y_test),
+        "local_cases": local_cases,
+        "validation": validation,
+    }

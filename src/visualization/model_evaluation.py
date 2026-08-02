@@ -65,22 +65,30 @@ def _model_colors(model_names) -> dict:
 
 
 def plot_internal_validation(
-    summary_df: pd.DataFrame, model_name: str, figsize=(8, 6)
+    summary_df: pd.DataFrame,
+    metric: str,
+    title: str | None = None,
+    figsize=(9, 6),
 ) -> plt.Figure:
-    """Plot the overfitting analysis of one model on the internal folds.
+    """Plot the overfitting analysis of every model on the internal folds.
 
-    Draws one group of bars per metric, with a series for the training folds
-    and another for the held-out validation fold. Bar heights are the mean
-    across folds and the error bars show the standard deviation.
+    Draws one group of bars per model, with a series for the training folds
+    and another for the held-out validation fold, for a single metric. Bar
+    heights are the mean across folds and the error bars show the standard
+    deviation.
 
     Parameters
     ----------
     summary_df : pd.DataFrame
         Summary with columns ['Model', 'Metric', 'Dataset', 'Mean', 'Std',
-        'N_Folds'], where Dataset is 'Train' or 'Validation'.
-    model_name : str
-        Model name shown in the title.
-    figsize : tuple, default (8, 6)
+        'N_Folds'], covering every model and restricted here to a single
+        metric, where Dataset is 'Train' or 'Validation'.
+    metric : str
+        Metric being plotted, used to filter summary_df and for the axis
+        label, e.g. 'ROC-AUC'.
+    title : str, optional
+        Plot title. Defaults to 'Overfitting analysis: <metric>'.
+    figsize : tuple, default (9, 6)
         Figure size in inches.
 
     Returns
@@ -88,22 +96,23 @@ def plot_internal_validation(
     matplotlib.figure.Figure
         Grouped bar chart figure.
     """
-    metrics = list(dict.fromkeys(summary_df["Metric"]))
+    subset = summary_df[summary_df["Metric"] == metric]
+    models = list(dict.fromkeys(subset["Model"]))
     datasets = [
         dataset
         for dataset in ("Train", "Validation")
-        if dataset in set(summary_df["Dataset"])
+        if dataset in set(subset["Dataset"])
     ]
 
-    positions = np.arange(len(metrics), dtype=float)
+    positions = np.arange(len(models), dtype=float)
     width = 0.8 / max(len(datasets), 1)
 
     fig, ax = plt.subplots(figsize=figsize)
 
     for index, dataset in enumerate(datasets):
-        subset = summary_df[summary_df["Dataset"] == dataset].set_index("Metric")
-        means = [subset.loc[metric, "Mean"] for metric in metrics]
-        stds = [subset.loc[metric, "Std"] for metric in metrics]
+        dataset_subset = subset[subset["Dataset"] == dataset].set_index("Model")
+        means = [dataset_subset.loc[model, "Mean"] for model in models]
+        stds = [dataset_subset.loc[model, "Std"] for model in models]
         offsets = positions + (index - (len(datasets) - 1) / 2) * width
 
         ax.bar(
@@ -121,13 +130,16 @@ def plot_internal_validation(
         )
 
     ax.set_xticks(positions)
-    ax.set_xticklabels(metrics)
+    ax.set_xticklabels(models)
     ax.set_ylim(0, 1)
     ax.set_title(
-        f"Overfitting analysis: {model_name}", fontsize=12, fontweight="bold", pad=15
+        title if title is not None else f"Overfitting analysis: {metric}",
+        fontsize=12,
+        fontweight="bold",
+        pad=15,
     )
     ax.set_xlabel(None)
-    ax.set_ylabel("Score", fontsize=10, fontweight="bold", color="#2c3e50")
+    ax.set_ylabel(metric, fontsize=10, fontweight="bold", color="#2c3e50")
     ax.legend(title=None, fontsize=9, loc="upper right", frameon=True)
     _style_axes(ax)
     fig.tight_layout()
@@ -310,15 +322,6 @@ def plot_metric_by_model(
         width=0.65,
     )
 
-    label_bars(
-        ax,
-        bars,
-        [f"{score:.3f}" for score in table["Score"]],
-        offset=0.015,
-        fontsize=9.5,
-        color="#2c3e50",
-    )
-
     if baseline is not None:
         ax.axhline(
             baseline,
@@ -346,28 +349,29 @@ def plot_metric_by_model(
 
 def plot_modality_comparison(
     comparison_df: pd.DataFrame,
-    model_name: str,
+    metric: str,
     modality_order: tuple[str, ...] = ("Clinical", "Multimodal"),
     title: str | None = None,
-    figsize=(8, 6),
+    figsize=(9, 6),
 ) -> plt.Figure:
-    """Compare two modelling arms of a single model.
+    """Compare modelling arms across every model, for a single metric.
 
-    Draws one group of bars per metric, with a series for each modality, so
-    that the added value of the second arm can be read directly.
+    Draws one group of bars per model, with a series for each modality, so
+    that the added value of the compared arm(s) can be read model by model.
 
     Parameters
     ----------
     comparison_df : pd.DataFrame
-        Long-format frame with columns ['Model', 'Metric', 'Modality', 'Score']
-        restricted to a single model.
-    model_name : str
-        Model name shown in the title.
+        Long-format frame with columns ['Model', 'Metric', 'Modality', 'Score'],
+        covering every model and restricted here to a single metric.
+    metric : str
+        Metric being plotted, used to filter comparison_df and for the axis
+        label, e.g. 'ROC-AUC'.
     modality_order : tuple of str, default ('Clinical', 'Multimodal')
         Modalities to plot, in legend and bar order.
     title : str, optional
-        Plot title. Defaults to '<baseline> vs <comparison>: <model_name>'.
-    figsize : tuple, default (8, 6)
+        Plot title. Defaults to '<metric>: <baseline> vs <comparison>'.
+    figsize : tuple, default (9, 6)
         Figure size in inches.
 
     Returns
@@ -375,23 +379,20 @@ def plot_modality_comparison(
     matplotlib.figure.Figure
         Grouped bar chart figure.
     """
-    metrics = list(dict.fromkeys(comparison_df["Metric"]))
+    subset = comparison_df[comparison_df["Metric"] == metric]
+    models = list(dict.fromkeys(subset["Model"]))
     modalities = [
-        modality
-        for modality in modality_order
-        if modality in set(comparison_df["Modality"])
+        modality for modality in modality_order if modality in set(subset["Modality"])
     ]
 
-    positions = np.arange(len(metrics), dtype=float)
+    positions = np.arange(len(models), dtype=float)
     width = 0.8 / max(len(modalities), 1)
 
     fig, ax = plt.subplots(figsize=figsize)
 
     for index, modality in enumerate(modalities):
-        subset = comparison_df[comparison_df["Modality"] == modality].set_index(
-            "Metric"
-        )
-        scores = [subset.loc[metric, "Score"] for metric in metrics]
+        modality_subset = subset[subset["Modality"] == modality].set_index("Model")
+        scores = [modality_subset.loc[model, "Score"] for model in models]
         offsets = positions + (index - (len(modalities) - 1) / 2) * width
 
         bars = ax.bar(
@@ -405,28 +406,17 @@ def plot_modality_comparison(
             alpha=0.85,
         )
 
-        label_bars(
-            ax,
-            bars,
-            [f"{score:.3f}" for score in scores],
-            offset=0.015,
-            fontsize=9,
-            color="#2c3e50",
-        )
-
     ax.set_xticks(positions)
-    ax.set_xticklabels(metrics)
+    ax.set_xticklabels(models)
     ax.set_ylim(0, 1)
     ax.set_title(
-        title
-        if title is not None
-        else f"{modality_order[0]} vs {modality_order[1]}: {model_name}",
+        title if title is not None else f"{metric}: " + " vs ".join(modality_order),
         fontsize=12,
         fontweight="bold",
         pad=15,
     )
     ax.set_xlabel(None)
-    ax.set_ylabel("Score", fontsize=10, fontweight="bold", color="#2c3e50")
+    ax.set_ylabel(metric, fontsize=10, fontweight="bold", color="#2c3e50")
     ax.legend(title=None, fontsize=9, loc="upper right", frameon=True)
     _style_axes(ax)
     fig.tight_layout()

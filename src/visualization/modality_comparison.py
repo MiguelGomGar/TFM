@@ -1,13 +1,12 @@
-"""Build and plot comparisons between modelling arms, model by model."""
+"""Build and plot comparisons between modelling arms, metric by metric."""
 
 from pathlib import Path
 
-from src.config import MODEL_ORDER
+from src.config import SCORING_METRICS
 from src.models.model_evaluation import (
     build_modality_comparison_table,
     build_modality_delta_table,
 )
-from src.models.model_zoo import get_display_name
 from src.utils.io import read_csv, save_csv, save_figure
 from src.visualization.model_evaluation import plot_modality_comparison
 
@@ -21,7 +20,7 @@ def run_modality_comparison(
     extra_arms: list[tuple[str, Path]] | None = None,
     logger=None,
 ) -> None:
-    """Build and plot one modelling-arm comparison, model by model.
+    """Build and plot one modelling-arm comparison, metric by metric.
 
     No model is refitted here: the comparison is rebuilt from the metrics
     tables already saved by each modelling phase, so the figures can be
@@ -93,21 +92,20 @@ def run_modality_comparison(
 
     if logger is not None:
         logger.info(f"Plotting the {comparison_title} comparison...")
-    for abbreviation in MODEL_ORDER:
-        model_comparison = comparison[comparison["Model"] == abbreviation]
-        if model_comparison.empty:
+    for metric in SCORING_METRICS:
+        metric_comparison = comparison[comparison["Metric"] == metric]
+        if metric_comparison.empty:
             if logger is not None:
-                logger.warning(f"No results found for model {abbreviation}; skipping.")
+                logger.warning(f"No results found for metric {metric}; skipping.")
             continue
 
-        filename = f"comparison_{abbreviation.lower()}"
-        save_csv(model_comparison, output_dir / f"{filename}.csv")
-        model_name = get_display_name(abbreviation)
+        filename = f"comparison_{metric.lower().replace('-', '_')}"
+        save_csv(metric_comparison, output_dir / f"{filename}.csv")
         figure = plot_modality_comparison(
-            model_comparison,
-            model_name=model_name,
+            metric_comparison,
+            metric=metric,
             modality_order=modality_order,
-            title=f"{comparison_title}: {model_name}",
+            title=f"{comparison_title}: {metric}",
         )
         save_figure(figure, output_dir / f"{filename}.png")
 
