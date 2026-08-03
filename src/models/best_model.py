@@ -11,7 +11,6 @@ Youden-optimal threshold instead: the ROC cut-off that maximizes sensitivity
 
 from pathlib import Path
 
-import joblib
 import numpy as np
 import pandas as pd
 from sklearn.metrics import average_precision_score, confusion_matrix, roc_auc_score, roc_curve
@@ -20,6 +19,7 @@ from sklearn.pipeline import Pipeline
 
 from src.config import SEED, TEST_SIZE
 from src.models.model_evaluation import compute_hard_metrics, get_decision_scores
+from src.utils.io import read_joblib
 
 
 def load_fitted_pipeline(model_dir, abbreviation: str) -> Pipeline:
@@ -43,10 +43,7 @@ def load_fitted_pipeline(model_dir, abbreviation: str) -> Pipeline:
     FileNotFoundError
         If no matching joblib file exists in model_dir.
     """
-    file_path = Path(model_dir) / f"optimized_{abbreviation}.joblib"
-    if not file_path.exists():
-        raise FileNotFoundError(f"No fitted pipeline found at {file_path}.")
-    return joblib.load(file_path)
+    return read_joblib(Path(model_dir) / f"optimized_{abbreviation}.joblib")
 
 
 def get_model_feature_columns(fitted_pipeline: Pipeline) -> list[str]:

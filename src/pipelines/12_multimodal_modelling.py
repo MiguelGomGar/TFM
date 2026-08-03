@@ -79,7 +79,6 @@ def main() -> None:
         output_dir=CLINICAL_OUTPUT_DIR,
         n_iter=SEARCH_N_ITER["clinical_matched"],
         cv=cv,
-        phase_title="matched clinical data",
         apply_filter=CLINICAL_APPLY_FILTER,
         logger=logger,
     )
@@ -124,7 +123,6 @@ def main() -> None:
         output_dir=MULTIMODAL_OUTPUT_DIR,
         n_iter=SEARCH_N_ITER["multimodal"],
         cv=cv,
-        phase_title="multimodal data",
         apply_filter=MULTIMODAL_APPLY_FILTER,
         logger=logger,
     )

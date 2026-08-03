@@ -8,26 +8,31 @@ threshold only; this phase rescores each fitted pipeline at the
 Youden-optimal cut-off instead (maximizes sensitivity + specificity - 1 on
 the ROC curve).
 
-The fitted pipelines are reloaded as-is from disk; nothing is retrained.
+The fitted pipelines are reloaded as-is from disk; nothing is retrained. The
+confusion matrices and the cross-model chart are drawn from the tables saved
+here by src/pipelines/plots/14_best_model_plots.py.
 """
 
 from pathlib import Path
 
 import pandas as pd
 
-from src.config import BEST_MODELS, BEST_MODELS_COLORS, TARGET_VARIABLE
+from src.config import BEST_MODELS, TARGET_VARIABLE
 from src.models.best_model import analyze_model, build_threshold_metrics_table
 from src.models.data_preprocessing import encode_target_variable
-from src.utils.io import read_parquet, save_csv, save_figure
+from src.utils.filenames import (
+    CONFUSION_MATRIX_FILE,
+    RANKING_METRICS_FILE,
+    THRESHOLD_COMPARISON_FILE,
+    THRESHOLD_INFO_FILE,
+    THRESHOLD_METRICS_FILE,
+)
+from src.utils.io import read_parquet, save_csv
 from src.utils.logging_utils import setup_logger
 from src.utils.paths import (
     BEST_MODEL_DIR,
     CLEANED_MULTIMODAL_DATA_PATH,
     MULTIMODAL_MODELS_DIR,
-)
-from src.visualization.best_model import (
-    plot_confusion_matrix,
-    plot_threshold_metrics_comparison,
 )
 
 INPUT_FILE = CLEANED_MULTIMODAL_DATA_PATH
@@ -55,8 +60,17 @@ def main() -> None:
     # ------------------------------------------------------------------
     all_threshold_rows = []
     for abbreviation, result in results.items():
-        save_csv(result["metrics_table"], OUTPUT_DIR / f"threshold_metrics_{abbreviation}.csv")
-        save_csv(result["cm_optimal"], OUTPUT_DIR / f"confusion_matrix_optimal_{abbreviation}.csv")
+        save_csv(
+            result["metrics_table"],
+            OUTPUT_DIR / THRESHOLD_METRICS_FILE.format(model=abbreviation),
+        )
+        # Saved with the row index: it holds the observed-class labels the
+        # confusion matrix figure uses for its axis ticks.
+        save_csv(
+            result["cm_optimal"],
+            OUTPUT_DIR / CONFUSION_MATRIX_FILE.format(model=abbreviation),
+            index=True,
+        )
 
         ranking_metrics_df = pd.DataFrame(
             {
@@ -64,16 +78,14 @@ def main() -> None:
                 "Score": list(result["ranking_metrics"].values()),
             }
         )
-        save_csv(ranking_metrics_df, OUTPUT_DIR / f"ranking_metrics_{abbreviation}.csv")
+        save_csv(
+            ranking_metrics_df,
+            OUTPUT_DIR / RANKING_METRICS_FILE.format(model=abbreviation),
+        )
 
         all_threshold_rows.extend(result["threshold_rows"])
 
-        figure = plot_confusion_matrix(
-            result["cm_optimal"], title=f"{abbreviation} — {result['optimal_label']}"
-        )
-        save_figure(figure, OUTPUT_DIR / f"confusion_matrix_optimal_{abbreviation}.png")
-
-    save_csv(pd.DataFrame(all_threshold_rows), OUTPUT_DIR / "threshold_info.csv")
+    save_csv(pd.DataFrame(all_threshold_rows), OUTPUT_DIR / THRESHOLD_INFO_FILE)
 
     # ------------------------------------------------------------------
     # Cross-model comparison, optimal-threshold scenario only. Restricted to
@@ -89,14 +101,7 @@ def main() -> None:
             for abbreviation in BEST_MODELS
         }
     )
-    save_csv(comparison_table, OUTPUT_DIR / "threshold_metrics_comparison.csv")
-
-    figure = plot_threshold_metrics_comparison(
-        comparison_table,
-        title="Hard metrics at the Youden-optimal threshold",
-        palette=BEST_MODELS_COLORS,
-    )
-    save_figure(figure, OUTPUT_DIR / "threshold_metrics_comparison.png")
+    save_csv(comparison_table, OUTPUT_DIR / THRESHOLD_COMPARISON_FILE)
 
     logger.info(f"Top-model threshold analysis results saved to {OUTPUT_DIR}.")
 

@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-import joblib
 import numpy as np
 import pandas as pd
 
@@ -12,7 +11,13 @@ from src.models.model_evaluation import (
     build_model_hyperparameter_tables,
     build_performance_table,
 )
-from src.utils.io import read_csv, save_csv
+from src.utils.filenames import (
+    CURVES_FILE,
+    INTERNAL_VALIDATION_FILE,
+    MODELS_METRICS_FILE,
+    PREVALENCE_FILE,
+)
+from src.utils.io import read_csv, save_csv, save_joblib
 
 
 def _clean_feature_names(feature_list):
@@ -137,7 +142,7 @@ def save_model(fitted_pipeline, output_dir, identifier=None):
 
     # Save the model object (contains preprocessing states, weights, and
     # params)
-    joblib.dump(fitted_pipeline, file_path)
+    save_joblib(fitted_pipeline, file_path)
 
 
 def save_metrics_results(models_dict, output_dir=None):
@@ -189,7 +194,7 @@ def save_metrics_results(models_dict, output_dir=None):
     # 3. Save the master DataFrame to a CSV file if an output directory is
     # provided
     if output_dir is not None:
-        output_path = Path(output_dir) / "models_metrics.csv"
+        output_path = Path(output_dir) / MODELS_METRICS_FILE
         df_master.to_csv(output_path, index=False)
 
     return df_master
@@ -241,14 +246,13 @@ def save_curves_results(
     if curve_type.lower() == "roc":
         x_label = "False Positive Rate"
         y_label = "True Positive Rate"
-        default_prefix = "curves_roc"
     else:
         x_label = "Recall"
         y_label = "Precision"
-        default_prefix = "curves_pr"
 
     # Use the provided user filename or fall back to the dynamic default
-    filename = filename if filename is not None else f"{default_prefix}.csv"
+    if filename is None:
+        filename = CURVES_FILE.format(curve=curve_type.lower())
 
     # 2. Iterate over models to build individual DataFrames
     individual_dfs = []
@@ -267,6 +271,55 @@ def save_curves_results(
         df_curve.to_csv(file_path, index=False)
 
     return df_curve
+
+
+def save_prevalence(y_test, output_dir) -> pd.DataFrame:
+    """Persist the positive-class rate of an evaluation set.
+
+    The precision-recall figures need the prevalence to draw the no-skill
+    baseline. It is a property of the split rather than of any model, so it is
+    saved next to the metrics instead of being recomputed by whoever plots.
+
+    Parameters
+    ----------
+    y_test : pd.Series or array-like
+        Binary target of the external validation set.
+    output_dir : str or Path
+        Directory where prevalence.csv is written.
+
+    Returns
+    -------
+    pd.DataFrame
+        Single-row table with columns ['N', 'Positives', 'Prevalence'].
+    """
+    y_test = pd.Series(y_test)
+    table = pd.DataFrame(
+        [
+            {
+                "N": int(y_test.shape[0]),
+                "Positives": int(y_test.sum()),
+                "Prevalence": float(y_test.mean()),
+            }
+        ]
+    )
+    save_csv(table, Path(output_dir) / PREVALENCE_FILE)
+    return table
+
+
+def load_prevalence(input_dir) -> float:
+    """Read back the prevalence saved by ``save_prevalence``.
+
+    Parameters
+    ----------
+    input_dir : str or Path
+        Directory containing prevalence.csv.
+
+    Returns
+    -------
+    float
+        Positive-class rate of the evaluation set.
+    """
+    return float(read_csv(Path(input_dir) / PREVALENCE_FILE)["Prevalence"].iloc[0])
 
 
 def load_internal_validation(input_dir: Path, logger=None) -> dict:
@@ -290,7 +343,9 @@ def load_internal_validation(input_dir: Path, logger=None) -> dict:
     input_dir = Path(input_dir)
     internal_validation = {}
     for abbreviation in MODEL_ORDER:
-        file_path = input_dir / f"internal_validation_{abbreviation.lower()}.csv"
+        file_path = input_dir / INTERNAL_VALIDATION_FILE.format(
+            model=abbreviation.lower()
+        )
         if not file_path.exists():
             if logger is not None:
                 logger.warning(f"Missing {file_path}; skipping {abbreviation}.")

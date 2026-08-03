@@ -1,4 +1,10 @@
-"""Build and plot comparisons between modelling arms, metric by metric."""
+"""Build the comparisons between modelling arms, metric by metric.
+
+No model is refitted here: every comparison is rebuilt from the metrics tables
+already saved by each modelling phase, so it can be regenerated cheaply. The
+corresponding figures are drawn from these tables by
+``src/pipelines/plots/13_modality_comparison_plots.py``.
+"""
 
 from pathlib import Path
 
@@ -7,24 +13,50 @@ from src.models.model_evaluation import (
     build_modality_comparison_table,
     build_modality_delta_table,
 )
-from src.utils.io import read_csv, save_csv, save_figure
-from src.visualization.model_evaluation import plot_modality_comparison
+from src.utils.filenames import (
+    MODALITY_COMPARISON_FILE,
+    MODALITY_DELTA_FILE,
+    metric_slug,
+)
+from src.utils.io import read_csv, save_csv
 
 
-def run_modality_comparison(
+def modality_order(
+    baseline_label: str, comparison_label: str, extra_arms=None
+) -> tuple:
+    """List the arms of one comparison in reporting order.
+
+    Shared by the table builder and the plotting pipeline so both lay the arms
+    out identically.
+
+    Parameters
+    ----------
+    baseline_label : str
+        Name of the reference arm.
+    comparison_label : str
+        Name of the arm being compared.
+    extra_arms : list of (str, Path), optional
+        Additional arms shown between the two, as (label, metrics_file) pairs.
+
+    Returns
+    -------
+    tuple of str
+        Arm labels, baseline first and comparison last.
+    """
+    extra_arms = extra_arms or []
+    return (baseline_label, *(label for label, _ in extra_arms), comparison_label)
+
+
+def build_modality_comparison(
     baseline_label: str,
-    baseline_metrics_file: Path,
+    baseline_metrics_file,
     comparison_label: str,
-    comparison_metrics_file: Path,
-    output_dir: Path,
-    extra_arms: list[tuple[str, Path]] | None = None,
+    comparison_metrics_file,
+    output_dir,
+    extra_arms=None,
     logger=None,
 ) -> None:
-    """Build and plot one modelling-arm comparison, metric by metric.
-
-    No model is refitted here: the comparison is rebuilt from the metrics
-    tables already saved by each modelling phase, so the figures can be
-    regenerated cheaply.
+    """Build and save one modelling-arm comparison, metric by metric.
 
     Parameters
     ----------
@@ -37,13 +69,12 @@ def run_modality_comparison(
     comparison_metrics_file : str or Path
         Path to the comparison arm's consolidated models_metrics.csv.
     output_dir : str or Path
-        Directory where the comparison tables and figures are saved.
+        Directory where the comparison tables are saved.
     extra_arms : list of (str, Path), optional
         Additional modelling arms to include between the baseline and the
         comparison arm (e.g. a pure proteomic arm alongside clinical and
         multimodal), each as a (label, metrics_file) pair. The saved delta
-        table and its plotted values still contrast baseline vs comparison
-        only.
+        table still contrasts baseline vs comparison only.
     logger : logging.Logger, optional
         Logger used to report progress.
 
@@ -69,12 +100,9 @@ def run_modality_comparison(
             logger.info(f"Loading {extra_label} metrics from {extra_metrics_file}...")
         extra_metrics.append((extra_label, read_csv(extra_metrics_file)))
 
-    modality_order = (
-        baseline_label,
-        *(label for label, _ in extra_metrics),
-        comparison_label,
+    comparison_title = " vs ".join(
+        modality_order(baseline_label, comparison_label, extra_metrics)
     )
-    comparison_title = " vs ".join(modality_order)
 
     if logger is not None:
         logger.info(f"Building the {comparison_title} tables...")
@@ -88,26 +116,18 @@ def run_modality_comparison(
     deltas = build_modality_delta_table(
         comparison, baseline_label=baseline_label, comparison_label=comparison_label
     )
-    save_csv(deltas, output_dir / "modality_comparison.csv")
+    save_csv(deltas, output_dir / MODALITY_DELTA_FILE)
 
-    if logger is not None:
-        logger.info(f"Plotting the {comparison_title} comparison...")
     for metric in SCORING_METRICS:
         metric_comparison = comparison[comparison["Metric"] == metric]
         if metric_comparison.empty:
             if logger is not None:
                 logger.warning(f"No results found for metric {metric}; skipping.")
             continue
-
-        filename = f"comparison_{metric.lower().replace('-', '_')}"
-        save_csv(metric_comparison, output_dir / f"{filename}.csv")
-        figure = plot_modality_comparison(
+        save_csv(
             metric_comparison,
-            metric=metric,
-            modality_order=modality_order,
-            title=f"{comparison_title}: {metric}",
+            output_dir / MODALITY_COMPARISON_FILE.format(metric=metric_slug(metric)),
         )
-        save_figure(figure, output_dir / f"{filename}.png")
 
     if logger is not None:
         logger.info(f"Results saved to {output_dir}.")

@@ -22,7 +22,6 @@ INPUT_FILE = CLEANED_CLINICAL_DATA_PATH
 OUTPUT_DIR = CLINICAL_MODELS_DIR
 
 PHASE_KEY = "clinical"
-PHASE_TITLE = "clinical data"
 SEARCH_SPACE = clinical_hyperparameters_search_space
 
 # Phase 1 is the clinical-only benchmark: every predictor is kept so that the
@@ -63,7 +62,6 @@ def main() -> None:
         output_dir=OUTPUT_DIR,
         n_iter=SEARCH_N_ITER[PHASE_KEY],
         cv=cv,
-        phase_title=PHASE_TITLE,
         apply_filter=APPLY_FILTER,
         logger=logger,
     )

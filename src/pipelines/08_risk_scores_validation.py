@@ -1,19 +1,22 @@
-"""Validate the clinical risk scores with ROC and PR curves."""
+"""Validate the clinical risk scores against the observed recurrences.
+
+Besides the summary metrics, the ROC and PR curve coordinates and the event
+rate are saved so that src/pipelines/plots/08_risk_scores_plots.py can draw the
+curves without re-evaluating the scores.
+"""
 
 from pathlib import Path
 
 from src.models.data_preprocessing import encode_target_variable
+from src.models.results_saving import save_curves_results, save_prevalence
 from src.models.risk_scores_validation import evaluate_risk_scores
 from src.data.data_cleaning import remove_prefix_from_columns
-from src.utils.io import read_parquet, save_csv, save_figure
+from src.utils.io import read_parquet, save_csv
 from src.utils.logging_utils import setup_logger
-from src.visualization.risk_scores_validation import plot_pr_curves, plot_roc_curves
 from src.config import TARGET_VARIABLE
 from src.utils.paths import (
     RISK_SCORES_DATA_PATH,
     RISK_SCORES_METRICS_PATH,
-    RISK_SCORES_PR_CURVE_PATH,
-    RISK_SCORES_ROC_CURVE_PATH,
     RISK_SCORES_VALIDATION_DIR,
 )
 
@@ -35,24 +38,29 @@ def main() -> None:
 
     # Prepare target variable
     target = encode_target_variable(df, TARGET_VARIABLE)
-    prevalence = target.mean()
 
     # Evaluate each score
     logger.info("Evaluating risk scores...")
     score_columns = [column for column in df.columns if column != TARGET_VARIABLE]
 
-    evaluation_df, roc_plot_data, pr_plot_data = evaluate_risk_scores(
+    evaluation_df, roc_curves, pr_curves = evaluate_risk_scores(
         df, target, score_columns
     )
     save_csv(evaluation_df, RISK_SCORES_METRICS_PATH)
 
-    logger.info("Plotting ROC curves...")
-    fig_roc = plot_roc_curves(roc_plot_data)
-    save_figure(fig_roc, RISK_SCORES_ROC_CURVE_PATH)
+    # The curves are drawn elsewhere, so their coordinates and the no-skill
+    # baseline they are compared against have to reach disk here.
+    logger.info(f"Saving the ROC and PR curve coordinates to {OUTPUT_DIR}...")
+    for curve_type, curves in (("roc", roc_curves), ("pr", pr_curves)):
+        save_curves_results(
+            [score for score, _, _, _ in curves],
+            [x_values for _, x_values, _, _ in curves],
+            [y_values for _, _, y_values, _ in curves],
+            curve_type=curve_type,
+            output_dir=OUTPUT_DIR,
+        )
 
-    logger.info("Plotting Precision-Recall curves...")
-    fig_pr = plot_pr_curves(pr_plot_data, prevalence)
-    save_figure(fig_pr, RISK_SCORES_PR_CURVE_PATH)
+    save_prevalence(target, OUTPUT_DIR)
 
 
 if __name__ == "__main__":

@@ -23,7 +23,6 @@ INPUT_FILE = CLEANED_PROTEOMIC_DATA_PATH
 OUTPUT_DIR = PROTEOMIC_MODELS_DIR
 
 PHASE_KEY = "proteomic"
-PHASE_TITLE = "proteomic data"
 SEARCH_SPACE = proteomic_hyperparameters_search_space
 APPLY_FILTER = True
 
@@ -63,7 +62,6 @@ def main() -> None:
         output_dir=OUTPUT_DIR,
         n_iter=SEARCH_N_ITER[PHASE_KEY],
         cv=cv,
-        phase_title=PHASE_TITLE,
         apply_filter=APPLY_FILTER,
         logger=logger,
     )

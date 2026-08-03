@@ -26,15 +26,15 @@ def evaluate_risk_scores(df, target, score_columns):
     evaluation_df : pd.DataFrame
         Summary metrics (columns: 'score', 'n_samples', 'roc_auc', 'average_precision'),
         sorted by ROC-AUC descending.
-    roc_plot_data : list of tuple
-        List of (score_name, fpr, tpr, roc_auc) for plotting ROC curves.
-    pr_plot_data : list of tuple
-        List of (score_name, recall, precision, average_precision) for plotting
-        PR curves.
+    roc_curves : list of tuple
+        List of (score_name, fpr, tpr, roc_auc), one per score.
+    pr_curves : list of tuple
+        List of (score_name, recall, precision, average_precision), one per
+        score.
     """
     evaluation_rows = []
-    roc_plot_data = []
-    pr_plot_data = []
+    roc_curves = []
+    pr_curves = []
 
     for column in score_columns:
         mask = df[column].notna() & target.notna()
@@ -54,11 +54,11 @@ def evaluate_risk_scores(df, target, score_columns):
                 "average_precision": average_precision,
             }
         )
-        roc_plot_data.append((column, fpr, tpr, roc_auc))
-        pr_plot_data.append((column, recall, precision, average_precision))
+        roc_curves.append((column, fpr, tpr, roc_auc))
+        pr_curves.append((column, recall, precision, average_precision))
 
     evaluation_df = pd.DataFrame(evaluation_rows).sort_values(
         "roc_auc", ascending=False
     )
 
-    return evaluation_df, roc_plot_data, pr_plot_data
+    return evaluation_df, roc_curves, pr_curves

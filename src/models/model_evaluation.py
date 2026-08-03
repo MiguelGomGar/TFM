@@ -160,23 +160,63 @@ def build_auc_table(metrics_df: pd.DataFrame, metric: str) -> pd.DataFrame:
     return table.sort_values(by="Score", ascending=False).reset_index(drop=True)
 
 
-def summarize_curve_areas(curves_by_model: dict, area_key: str) -> dict:
-    """Collect the area under the curve of every model.
+def load_curve_areas(metrics_df: pd.DataFrame, metric: str, model_order=None) -> dict:
+    """Collect the external validation area under the curve of every model.
+
+    Reads the areas back from the consolidated metrics table instead of the
+    in-memory curves, so the curve figures can be redrawn from disk alone.
 
     Parameters
     ----------
-    curves_by_model : dict
-        Mapping of model abbreviation to the curves dict returned by
-        evaluate_on_test.
-    area_key : str
-        Either 'roc_auc' or 'pr_auc'.
+    metrics_df : pd.DataFrame
+        Consolidated metrics with columns ['Model', 'Metric', 'Dataset',
+        'Score'], as saved in models_metrics.csv.
+    metric : str
+        Metric to extract, e.g. 'ROC-AUC' or 'PR-AUC'.
+    model_order : list of str, optional
+        Models to include, in legend order. Defaults to MODEL_ORDER, restricted
+        to the models actually present in metrics_df.
 
     Returns
     -------
     dict
         Mapping of model abbreviation to the requested area.
     """
-    return {model: curves[area_key] for model, curves in curves_by_model.items()}
+    model_order = MODEL_ORDER if model_order is None else model_order
+    selection = metrics_df[
+        (metrics_df["Dataset"] == "Test") & (metrics_df["Metric"] == metric)
+    ]
+    areas = dict(zip(selection["Model"], selection["Score"]))
+    return {model: areas[model] for model in model_order if model in areas}
+
+
+def build_internal_validation_table(
+    internal_validation_by_model: dict, model_order=None
+) -> pd.DataFrame:
+    """Stack the per-model internal validation summaries into one ordered table.
+
+    Parameters
+    ----------
+    internal_validation_by_model : dict
+        Mapping of model abbreviation to its internal-validation DataFrame, as
+        returned by summarize_internal_validation or load_internal_validation.
+    model_order : list of str, optional
+        Reporting order of the models. Defaults to MODEL_ORDER.
+
+    Returns
+    -------
+    pd.DataFrame
+        Concatenation of the summaries, sorted by the reporting order.
+    """
+    model_order = MODEL_ORDER if model_order is None else model_order
+
+    table = pd.concat(internal_validation_by_model.values(), ignore_index=True)
+    table["Model"] = pd.Categorical(
+        table["Model"], categories=model_order, ordered=True
+    )
+    table = table.sort_values(by="Model")
+    table["Model"] = table["Model"].astype(str)
+    return table
 
 
 def build_modality_comparison_table(

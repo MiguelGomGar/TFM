@@ -592,6 +592,39 @@ SHAP_LOCAL_CASES = [
     "Borderline",
 ]
 
+# %% MODELLING FIGURES — pipelines/plots/09
+# One entry per modelling arm produced by pipelines 09 to 12, in reporting
+# order. The plotting pipeline redraws each arm's charts from the tables its
+# modelling pipeline left in "input_dir"; "phase_title" is the suffix appended
+# to the figure titles and "baseline" the reference line of the bar charts.
+MODELLING_PHASES = [
+    {
+        "input_dir": CLINICAL_MODELS_DIR,
+        "phase_title": "clinical data",
+        "baseline": RISK_SCORE_BASELINE,
+    },
+    {
+        "input_dir": CLINICAL_MODELS_FILTERED_DIR,
+        "phase_title": "filtered clinical data",
+        "baseline": RISK_SCORE_BASELINE,
+    },
+    {
+        "input_dir": PROTEOMIC_MODELS_DIR,
+        "phase_title": "proteomic data",
+        "baseline": RISK_SCORE_BASELINE,
+    },
+    {
+        "input_dir": CLINICAL_MODELS_MATCHED_DIR,
+        "phase_title": "matched clinical data",
+        "baseline": RISK_SCORE_BASELINE,
+    },
+    {
+        "input_dir": MULTIMODAL_MODELS_DIR,
+        "phase_title": "multimodal data",
+        "baseline": RISK_SCORE_BASELINE,
+    },
+]
+
 # %% MODALITY COMPARISON — pipeline 13
 # Each entry compares two or more modelling arms trained on the same cohort
 # and split. "extra_arms" lists additional arms (label, metrics_file) shown

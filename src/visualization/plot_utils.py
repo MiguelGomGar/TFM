@@ -3,6 +3,30 @@
 from collections.abc import Iterable
 
 import matplotlib.pyplot as plt
+import pandas as pd
+
+
+def category_levels(values: pd.Series) -> list:
+    """List the levels of a grouping column in reporting order.
+
+    Reads the order off the categorical dtype when it is still there, and falls
+    back to the order of appearance otherwise: a CSV round-trip drops the dtype,
+    and the tables saved by the computing pipelines are written in level order
+    precisely so that the fallback reproduces it.
+
+    Parameters
+    ----------
+    values : pd.Series
+        Grouping column, categorical or plain.
+
+    Returns
+    -------
+    list
+        Levels, in the order they should be plotted.
+    """
+    if isinstance(values.dtype, pd.CategoricalDtype):
+        return list(values.cat.categories)
+    return list(pd.unique(values.dropna()))
 
 
 def label_bars(

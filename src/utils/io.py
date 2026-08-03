@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+import joblib
 import pandas as pd
 import gc
 import matplotlib
@@ -202,6 +203,69 @@ def save_parquet(dataframe: pd.DataFrame, file_path: str | Path, **kwargs: Any) 
         dataframe.to_parquet(path, index=False, **kwargs)
     except Exception as exc:  # pragma: no cover - pandas backend errors vary
         raise RuntimeError(f"Unable to write Parquet file: {path}") from exc
+
+    return path
+
+
+def read_joblib(file_path: str | Path) -> Any:
+    """Load any Python object previously serialized with joblib.
+
+    Parameters
+    ----------
+    file_path : str or Path
+        Path to the joblib file.
+
+    Returns
+    -------
+    Any
+        The deserialized object, e.g. a fitted pipeline or a SHAP explanation.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file does not exist.
+    RuntimeError
+        If the file cannot be deserialized.
+    """
+    path = _as_path(file_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Joblib file not found: {path}")
+
+    try:
+        obj = joblib.load(path)
+    except Exception as exc:  # pragma: no cover - pickle errors vary
+        raise RuntimeError(f"Unable to read joblib file: {path}") from exc
+
+    return obj
+
+
+def save_joblib(obj: Any, file_path: str | Path, **kwargs: Any) -> Path:
+    """Serialize a Python object with joblib and return the output path.
+
+    Parameters
+    ----------
+    obj : Any
+        Object to serialize, e.g. a fitted pipeline or a SHAP explanation.
+    file_path : str or Path
+        Output file path. If no suffix, ".joblib" is appended.
+    **kwargs : dict
+        Additional keyword arguments passed to joblib.dump().
+
+    Returns
+    -------
+    Path
+        Path where the file was saved.
+
+    Raises
+    ------
+    RuntimeError
+        If the object cannot be serialized.
+    """
+    path = _prepare_output_path(file_path, ".joblib")
+    try:
+        joblib.dump(obj, path, **kwargs)
+    except Exception as exc:  # pragma: no cover - pickle errors vary
+        raise RuntimeError(f"Unable to write joblib file: {path}") from exc
 
     return path
 

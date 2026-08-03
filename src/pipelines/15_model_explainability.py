@@ -16,7 +16,9 @@ from the fitted multimodal pipelines and answers three questions:
 
 The analysis is restricted to the multimodal arm, the only one where the block
 comparison is possible at all. The fitted pipelines are reloaded as-is from
-disk; nothing is retrained.
+disk; nothing is retrained. The SHAP figures are drawn from the tables and the
+serialized explanations saved here by
+src/pipelines/plots/15_explainability_plots.py.
 
 Note on scope: the 35 predictors explained here already survived the Elastic
 Net selection of phases 1b and 2, so these figures describe importance *within
@@ -34,20 +36,24 @@ from src.models.model_explainability import (
     build_ranking_comparison_table,
     compute_rank_correlations,
     explain_model,
+    save_explanation,
 )
-from src.utils.io import read_parquet, save_csv, save_figure, slugify
+from src.utils.filenames import (
+    BLOCK_CONTRIBUTION_FILE,
+    LOCAL_CASES_FILE,
+    RANKING_COMPARISON_FILE,
+    RANK_CORRELATIONS_FILE,
+    SHAP_IMPORTANCE_FILE,
+    SHAP_VALIDATION_FILE,
+    SHAP_VALUES_FILE,
+)
+from src.utils.io import read_parquet, save_csv
 from src.utils.logging_utils import setup_logger
 from src.utils.paths import (
     BEST_MODEL_DIR,
     CLEANED_MULTIMODAL_DATA_PATH,
     EXPLAINABILITY_DIR,
     MULTIMODAL_MODELS_DIR,
-)
-from src.visualization.model_explainability import (
-    plot_ranking_comparison,
-    plot_shap_bar,
-    plot_shap_summary,
-    plot_shap_waterfall,
 )
 
 INPUT_FILE = CLEANED_MULTIMODAL_DATA_PATH
@@ -77,37 +83,22 @@ def main() -> None:
     # Save per-model results
     # ------------------------------------------------------------------
     for abbreviation, result in results.items():
-        save_csv(result["importance"], OUTPUT_DIR / f"shap_importance_{abbreviation}.csv")
-        save_csv(result["shap_values_table"], OUTPUT_DIR / f"shap_values_{abbreviation}.csv")
-        save_csv(result["local_cases"], OUTPUT_DIR / f"local_cases_{abbreviation}.csv")
-
-        figure = plot_shap_bar(
+        save_csv(
             result["importance"],
-            result["blocks"],
-            title=f"{abbreviation} — global SHAP importance",
+            OUTPUT_DIR / SHAP_IMPORTANCE_FILE.format(model=abbreviation),
         )
-        save_figure(figure, OUTPUT_DIR / f"shap_importance_{abbreviation}.png")
-
-        figure = plot_shap_summary(
-            result["explanation"], title=f"{abbreviation} — SHAP summary"
+        save_csv(
+            result["shap_values_table"],
+            OUTPUT_DIR / SHAP_VALUES_FILE.format(model=abbreviation),
         )
-        save_figure(figure, OUTPUT_DIR / f"shap_summary_{abbreviation}.png")
+        save_csv(
+            result["local_cases"], OUTPUT_DIR / LOCAL_CASES_FILE.format(model=abbreviation)
+        )
 
-        for _, case in result["local_cases"].iterrows():
-            if case["Case"] == "Borderline":
-                continue
-            figure = plot_shap_waterfall(
-                result["explanation"],
-                case_index=int(case["Test_Index"]),
-                title=(
-                    f"{abbreviation} — {case['Case']} (patient #{int(case['Test_Index'])}, "
-                    f"actual: {'recurrence' if case['True_Label'] == 1 else 'no recurrence'})"
-                ),
-            )
-            save_figure(
-                figure,
-                OUTPUT_DIR / f"shap_waterfall_{abbreviation}_{slugify(case['Case'])}.png",
-            )
+        # The beeswarm and waterfall figures need the explanation object itself,
+        # which no table can reconstruct, so it is serialized for the plotting
+        # pipeline instead of being recomputed there.
+        save_explanation(result["explanation"], OUTPUT_DIR, abbreviation)
 
     # ------------------------------------------------------------------
     # Cross-model comparisons
@@ -117,13 +108,12 @@ def main() -> None:
     }
 
     ranking_comparison = build_ranking_comparison_table(importance_by_model)
-    save_csv(ranking_comparison, OUTPUT_DIR / "ranking_comparison.csv")
-    save_figure(plot_ranking_comparison(ranking_comparison), OUTPUT_DIR / "ranking_comparison.png")
+    save_csv(ranking_comparison, OUTPUT_DIR / RANKING_COMPARISON_FILE)
 
     # Reported as a table only: three pairwise coefficients do not warrant a
     # figure of their own.
     rank_correlations = compute_rank_correlations(importance_by_model)
-    save_csv(rank_correlations, OUTPUT_DIR / "rank_correlations.csv")
+    save_csv(rank_correlations, OUTPUT_DIR / RANK_CORRELATIONS_FILE)
     for _, row in rank_correlations.iterrows():
         logger.info(
             f"Ranking agreement {row['Model_A']} vs {row['Model_B']}: "
@@ -136,12 +126,12 @@ def main() -> None:
     block_contribution = pd.concat(
         [result["block_contribution"] for result in results.values()], ignore_index=True
     )
-    save_csv(block_contribution, OUTPUT_DIR / "block_contribution.csv")
+    save_csv(block_contribution, OUTPUT_DIR / BLOCK_CONTRIBUTION_FILE)
 
     validation = pd.concat(
         [result["validation"] for result in results.values()], ignore_index=True
     )
-    save_csv(validation, OUTPUT_DIR / "shap_validation.csv")
+    save_csv(validation, OUTPUT_DIR / SHAP_VALIDATION_FILE)
     if not validation["Passed"].all():
         logger.error("Additivity check FAILED for at least one model; see shap_validation.csv.")
 

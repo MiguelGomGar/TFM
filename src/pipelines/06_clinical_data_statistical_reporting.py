@@ -1,10 +1,13 @@
-"""Generate statistical reporting plots and tables."""
+"""Compute the descriptive statistics of the clinical dataset, plus table 1.
+
+The distribution, Q-Q and stratified tables saved here are turned into figures
+by src/pipelines/plots/06_clinical_statistical_plots.py.
+"""
 
 from pathlib import Path
 
-import pandas as pd
-
 from src.data.statistical_analysis import (
+    build_qq_table,
     compute_numeric_distribution,
     compute_categorical_distribution,
     compute_stratified_numeric_distribution,
@@ -13,19 +16,17 @@ from src.data.statistical_analysis import (
     create_table1,
 )
 from src.utils.dataframe_utils import get_categorical_columns, get_numeric_columns
-from src.utils.io import read_parquet, save_csv, save_figure
+from src.utils.filenames import (
+    DISTRIBUTION_FILE,
+    QQ_FILE,
+    STRATIFIED_DISTRIBUTION_FILE,
+)
+from src.utils.io import read_parquet, save_csv
 from src.utils.logging_utils import setup_logger
 from src.utils.paths import (
     CLEANED_CLINICAL_DATA_PATH,
     CLINICAL_EDA_DIR,
     TABLE1_PATH,
-)
-from src.visualization.statistical_analysis import (
-    plot_numeric_distribution,
-    plot_categorical_distribution,
-    plot_stratified_numeric_distribution,
-    plot_stratified_categorical_distribution,
-    plot_qq,
 )
 from src.config import TARGET_VARIABLE, GROUP_ALLOCATION_VARIABLE, NON_NORMAL_VARIABLES
 
@@ -44,75 +45,55 @@ def main() -> None:
     numeric_features = get_numeric_columns(clinical_data)
     categorical_features = get_categorical_columns(clinical_data)
 
-    logger.info("Plotting global distributions for numeric features...")
+    logger.info("Computing global distributions for numeric features...")
     for feature in numeric_features:
         numeric_values = compute_numeric_distribution(clinical_data, feature)
-        fig = plot_numeric_distribution(numeric_values, feature)
-        save_figure(fig, OUTPUT_DIR / f"distribution_{feature}.png")
-        save_csv(numeric_values.to_frame(name=feature), OUTPUT_DIR / f"distribution_{feature}.csv")
+        save_csv(
+            numeric_values.to_frame(name=feature),
+            OUTPUT_DIR / DISTRIBUTION_FILE.format(feature=feature),
+        )
 
-    logger.info("Generating Q-Q plots for numeric features...")
+    logger.info("Computing Q-Q coordinates for numeric features...")
     for feature in numeric_features:
         qq_data = compute_qq(clinical_data, feature)
-        fig = plot_qq(qq_data)
-        save_figure(fig, OUTPUT_DIR / f"distribution_{feature}_QQ.png")
-        qq_df = pd.DataFrame(
-            {
-                "theoretical_quantiles": qq_data["osm"],
-                "observed_quantiles": qq_data["osr"],
-                "ci_lower": qq_data["y_lower"],
-                "ci_upper": qq_data["y_upper"],
-            }
-        )
-        save_csv(qq_df, OUTPUT_DIR / f"distribution_{feature}_QQ.csv")
+        save_csv(build_qq_table(qq_data), OUTPUT_DIR / QQ_FILE.format(feature=feature))
 
-    logger.info("Plotting stratified distributions for numeric features...")
+    logger.info("Computing stratified distributions for numeric features...")
     for target_var in [GROUP_ALLOCATION_VARIABLE, TARGET_VARIABLE]:
         for feature in numeric_features:
             stratified_data = compute_stratified_numeric_distribution(
                 clinical_data, feature, target_var
             )
-            fig = plot_stratified_numeric_distribution(
-                stratified_data, feature, target_var
-            )
-            save_figure(
-                fig,
-                OUTPUT_DIR / f"distribution_{feature}_stratified_by_{target_var}.png",
-            )
             save_csv(
                 stratified_data,
-                OUTPUT_DIR / f"distribution_{feature}_stratified_by_{target_var}.csv",
+                OUTPUT_DIR
+                / STRATIFIED_DISTRIBUTION_FILE.format(
+                    feature=feature, group=target_var
+                ),
             )
 
-    logger.info("Plotting global distributions for categorical features...")
+    logger.info("Computing global distributions for categorical features...")
     for feature in categorical_features:
         categorical_summary = compute_categorical_distribution(clinical_data, feature)
-        fig = plot_categorical_distribution(categorical_summary, feature)
-        save_figure(fig, OUTPUT_DIR / f"distribution_{feature}.png")
-        save_csv(categorical_summary, OUTPUT_DIR / f"distribution_{feature}.csv")
+        save_csv(
+            categorical_summary, OUTPUT_DIR / DISTRIBUTION_FILE.format(feature=feature)
+        )
 
-    logger.info("Plotting stratified distributions for categorical features...")
+    logger.info("Computing stratified distributions for categorical features...")
     for feature in categorical_features:
         if feature == target_var:
             continue
         stratified_data = compute_stratified_categorical_distribution(
             clinical_data, feature, target_var
         )
-        fig = plot_stratified_categorical_distribution(
-            stratified_data, feature, target_var
-        )
-        save_figure(
-            fig,
-            OUTPUT_DIR / f"distribution_{feature}_stratified_by_{target_var}.png",
-        )
         save_csv(
             stratified_data,
-            OUTPUT_DIR / f"distribution_{feature}_stratified_by_{target_var}.csv",
+            OUTPUT_DIR
+            / STRATIFIED_DISTRIBUTION_FILE.format(feature=feature, group=target_var),
             index=True,
         )
 
     logger.info(f"Creating table 1 stratified by {TARGET_VARIABLE}...")
-    categorical_features = get_categorical_columns(clinical_data)
     table1 = create_table1(
         df=clinical_data,
         target_var=TARGET_VARIABLE,

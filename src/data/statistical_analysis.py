@@ -73,7 +73,10 @@ def compute_stratified_numeric_distribution(
     Returns
     -------
     pd.DataFrame
-        Two-column dataframe with col_name and target_var, NaN rows removed.
+        Two-column dataframe with col_name and target_var, NaN rows removed and
+        rows ordered by the levels of target_var. That ordering is what lets the
+        plotting pipeline recover the level order from the saved CSV, which no
+        longer carries the categorical dtype.
 
     Raises
     ------
@@ -83,7 +86,8 @@ def compute_stratified_numeric_distribution(
     if not np.issubdtype(df[col_name].dtype, np.number):
         raise ValueError(f"The column {col_name} must be numeric.")
 
-    return df[[col_name, target_var]].dropna()
+    stratified = df[[col_name, target_var]].dropna()
+    return stratified.sort_values(by=target_var, kind="stable")
 
 
 def compute_stratified_categorical_distribution(
@@ -166,6 +170,71 @@ def compute_qq(df: pd.DataFrame, feature: str, ci_level: float = 0.95):
         "y_line_y": slope * np.linspace(osm.min(), osm.max(), 100) + intercept,
         "y_lower": y_fit_obs - crit * se,
         "y_upper": y_fit_obs + crit * se,
+    }
+
+
+def build_qq_table(qq_data: dict) -> pd.DataFrame:
+    """Flatten the output of ``compute_qq`` into a saveable table.
+
+    Everything ``plot_qq`` needs is preserved: the per-point coordinates become
+    columns and the four scalars are repeated down the rows. The normal-fit line
+    is not stored because it is fully determined by the slope, the intercept and
+    the range of the theoretical quantiles (see ``load_qq_data``).
+
+    Parameters
+    ----------
+    qq_data : dict
+        Dictionary returned by compute_qq().
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns ['feature', 'ci_level', 'slope', 'intercept',
+        'theoretical_quantiles', 'observed_quantiles', 'ci_lower', 'ci_upper'].
+    """
+    return pd.DataFrame(
+        {
+            "feature": qq_data["feature"],
+            "ci_level": qq_data["ci_level"],
+            "slope": qq_data["slope"],
+            "intercept": qq_data["intercept"],
+            "theoretical_quantiles": qq_data["osm"],
+            "observed_quantiles": qq_data["osr"],
+            "ci_lower": qq_data["y_lower"],
+            "ci_upper": qq_data["y_upper"],
+        }
+    )
+
+
+def load_qq_data(qq_table: pd.DataFrame) -> dict:
+    """Rebuild the ``compute_qq`` dictionary from a saved Q-Q table.
+
+    Parameters
+    ----------
+    qq_table : pd.DataFrame
+        Table produced by build_qq_table() and read back from disk.
+
+    Returns
+    -------
+    dict
+        Same structure as compute_qq(), ready to be passed to plot_qq().
+    """
+    osm = qq_table["theoretical_quantiles"].to_numpy()
+    slope = float(qq_table["slope"].iloc[0])
+    intercept = float(qq_table["intercept"].iloc[0])
+    y_line_x = np.linspace(osm.min(), osm.max(), 100)
+
+    return {
+        "feature": qq_table["feature"].iloc[0],
+        "ci_level": float(qq_table["ci_level"].iloc[0]),
+        "osm": osm,
+        "osr": qq_table["observed_quantiles"].to_numpy(),
+        "slope": slope,
+        "intercept": intercept,
+        "y_line_x": y_line_x,
+        "y_line_y": slope * y_line_x + intercept,
+        "y_lower": qq_table["ci_lower"].to_numpy(),
+        "y_upper": qq_table["ci_upper"].to_numpy(),
     }
 
 

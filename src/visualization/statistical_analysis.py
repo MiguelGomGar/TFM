@@ -13,7 +13,7 @@ import pandas as pd
 import seaborn as sns
 
 from src.config import CATEGORICAL_COLOR_MAP
-from src.visualization.plot_utils import label_bars
+from src.visualization.plot_utils import category_levels, label_bars
 
 
 def plot_numeric_distribution(series: pd.Series, col_name: str) -> plt.Figure:
@@ -128,7 +128,7 @@ def plot_stratified_numeric_distribution(
     matplotlib.figure.Figure
         Violin plot figure.
     """
-    levels = list(df_summary[target_var].cat.categories)
+    levels = category_levels(df_summary[target_var])
     palette_dict = {
         str(level): CATEGORICAL_COLOR_MAP[i % len(CATEGORICAL_COLOR_MAP)]
         for i, level in enumerate(levels)

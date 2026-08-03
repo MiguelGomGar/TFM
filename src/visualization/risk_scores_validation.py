@@ -1,6 +1,7 @@
 """Evaluation metrics visualization."""
 
 import matplotlib
+import pandas as pd
 
 # Select a non-interactive backend before pyplot is imported (see io.save_figure).
 matplotlib.use("Agg", force=True)
@@ -8,15 +9,26 @@ matplotlib.use("Agg", force=True)
 import matplotlib.pyplot as plt
 
 
+def _curve_order(curves_df: pd.DataFrame) -> list:
+    """List the scores of a curves table in their order of appearance."""
+    return list(dict.fromkeys(curves_df["Model"]))
+
+
 def plot_roc_curves(
-    roc_plot_data: list[tuple], title: str = "ROC curves for risk scores"
-):
-    """Plot ROC curves for multiple models/scores.
+    curves_df: pd.DataFrame,
+    auc_by_score: dict,
+    title: str = "ROC curves for risk scores",
+) -> plt.Figure:
+    """Plot ROC curves for multiple risk scores.
 
     Parameters
     ----------
-    roc_plot_data : list of tuple
-        List of (label, fpr, tpr, auc) tuples for each curve.
+    curves_df : pd.DataFrame
+        Long-format curve coordinates with columns ['False Positive Rate',
+        'True Positive Rate', 'Model'], as saved by save_curves_results. One
+        curve is drawn per distinct 'Model' value, in order of appearance.
+    auc_by_score : dict
+        Mapping of score name to its ROC-AUC, shown in the legend.
     title : str, default 'ROC curves for risk scores'
         Plot title.
 
@@ -27,8 +39,14 @@ def plot_roc_curves(
     """
     fig, ax = plt.subplots(figsize=(7, 6))
 
-    for column, fpr, tpr, roc_auc in roc_plot_data:
-        ax.plot(fpr, tpr, linewidth=2, label=f"{column} (AUC = {roc_auc:.3f})")
+    for score in _curve_order(curves_df):
+        curve = curves_df[curves_df["Model"] == score]
+        ax.plot(
+            curve["False Positive Rate"],
+            curve["True Positive Rate"],
+            linewidth=2,
+            label=f"{score} (AUC = {auc_by_score[score]:.3f})",
+        )
 
     ax.plot([0, 1], [0, 1], linestyle="--", color="grey", label="Random")
     ax.set_title(title)
@@ -42,16 +60,21 @@ def plot_roc_curves(
 
 
 def plot_pr_curves(
-    pr_plot_data: list[tuple],
+    curves_df: pd.DataFrame,
+    pr_auc_by_score: dict,
     prevalence: float,
     title: str = "Precision-recall curves for risk scores",
-):
-    """Plot Precision-Recall curves for multiple models/scores.
+) -> plt.Figure:
+    """Plot Precision-Recall curves for multiple risk scores.
 
     Parameters
     ----------
-    pr_plot_data : list of tuple
-        List of (label, recall, precision, auc) tuples for each curve.
+    curves_df : pd.DataFrame
+        Long-format curve coordinates with columns ['Recall', 'Precision',
+        'Model'], as saved by save_curves_results. One curve is drawn per
+        distinct 'Model' value, in order of appearance.
+    pr_auc_by_score : dict
+        Mapping of score name to its average precision, shown in the legend.
     prevalence : float
         Event rate (0-1) for the no-skill baseline reference line.
     title : str, default 'Precision-recall curves for risk scores'
@@ -64,12 +87,13 @@ def plot_pr_curves(
     """
     fig, ax = plt.subplots(figsize=(7, 6))
 
-    for column, recall, precision, average_precision in pr_plot_data:
+    for score in _curve_order(curves_df):
+        curve = curves_df[curves_df["Model"] == score]
         ax.plot(
-            recall,
-            precision,
+            curve["Recall"],
+            curve["Precision"],
             linewidth=2,
-            label=f"{column} (AUC = {average_precision:.3f})",
+            label=f"{score} (AUC = {pr_auc_by_score[score]:.3f})",
         )
 
     ax.axhline(

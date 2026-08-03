@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Orchestrator: ejecuta todos los pipelines secuencialmente con logging unificado."""
 
+import argparse
 import importlib
 import sys
 import time
@@ -32,8 +33,7 @@ PIPELINES = [
 
 # Pipelines de modelado. Son órdenes de magnitud más lentos que los anteriores
 # (búsqueda aleatoria de hiperparámetros sobre ocho modelos y cuatro fases), así
-# que se mantienen en una lista aparte: para omitirlos, basta con no concatenarla
-# a PIPELINES en main().
+# que se mantienen en una lista aparte y se pueden omitir con --skip-modelling.
 MODELLING_PIPELINES = [
     ("src.pipelines.09_clinical_modelling", "Modelado clínico (fase 1)"),
     (
@@ -53,6 +53,88 @@ MODELLING_PIPELINES = [
         "Explicabilidad SHAP de los tres mejores modelos",
     ),
 ]
+
+# Pipelines de figuras. Solo leen los resultados que dejaron en results/ los
+# pipelines anteriores, así que --only-plots regenera todas las figuras del TFM
+# en segundos, sin recalcular ni reentrenar nada. Se dividen en dos listas para
+# que --skip-modelling omita también las figuras de las fases de modelado, cuyos
+# datos de entrada no existirían.
+PLOT_PIPELINES = [
+    (
+        "src.pipelines.plots.01_clinical_variables_review_plots",
+        "Figura: revisión de variables clínicas",
+    ),
+    ("src.pipelines.plots.03_missing_values_plots", "Figuras: valores faltantes"),
+    ("src.pipelines.plots.04_collinearity_plots", "Figuras: colinealidad"),
+    (
+        "src.pipelines.plots.06_clinical_statistical_plots",
+        "Figuras: distribuciones clínicas",
+    ),
+    (
+        "src.pipelines.plots.07_proteomic_statistical_plots",
+        "Figuras: distribuciones proteómicas",
+    ),
+    ("src.pipelines.plots.08_risk_scores_plots", "Figuras: curvas de los risk scores"),
+]
+
+MODELLING_PLOT_PIPELINES = [
+    (
+        "src.pipelines.plots.09_modelling_phases_plots",
+        "Figuras: fases de modelado (09 a 12)",
+    ),
+    (
+        "src.pipelines.plots.13_modality_comparison_plots",
+        "Figuras: comparación entre modalidades",
+    ),
+    ("src.pipelines.plots.14_best_model_plots", "Figuras: análisis del umbral"),
+    ("src.pipelines.plots.15_explainability_plots", "Figuras: explicabilidad SHAP"),
+]
+
+
+def parse_args(argv=None) -> argparse.Namespace:
+    """Interpreta los argumentos de línea de comandos del orquestador."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--skip-modelling",
+        action="store_true",
+        help="Omite las fases de modelado (09 a 15), que son las lentas.",
+    )
+    parser.add_argument(
+        "--skip-plots",
+        action="store_true",
+        help="Calcula y guarda los resultados, sin generar ninguna figura.",
+    )
+    parser.add_argument(
+        "--only-plots",
+        action="store_true",
+        help="Regenera solo las figuras, a partir de los resultados ya guardados.",
+    )
+    args = parser.parse_args(argv)
+    if args.only_plots and (args.skip_plots or args.skip_modelling):
+        parser.error("--only-plots no se puede combinar con --skip-plots ni --skip-modelling.")
+    return args
+
+
+def select_pipelines(args: argparse.Namespace) -> list[tuple[str, str]]:
+    """Construye la lista ordenada de pipelines a ejecutar.
+
+    Primero todo el cálculo y después todas las figuras, de modo que un fallo al
+    dibujar no impida que los resultados queden guardados.
+    """
+    with_modelling = not args.skip_modelling
+    with_plots = not args.skip_plots
+
+    if args.only_plots:
+        return PLOT_PIPELINES + MODELLING_PLOT_PIPELINES
+
+    pipelines = list(PIPELINES)
+    if with_modelling:
+        pipelines += MODELLING_PIPELINES
+    if with_plots:
+        pipelines += PLOT_PIPELINES
+        if with_modelling:
+            pipelines += MODELLING_PLOT_PIPELINES
+    return pipelines
 
 
 def run_pipeline(module_name: str, description: str, logger) -> float:
@@ -76,10 +158,10 @@ def run_pipeline(module_name: str, description: str, logger) -> float:
     return elapsed
 
 
-def main() -> None:
+def main(argv=None) -> None:
     overall_start = time.perf_counter()
 
-    pipelines = PIPELINES + MODELLING_PIPELINES
+    pipelines = select_pipelines(parse_args(argv))
 
     # ── Logger del orquestador (consola + archivo único) ──────────────────────
     log_dir = LOGS_DIR / "orchestrator"

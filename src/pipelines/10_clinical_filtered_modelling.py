@@ -28,7 +28,6 @@ INPUT_FILE = CLEANED_CLINICAL_DATA_PATH
 OUTPUT_DIR = CLINICAL_MODELS_FILTERED_DIR
 
 PHASE_KEY = "clinical_filtered"
-PHASE_TITLE = "filtered clinical data"
 SEARCH_SPACE = clinical_hyperparameters_search_space
 APPLY_FILTER = True
 
@@ -68,7 +67,6 @@ def main() -> None:
         output_dir=OUTPUT_DIR,
         n_iter=SEARCH_N_ITER[PHASE_KEY],
         cv=cv,
-        phase_title=PHASE_TITLE,
         apply_filter=APPLY_FILTER,
         logger=logger,
     )

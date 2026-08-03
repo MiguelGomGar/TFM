@@ -10,7 +10,6 @@ from src.config import (
     MODEL_ORDER,
     N_JOBS,
     OBJECTIVE_METRIC,
-    RISK_SCORE_BASELINE,
     SCORING_METRICS,
     SEED,
 )
@@ -18,24 +17,20 @@ from src.models.feature_selection import (
     apply_feature_filter,
     select_features_with_elastic_net,
 )
-from src.models.model_evaluation import (
-    build_auc_table,
-    evaluate_on_test,
-    summarize_curve_areas,
-)
+from src.models.model_evaluation import build_auc_table, evaluate_on_test
 from src.models.model_zoo import build_model_pipeline, get_display_name
-from src.utils.io import save_csv, save_figure
 from src.models.results_saving import (
     save_curves_results,
     save_metrics_results,
     save_model,
+    save_prevalence,
 )
-from src.visualization.model_evaluation import (
-    plot_internal_validation,
-    plot_metric_by_model,
-    plot_model_pr_curves,
-    plot_model_roc_curves,
+from src.utils.filenames import (
+    AUC_BY_MODEL_FILE,
+    BEST_PARAMS_FILE,
+    INTERNAL_VALIDATION_FILE,
 )
+from src.utils.io import save_csv
 
 
 def optimize_model(
@@ -208,21 +203,23 @@ def run_modelling_phase(
     output_dir,
     n_iter: int,
     cv,
-    phase_title: str = "",
     apply_filter: bool = False,
     seed: int = SEED,
     model_order=None,
     scoring=None,
     objective_metric: str = OBJECTIVE_METRIC,
-    baseline=None,
     logger=None,
 ) -> pd.DataFrame:
-    """Train, tune, evaluate and report every model of one modelling phase.
+    """Train, tune and evaluate every model of one modelling phase.
 
     The Elastic Net is always fitted first on the full feature set. When
     ``apply_filter`` is True, the predictors whose coefficients it shrank to
     zero are dropped before the remaining models are trained, which is the
     feature selection strategy described in the methodology.
+
+    No figure is drawn here: every result is written to ``output_dir`` and the
+    corresponding charts are produced from those files by
+    ``src/pipelines/plots/09_modelling_phases_plots.py``.
 
     Parameters
     ----------
@@ -233,13 +230,11 @@ def run_modelling_phase(
     search_spaces : dict
         Hyperparameter search spaces keyed by model abbreviation.
     output_dir : str or Path
-        Directory where every figure, table and fitted model is written.
+        Directory where every table and fitted model is written.
     n_iter : int
         Randomized search budget for this phase.
     cv : sklearn cross-validation splitter
         Splitter used both by the search and by the internal validation.
-    phase_title : str, default ''
-        Suffix appended to the plot titles, e.g. 'clinical data'.
     apply_filter : bool, default False
         Whether to restrict the non-Elastic-Net models to the selected features.
     seed : int, default SEED
@@ -250,9 +245,6 @@ def run_modelling_phase(
         Metric label to scorer name mapping. Defaults to SCORING_METRICS.
     objective_metric : str, default OBJECTIVE_METRIC
         Key of ``scoring`` maximized by the randomized search.
-    baseline : dict, optional
-        Metric label to reference value for the bar plots. Defaults to
-        RISK_SCORE_BASELINE.
     logger : logging.Logger, optional
         Logger used to report progress.
 
@@ -265,7 +257,6 @@ def run_modelling_phase(
     """
     model_order = MODEL_ORDER if model_order is None else model_order
     scoring = SCORING_METRICS if scoring is None else scoring
-    baseline = RISK_SCORE_BASELINE if baseline is None else baseline
     aim = scoring[objective_metric]
 
     output_dir = Path(output_dir)
@@ -274,7 +265,6 @@ def run_modelling_phase(
     metrics_by_model = {}
     curves_by_model = {}
     best_params_by_model = {}
-    internal_validation_summaries = []
 
     # The feature selection model is fitted first on every available predictor:
     # its regularization defines the filter applied to the remaining models.
@@ -330,9 +320,9 @@ def run_modelling_phase(
 
         summary = summarize_internal_validation(cv_results, abbreviation)
         save_csv(
-            summary, output_dir / f"internal_validation_{abbreviation.lower()}.csv"
+            summary,
+            output_dir / INTERNAL_VALIDATION_FILE.format(model=abbreviation.lower()),
         )
-        internal_validation_summaries.append(summary)
 
         # Derive the filter right after the selection model has been tuned.
         if abbreviation == selection_model:
@@ -356,29 +346,13 @@ def run_modelling_phase(
                     )
 
     if logger is not None:
-        logger.info("Saving metrics, curves and plots...")
+        logger.info("Saving metrics and curves...")
 
-    title_suffix = f" ({phase_title})" if phase_title else ""
-
-    internal_validation_df = pd.concat(
-        internal_validation_summaries, ignore_index=True
-    )
-    internal_validation_df["Model"] = pd.Categorical(
-        internal_validation_df["Model"], categories=model_order, ordered=True
-    )
-    internal_validation_df = internal_validation_df.sort_values(by="Model")
-    internal_validation_df["Model"] = internal_validation_df["Model"].astype(str)
-
-    for metric in scoring:
-        figure = plot_internal_validation(
-            internal_validation_df,
-            metric=metric,
-            title=f"Overfitting analysis: {metric}{title_suffix}",
-        )
-        save_figure(
-            figure,
-            output_dir / f"internal_validation_{metric.lower().replace('-', '_')}.png",
-        )
+    # The figures of this phase are drawn separately, by
+    # src/pipelines/plots/09_modelling_phases_plots.py, from the files written
+    # below. Everything they need must therefore reach disk here, including the
+    # prevalence of the external validation set.
+    save_prevalence(y_test, output_dir)
 
     # Reorder to the reporting order before consolidating the results.
     metrics_by_model = {
@@ -388,17 +362,17 @@ def run_modelling_phase(
         models_dict=metrics_by_model, output_dir=output_dir
     )
     save_csv(
-        _build_best_params_table(best_params_by_model), output_dir / "best_params.csv"
+        _build_best_params_table(best_params_by_model), output_dir / BEST_PARAMS_FILE
     )
 
-    roc_curves = save_curves_results(
+    save_curves_results(
         model_order,
         [curves_by_model[model]["fpr"] for model in model_order],
         [curves_by_model[model]["tpr"] for model in model_order],
         curve_type="roc",
         output_dir=output_dir,
     )
-    pr_curves = save_curves_results(
+    save_curves_results(
         model_order,
         [curves_by_model[model]["recall"] for model in model_order],
         [curves_by_model[model]["precision"] for model in model_order],
@@ -406,30 +380,10 @@ def run_modelling_phase(
         output_dir=output_dir,
     )
 
-    figure = plot_model_roc_curves(
-        roc_curves,
-        summarize_curve_areas(curves_by_model, "roc_auc"),
-        title=f"ROC curves{title_suffix}",
-    )
-    save_figure(figure, output_dir / "curves_roc.png")
-
-    figure = plot_model_pr_curves(
-        pr_curves,
-        summarize_curve_areas(curves_by_model, "pr_auc"),
-        prevalence=float(y_test.mean()),
-        title=f"Precision-recall curves{title_suffix}",
-    )
-    save_figure(figure, output_dir / "curves_pr.png")
-
-    for metric, filename in (("ROC-AUC", "auc_roc"), ("PR-AUC", "auc_pr")):
-        auc_table = build_auc_table(metrics_df, metric)
-        save_csv(auc_table, output_dir / f"{filename}_by_model.csv")
-        figure = plot_metric_by_model(
-            auc_table,
-            metric=metric,
-            baseline=baseline.get(metric),
-            title=f"{metric} by model{title_suffix}",
+    for metric, curve in (("ROC-AUC", "roc"), ("PR-AUC", "pr")):
+        save_csv(
+            build_auc_table(metrics_df, metric),
+            output_dir / AUC_BY_MODEL_FILE.format(curve=curve),
         )
-        save_figure(figure, output_dir / f"{filename}_by_model.png")
 
     return metrics_df

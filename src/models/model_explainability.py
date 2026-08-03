@@ -36,6 +36,7 @@ Spearman rank correlations and per-block shares.
 """
 
 import time
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -48,7 +49,8 @@ from src.models.best_model import compute_youden_threshold, get_model_feature_co
 from src.models.model_evaluation import get_decision_scores
 from src.models.results_saving import _clean_feature_names
 from src.utils.dataframe_utils import split_feature_blocks
-from src.utils.io import read_csv
+from src.utils.filenames import SHAP_EXPLANATION_FILE
+from src.utils.io import read_csv, read_joblib, save_joblib
 
 # Guard for the logit transform of the MLP probabilities: a probability of
 # exactly 0 or 1 would map to +/- infinity and poison every SHAP value.
@@ -640,6 +642,54 @@ def check_shap_dimensions(explanation, n_samples, feature_names) -> None:
         raise ValueError("SHAP values contain NaN or infinite entries.")
     if list(explanation.feature_names) != list(feature_names):
         raise ValueError("SHAP feature names do not match the preprocessor output names.")
+
+
+# %% Persistence
+
+
+def save_explanation(explanation, output_dir, abbreviation: str):
+    """Persist a SHAP explanation so the figures can be redrawn without refitting.
+
+    The beeswarm and waterfall plots need the whole ``shap.Explanation`` object
+    (values, base value, transformed data and feature names), which no CSV can
+    reconstruct. Computing it takes minutes per model, so it is serialized here
+    and reloaded by the plotting pipeline.
+
+    Parameters
+    ----------
+    explanation : shap.Explanation
+        Explanation returned by compute_shap_values().
+    output_dir : str or Path
+        Directory where shap_explanation_{abbreviation}.joblib is written.
+    abbreviation : str
+        Model abbreviation, e.g. 'EN'.
+
+    Returns
+    -------
+    Path
+        Path where the explanation was saved.
+    """
+    file_path = Path(output_dir) / SHAP_EXPLANATION_FILE.format(model=abbreviation)
+    return save_joblib(explanation, file_path)
+
+
+def load_explanation(input_dir, abbreviation: str):
+    """Read back the SHAP explanation saved by ``save_explanation``.
+
+    Parameters
+    ----------
+    input_dir : str or Path
+        Directory containing shap_explanation_{abbreviation}.joblib.
+    abbreviation : str
+        Model abbreviation, e.g. 'EN'.
+
+    Returns
+    -------
+    shap.Explanation
+        The deserialized explanation.
+    """
+    file_path = Path(input_dir) / SHAP_EXPLANATION_FILE.format(model=abbreviation)
+    return read_joblib(file_path)
 
 
 # %% Orchestration
