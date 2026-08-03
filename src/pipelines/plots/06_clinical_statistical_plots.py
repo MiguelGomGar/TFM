@@ -86,29 +86,34 @@ def main() -> None:
         )
 
     logger.info("Plotting stratified distributions for categorical features...")
-    for feature in categorical_features:
-        if feature == target_var:
-            continue
-        # Saved with its index: it holds the levels of the stratifying variable
-        # that label the bars.
-        stratified_data = read_csv(
-            INPUT_DIR
-            / STRATIFIED_DISTRIBUTION_FILE.format(feature=feature, group=target_var),
-            index_col=0,
-        )
-        figure = plot_stratified_categorical_distribution(
-            stratified_data, feature, target_var
-        )
-        if figure is None:
-            logger.warning(
-                f"Nothing to plot for {feature} stratified by {target_var}; skipping."
+    for target_var in [GROUP_ALLOCATION_VARIABLE, TARGET_VARIABLE]:
+        for feature in categorical_features:
+            if feature == target_var:
+                continue
+            # Saved with its index: it holds the levels of the stratifying
+            # variable that label the bars.
+            stratified_data = read_csv(
+                INPUT_DIR
+                / STRATIFIED_DISTRIBUTION_FILE.format(
+                    feature=feature, group=target_var
+                ),
+                index_col=0,
             )
-            continue
-        save_figure(
-            figure,
-            OUTPUT_DIR
-            / STRATIFIED_DISTRIBUTION_FIGURE.format(feature=feature, group=target_var),
-        )
+            figure = plot_stratified_categorical_distribution(
+                stratified_data, feature, target_var
+            )
+            if figure is None:
+                logger.warning(
+                    f"Nothing to plot for {feature} stratified by {target_var}; skipping."
+                )
+                continue
+            save_figure(
+                figure,
+                OUTPUT_DIR
+                / STRATIFIED_DISTRIBUTION_FIGURE.format(
+                    feature=feature, group=target_var
+                ),
+            )
 
 
 if __name__ == "__main__":

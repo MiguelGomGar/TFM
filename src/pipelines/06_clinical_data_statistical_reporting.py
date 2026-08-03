@@ -80,18 +80,21 @@ def main() -> None:
         )
 
     logger.info("Computing stratified distributions for categorical features...")
-    for feature in categorical_features:
-        if feature == target_var:
-            continue
-        stratified_data = compute_stratified_categorical_distribution(
-            clinical_data, feature, target_var
-        )
-        save_csv(
-            stratified_data,
-            OUTPUT_DIR
-            / STRATIFIED_DISTRIBUTION_FILE.format(feature=feature, group=target_var),
-            index=True,
-        )
+    for target_var in [GROUP_ALLOCATION_VARIABLE, TARGET_VARIABLE]:
+        for feature in categorical_features:
+            if feature == target_var:
+                continue
+            stratified_data = compute_stratified_categorical_distribution(
+                clinical_data, feature, target_var
+            )
+            save_csv(
+                stratified_data,
+                OUTPUT_DIR
+                / STRATIFIED_DISTRIBUTION_FILE.format(
+                    feature=feature, group=target_var
+                ),
+                index=True,
+            )
 
     logger.info(f"Creating table 1 stratified by {TARGET_VARIABLE}...")
     table1 = create_table1(
