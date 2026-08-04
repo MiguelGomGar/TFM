@@ -48,9 +48,7 @@ def _block_legend_handles(blocks_present) -> list:
     ]
 
 
-def plot_shap_summary(
-    explanation, title: str, max_display: int = SHAP_TOP_FEATURES
-) -> plt.Figure:
+def plot_shap_summary(explanation, title: str, max_display: int | None = None) -> plt.Figure:
     """Draw the SHAP beeswarm summary for one model.
 
     Each point is one patient. Horizontal position is that patient's SHAP value
@@ -64,8 +62,11 @@ def plot_shap_summary(
         Explanation from model_explainability.compute_shap_values.
     title : str
         Figure title.
-    max_display : int, default SHAP_TOP_FEATURES
-        Number of predictors shown, most important first.
+    max_display : int or None, default None
+        Number of predictors shown, most important first. None shows every
+        predictor, matching shap's own convention for disabling the display
+        cap, instead of pooling the least important ones into a single "sum
+        of other features" row.
 
     Returns
     -------
@@ -79,7 +80,7 @@ def plot_shap_summary(
 
 
 def plot_shap_waterfall(
-    explanation, case_index: int, title: str, max_display: int = 14
+    explanation, case_index: int, title: str, max_display: int | None = None
 ) -> plt.Figure:
     """Draw the SHAP waterfall explaining one individual patient.
 
@@ -99,14 +100,18 @@ def plot_shap_waterfall(
         Positional index of the patient within the external validation set.
     title : str
         Figure title.
-    max_display : int, default 14
+    max_display : int or None, default None
         Number of individual contributions shown before the rest are pooled
-        into a single "other features" row.
+        into a single "other features" row. None shows every predictor, since
+        unlike shap.plots.beeswarm, shap.plots.waterfall has no native "show
+        all" value for this argument.
 
     Returns
     -------
     matplotlib.figure.Figure
     """
+    if max_display is None:
+        max_display = len(explanation.feature_names)
     shap.plots.waterfall(explanation[case_index], max_display=max_display, show=False)
     figure = plt.gcf()
     figure.suptitle(title, fontsize=12, fontweight="bold")
@@ -118,8 +123,8 @@ def plot_shap_bar(
     importance_table: pd.DataFrame,
     blocks: dict,
     title: str,
-    top_n: int = SHAP_TOP_FEATURES,
-    figsize=(9, 8),
+    top_n: int | None = None,
+    figsize=(9, 12),
 ) -> plt.Figure:
     """Plot mean absolute SHAP per predictor, colored by feature block.
 
@@ -133,9 +138,10 @@ def plot_shap_bar(
         dataframe_utils.split_feature_blocks.
     title : str
         Figure title.
-    top_n : int, default SHAP_TOP_FEATURES
-        Number of predictors shown, most important first.
-    figsize : tuple, default (9, 8)
+    top_n : int or None, default None
+        Number of predictors shown, most important first. None shows every
+        predictor.
+    figsize : tuple, default (9, 12)
         Figure size in inches.
 
     Returns

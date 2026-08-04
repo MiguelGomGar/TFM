@@ -321,6 +321,7 @@ def plot_metric_by_model(
         alpha=0.85,
         width=0.65,
     )
+    ax.bar_label(bars, fmt="%.3f", fontsize=9, color="#2c3e50", padding=3)
 
     if baseline is not None:
         ax.axhline(
@@ -417,7 +418,13 @@ def plot_modality_comparison(
     )
     ax.set_xlabel(None)
     ax.set_ylabel(metric, fontsize=10, fontweight="bold", color="#2c3e50")
-    ax.legend(title=None, fontsize=9, loc="upper right", frameon=True)
+    ax.legend(
+        title=None,
+        fontsize=9,
+        loc="upper right",
+        bbox_to_anchor=(1.05, 1.0),
+        frameon=True,
+    )
     _style_axes(ax)
     fig.tight_layout()
 
