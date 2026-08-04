@@ -61,6 +61,8 @@ INTERNAL_VALIDATION_FILE = "internal_validation_{model}.csv"
 INTERNAL_VALIDATION_FIGURE = "internal_validation_{metric}.png"
 AUC_BY_MODEL_FILE = "auc_{curve}_by_model.csv"
 AUC_BY_MODEL_FIGURE = "auc_{curve}_by_model.png"
+FEATURE_SELECTION_FILE = "feature_selection_{model}.csv"
+FEATURE_SELECTION_FIGURE = "feature_selection_{model}.png"
 
 # %% Modality comparison (pipeline 13)
 

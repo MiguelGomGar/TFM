@@ -11,9 +11,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from matplotlib.patches import Patch
 
 from src.config import (
     BASELINE_COLOR,
+    FEATURE_SELECTION_COLORS,
     INTERNAL_VALIDATION_COLORS,
     MODALITY_COLORS,
     MODEL_BAR_COLOR,
@@ -426,6 +428,92 @@ def plot_modality_comparison(
         frameon=True,
     )
     _style_axes(ax)
+    fig.tight_layout()
+
+    return fig
+
+
+def plot_feature_selection_coefficients(
+    coefficients: pd.DataFrame,
+    title: str | None = None,
+    top_n: int | None = None,
+    figsize=(9, 10),
+) -> plt.Figure:
+    """Plot the Elastic Net coefficients of the predictors it kept.
+
+    One horizontal bar per selected predictor, ranked by absolute coefficient
+    magnitude (largest influence at the top), colored by the sign of the
+    coefficient so the direction of each predictor's association is visible
+    at a glance. Predictors the Elastic Net zeroed out are left off the chart
+    entirely, since they carry no influence to illustrate.
+
+    Parameters
+    ----------
+    coefficients : pd.DataFrame
+        Coefficient table from feature_selection._build_coefficient_table,
+        with columns ['Feature', 'Coefficient', 'Selected'].
+    title : str, optional
+        Plot title. Defaults to 'Feature selection coefficients'.
+    top_n : int, optional
+        Number of predictors shown, largest magnitude first. None shows every
+        selected predictor.
+    figsize : tuple, default (9, 10)
+        Figure size in inches.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        Horizontal bar chart figure.
+    """
+    selected = coefficients[coefficients["Selected"]]
+    ranked = selected.reindex(
+        selected["Coefficient"].abs().sort_values(ascending=False).index
+    )
+    top = ranked.head(top_n) if top_n is not None else ranked
+    top = top.iloc[::-1]
+
+    colors = [
+        FEATURE_SELECTION_COLORS["Positive"]
+        if coefficient >= 0
+        else FEATURE_SELECTION_COLORS["Negative"]
+        for coefficient in top["Coefficient"]
+    ]
+
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.barh(
+        top["Feature"],
+        top["Coefficient"],
+        color=colors,
+        edgecolor="#2c3e50",
+        linewidth=0.5,
+        alpha=0.85,
+    )
+    ax.axvline(0, color="#2c3e50", linewidth=0.8)
+
+    x_max = top["Coefficient"].abs().max() if len(top) else 1.0
+    ax.set_xlim(-x_max * 1.1, x_max * 1.1)
+
+    ax.set_title(
+        title if title is not None else "Feature selection coefficients",
+        fontsize=12,
+        fontweight="bold",
+        pad=15,
+    )
+    ax.set_xlabel(
+        "Elastic Net coefficient", fontsize=10, fontweight="bold", color="#2c3e50"
+    )
+    ax.set_ylabel(None)
+    _style_axes(ax, grid_axis="x")
+
+    ax.legend(
+        handles=[
+            Patch(facecolor=FEATURE_SELECTION_COLORS["Positive"], label="Positive"),
+            Patch(facecolor=FEATURE_SELECTION_COLORS["Negative"], label="Negative"),
+        ],
+        fontsize=9,
+        loc="lower right",
+        frameon=True,
+    )
     fig.tight_layout()
 
     return fig

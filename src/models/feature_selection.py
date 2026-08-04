@@ -10,6 +10,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from src.utils.filenames import FEATURE_SELECTION_FILE
 from src.utils.io import read_csv, save_csv
 from src.models.results_saving import _clean_feature_names, get_relevant_features
 
@@ -35,7 +36,7 @@ def _build_coefficient_table(fitted_pipeline) -> pd.DataFrame:
     table = pd.DataFrame(
         {
             "Feature": _clean_feature_names(feature_names),
-            "Coefficient": np.abs(coefficients.astype(float)),
+            "Coefficient": coefficients.astype(float),
         }
     )
     table["Selected"] = coefficients != 0
@@ -118,7 +119,7 @@ def select_features_with_elastic_net(
     coefficients = _build_coefficient_table(fitted_en_pipeline)
 
     # Full coefficient table plus the two requested lists, one file each.
-    save_csv(coefficients, output_dir / f"feature_selection_{identifier}.csv")
+    save_csv(coefficients, output_dir / FEATURE_SELECTION_FILE.format(model=identifier))
 
     kept = coefficients.loc[coefficients["Selected"], ["Feature", "Coefficient"]].copy()
     kept.insert(0, "Rank", range(1, len(kept) + 1))

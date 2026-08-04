@@ -283,6 +283,14 @@ SCALED_MODELS = ["EN", "SVM", "MLP"]
 # Model used to derive the feature selection filter through its regularization.
 FEATURE_SELECTION_MODEL = "EN"
 
+# Plot colors for the Elastic Net coefficient bar charts, by coefficient sign.
+FEATURE_SELECTION_COLORS = {"Positive": "#2563eb", "Negative": "#e11d48"}
+
+# Predictors shown on the coefficient bar chart, ranked by absolute magnitude.
+# The high-dimensional phases (proteomic, multimodal) have far too many
+# predictors to fit legibly in one figure.
+FEATURE_SELECTION_TOP_N = 25
+
 # Randomized search budget per modelling phase. The high-dimensional phases use
 # a smaller budget because each candidate is much more expensive to fit.
 SEARCH_N_ITER = {

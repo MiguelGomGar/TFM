@@ -1,14 +1,20 @@
 """Draw the figures of every modelling phase trained by pipelines 09 to 12.
 
-Four families of charts are redrawn per phase, all from the tables the phase
-left on disk: the train-vs-validation overfitting bars, the ROC and PR curves
-of the external validation, and the AUC bar charts against the risk score
-baseline. Nothing is refitted, so a change of palette or title costs seconds.
+Five families of charts are redrawn per phase, all from the tables the phase
+left on disk: the Elastic Net feature selection coefficients, the
+train-vs-validation overfitting bars, the ROC and PR curves of the external
+validation, and the AUC bar charts against the risk score baseline. Nothing is
+refitted, so a change of palette or title costs seconds.
 """
 
 from pathlib import Path
 
-from src.config import MODELLING_PHASES, SCORING_METRICS
+from src.config import (
+    FEATURE_SELECTION_MODEL,
+    FEATURE_SELECTION_TOP_N,
+    MODELLING_PHASES,
+    SCORING_METRICS,
+)
 from src.models.model_evaluation import (
     build_internal_validation_table,
     load_curve_areas,
@@ -19,6 +25,8 @@ from src.utils.filenames import (
     AUC_BY_MODEL_FILE,
     CURVES_FIGURE,
     CURVES_FILE,
+    FEATURE_SELECTION_FIGURE,
+    FEATURE_SELECTION_FILE,
     INTERNAL_VALIDATION_FIGURE,
     MODELS_METRICS_FILE,
     metric_slug,
@@ -26,6 +34,7 @@ from src.utils.filenames import (
 from src.utils.io import read_csv, save_figure
 from src.utils.logging_utils import setup_logger
 from src.visualization.model_evaluation import (
+    plot_feature_selection_coefficients,
     plot_internal_validation,
     plot_metric_by_model,
     plot_model_pr_curves,
@@ -56,6 +65,19 @@ def plot_phase(input_dir, phase_title: str, baseline: dict) -> None:
     """
     input_dir = Path(input_dir)
     title_suffix = f" ({phase_title})" if phase_title else ""
+
+    logger.info(f"Plotting the feature selection coefficients of {input_dir.name}...")
+    coefficients = read_csv(
+        input_dir / FEATURE_SELECTION_FILE.format(model=FEATURE_SELECTION_MODEL)
+    )
+    save_figure(
+        plot_feature_selection_coefficients(
+            coefficients,
+            title=f"Feature selection coefficients{title_suffix}",
+            top_n=FEATURE_SELECTION_TOP_N,
+        ),
+        input_dir / FEATURE_SELECTION_FIGURE.format(model=FEATURE_SELECTION_MODEL),
+    )
 
     logger.info(f"Plotting the overfitting analysis of {input_dir.name}...")
     internal_validation = build_internal_validation_table(
