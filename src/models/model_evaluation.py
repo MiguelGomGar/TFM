@@ -337,103 +337,111 @@ def build_modality_delta_table(
 
 
 def build_performance_table(
-    internal_validation: dict,
-    metric: str,
+    models_metrics: pd.DataFrame,
+    metrics: list,
     decimals: int = 3,
     use_display_names: bool = True,
 ) -> pd.DataFrame:
-    """Collapse per-model internal-validation tables into one metric's table.
+    """Build a manuscript-ready, multi-metric performance table for one phase.
 
-    Reads the Mean/Std summaries already produced by the cross-validation step
-    (one long-format DataFrame per model, as saved in the
-    ``internal_validation_{model}.csv`` files) and pivots them into a single
-    wide table, one row per model, with a "mean (SD)" column for the Train
-    partition and one for the Validation partition, ready to paste into a
-    manuscript.
+    Reads the long-format scores already produced by the modelling phase (as
+    saved in ``models_metrics.csv``: five cross-validation folds for Train and
+    Validation, one held-out score for Test) and pivots them into a single
+    wide table, one row per model, with a two-level column MultiIndex: metric
+    (e.g. 'ROC-AUC') on top and partition ('Train', 'Validation', 'Test')
+    below. Train and Validation are reported as "mean ± SD" across folds;
+    Test — the external validation score — has no SD since it is a single
+    evaluation on the held-out set.
 
     Parameters
     ----------
-    internal_validation : dict
-        Mapping of model abbreviation to a DataFrame with columns
-        ['Model', 'Metric', 'Dataset', 'Mean', 'Std', 'N_Folds'], as produced
-        by the internal cross-validation step for that model.
-    metric : str
-        Metric to report, e.g. 'ROC-AUC' or 'PR-AUC'.
+    models_metrics : pd.DataFrame
+        Long-format table with columns ['Model', 'Metric', 'Dataset',
+        'Score'], as produced by the modelling phase for every model.
+    metrics : list of str
+        Metrics to report, e.g. ['ROC-AUC', 'PR-AUC'].
     decimals : int, default 3
-        Number of decimals used to format the "mean (SD)" strings.
+        Number of decimals used to format the scores.
     use_display_names : bool, default True
-        If True, the 'Model' column uses the full model names
+        If True, the row index uses the full model names
         (MODEL_DISPLAY_NAMES) instead of the abbreviations.
 
     Returns
     -------
     pd.DataFrame
-        Columns ['Model', 'Train', 'Validation'], one row per model, ordered
-        by MODEL_ORDER. Each cell is a formatted "mean (SD)" string.
+        Row index 'Model' (ordered by MODEL_ORDER); column MultiIndex
+        ['Metric', 'Partition'] with partitions ('Train', 'Validation',
+        'Test'). Each cell is a formatted string; models or metrics entirely
+        absent from `models_metrics` are dropped.
 
     Raises
     ------
     ValueError
-        If internal_validation is empty or the requested metric is not found
-        for either partition.
+        If no requested metric is found in `models_metrics`.
     """
-    if not internal_validation:
-        raise ValueError("internal_validation must contain at least one model.")
+    partitions = ("Train", "Validation", "Test")
+    columns = pd.MultiIndex.from_product(
+        [metrics, partitions], names=["Metric", "Partition"]
+    )
+    table = pd.DataFrame(
+        index=pd.Index(MODEL_ORDER, name="Model"), columns=columns, dtype=object
+    )
 
-    partitions = ("Train", "Validation")
-    rows = []
-    for model_name, df_model in internal_validation.items():
-        selection = df_model[df_model["Metric"] == metric]
-        row = {"Model": model_name}
+    found_any = False
+    for metric in metrics:
+        metric_scores = models_metrics[models_metrics["Metric"] == metric]
         for partition in partitions:
-            partition_row = selection[selection["Dataset"] == partition]
-            if partition_row.empty:
-                row[partition] = np.nan
-                continue
-            mean = partition_row["Mean"].iloc[0]
-            std = partition_row["Std"].iloc[0]
-            row[partition] = f"{mean:.{decimals}f} ({std:.{decimals}f})"
-        rows.append(row)
+            partition_scores = metric_scores[metric_scores["Dataset"] == partition]
+            summary = partition_scores.groupby("Model")["Score"].agg(["mean", "std"])
+            for model_name in MODEL_ORDER:
+                if model_name not in summary.index:
+                    continue
+                found_any = True
+                mean = summary.loc[model_name, "mean"]
+                if partition == "Test":
+                    formatted = f"{mean:.{decimals}f}"
+                else:
+                    std = summary.loc[model_name, "std"]
+                    formatted = f"{mean:.{decimals}f} ± {std:.{decimals}f}"
+                table.loc[model_name, (metric, partition)] = formatted
 
-    table = pd.DataFrame(rows)
-    if table.drop(columns="Model").isna().all(axis=None):
-        raise ValueError(f"Metric '{metric}' was not found for either partition.")
+    if not found_any:
+        raise ValueError(f"None of {metrics} were found in models_metrics.")
 
-    table["Model"] = pd.Categorical(table["Model"], categories=MODEL_ORDER, ordered=True)
-    table = table.sort_values(by="Model").reset_index(drop=True)
-    table["Model"] = table["Model"].astype(str)
+    table = table.dropna(how="all").dropna(axis="columns", how="all")
 
     if use_display_names:
-        table["Model"] = table["Model"].map(
+        table.index = table.index.map(
             lambda abbreviation: MODEL_DISPLAY_NAMES.get(abbreviation, abbreviation)
         )
+        table.index.name = "Model"
 
-    return table[["Model", *partitions]]
+    return table
 
 
 def build_comparison_table(
     delta_table: pd.DataFrame,
-    metric: str,
+    metrics: list,
     baseline_label: str,
     comparison_label: str,
     decimals: int = 3,
     use_display_names: bool = True,
 ) -> pd.DataFrame:
-    """Reshape a modality/filtering delta table into one metric's table.
+    """Reshape a modality/filtering delta table into a multi-metric table.
 
     Takes the long ['Model', 'Metric', baseline_label, comparison_label,
-    'Delta'] table produced by build_modality_delta_table, restricts it to
-    one metric, and formats it into one row per model with one column per
-    modality plus a 'Delta' column, so the incremental value of each arm is
-    readable at a glance.
+    'Delta'] table produced by build_modality_delta_table and formats it into
+    one row per model with a two-level column MultiIndex: metric on top and
+    [baseline_label, comparison_label, 'Delta'] below, so the incremental
+    value of each arm is readable at a glance across every metric at once.
 
     Parameters
     ----------
     delta_table : pd.DataFrame
         Output of build_modality_delta_table, with columns
         ['Model', 'Metric', baseline_label, comparison_label, 'Delta'].
-    metric : str
-        Metric to report, e.g. 'ROC-AUC' or 'PR-AUC'.
+    metrics : list of str
+        Metrics to report, e.g. ['ROC-AUC', 'PR-AUC'].
     baseline_label : str
         Name of the reference arm, as used in delta_table's columns.
     comparison_label : str
@@ -441,43 +449,47 @@ def build_comparison_table(
     decimals : int, default 3
         Number of decimals used to format the scores and the delta.
     use_display_names : bool, default True
-        If True, the 'Model' column uses the full model names
+        If True, the row index uses the full model names
         (MODEL_DISPLAY_NAMES) instead of the abbreviations.
 
     Returns
     -------
     pd.DataFrame
-        Columns ['Model', baseline_label, comparison_label, 'Delta'], one row
-        per model, ordered by MODEL_ORDER.
+        Row index 'Model' (ordered by MODEL_ORDER); column MultiIndex
+        ['Metric', ''] with sub-columns [baseline_label, comparison_label,
+        'Delta']. Models entirely absent from `delta_table` are dropped.
     """
-    metric_table = delta_table[delta_table["Metric"] == metric]
+    sub_columns = (baseline_label, comparison_label, "Delta")
+    columns = pd.MultiIndex.from_product([metrics, sub_columns], names=["Metric", ""])
+    table = pd.DataFrame(
+        index=pd.Index(MODEL_ORDER, name="Model"), columns=columns, dtype=object
+    )
 
-    rows = []
-    for model_name in MODEL_ORDER:
-        model_row = metric_table[metric_table["Model"] == model_name]
-        if model_row.empty:
-            continue
-        baseline_score = model_row[baseline_label].iloc[0]
-        comparison_score = model_row[comparison_label].iloc[0]
-        delta = model_row["Delta"].iloc[0]
-        sign = "+" if delta >= 0 else ""
-        rows.append(
-            {
-                "Model": model_name,
-                baseline_label: f"{baseline_score:.{decimals}f}",
-                comparison_label: f"{comparison_score:.{decimals}f}",
-                "Delta": f"{sign}{delta:.{decimals}f}",
-            }
-        )
+    for metric in metrics:
+        metric_table = delta_table[delta_table["Metric"] == metric]
+        for model_name in MODEL_ORDER:
+            model_row = metric_table[metric_table["Model"] == model_name]
+            if model_row.empty:
+                continue
+            baseline_score = model_row[baseline_label].iloc[0]
+            comparison_score = model_row[comparison_label].iloc[0]
+            delta = model_row["Delta"].iloc[0]
+            sign = "+" if delta >= 0 else ""
+            table.loc[model_name, (metric, baseline_label)] = f"{baseline_score:.{decimals}f}"
+            table.loc[model_name, (metric, comparison_label)] = (
+                f"{comparison_score:.{decimals}f}"
+            )
+            table.loc[model_name, (metric, "Delta")] = f"{sign}{delta:.{decimals}f}"
 
-    table = pd.DataFrame(rows)
+    table = table.dropna(how="all")
 
     if use_display_names:
-        table["Model"] = table["Model"].map(
+        table.index = table.index.map(
             lambda abbreviation: MODEL_DISPLAY_NAMES.get(abbreviation, abbreviation)
         )
+        table.index.name = "Model"
 
-    return table[["Model", baseline_label, comparison_label, "Delta"]]
+    return table
 
 
 def _clean_parameter_name(parameter: str) -> str:
@@ -501,48 +513,87 @@ def _clean_parameter_name(parameter: str) -> str:
     return parameter.split("__")[-1]
 
 
-def build_model_hyperparameter_tables(best_params: pd.DataFrame) -> dict:
-    """Split a long best_params table into one Parameter/Value table per model.
+def _collapse_best_params(best_params: pd.DataFrame) -> pd.Series:
+    """Reduce one phase's long best_params table to a Model/Parameter Series.
 
     Parameters
     ----------
     best_params : pd.DataFrame
         Long-format table with columns ['Model', 'Parameter', 'Value'], as
-        saved in best_params.csv by the modelling phase. Parameter names may
+        saved in best_params.csv by a modelling phase. Parameter names may
         carry scikit-learn pipeline prefixes (e.g. 'clf__C',
         'clf__estimator__max_depth').
 
     Returns
     -------
-    dict
-        Mapping of model abbreviation to a two-column DataFrame
-        ['Parameter', 'Value'], sorted alphabetically by parameter name, with
-        every pipeline prefix stripped from the parameter names (e.g.
-        'clf__estimator__max_depth' -> 'max_depth'). Only models present in
-        best_params are included, in MODEL_ORDER. If two raw parameter names
-        collapse to the same cleaned name for the same model (e.g. a naming
-        collision across estimators), their values are joined with '; '
-        rather than silently dropped.
+    pd.Series
+        Value, indexed by a ['Model', 'Parameter'] MultiIndex, with every
+        pipeline prefix stripped from the parameter names (e.g.
+        'clf__estimator__max_depth' -> 'max_depth'). If two raw parameter
+        names collapse to the same cleaned name for the same model (e.g. a
+        naming collision across estimators), their values are joined with
+        '; ' rather than silently dropped.
     """
     table = best_params.copy()
     table["Parameter"] = table["Parameter"].map(_clean_parameter_name)
 
-    # Guard against a cleaned name colliding with another one for the same
-    # model (e.g. two prefixes reducing to the same suffix): join the values
-    # instead of silently keeping only one.
     table["Value"] = table["Value"].astype(str)
-    table = (
-        table.groupby(["Model", "Parameter"], sort=False)["Value"]
-        .agg(lambda values: "; ".join(dict.fromkeys(values)))
-        .reset_index()
+    return table.groupby(["Model", "Parameter"], sort=False)["Value"].agg(
+        lambda values: "; ".join(dict.fromkeys(values))
     )
 
-    tables = {}
-    for model in MODEL_ORDER:
-        model_table = table[table["Model"] == model][["Parameter", "Value"]]
-        if model_table.empty:
-            continue
-        model_table = model_table.sort_values(by="Parameter").reset_index(drop=True)
-        tables[model] = model_table
 
-    return tables
+def build_hyperparameters_table(
+    phase_best_params: dict, use_display_names: bool = True
+) -> pd.DataFrame:
+    """Merge every phase's tuned hyperparameters into a single wide table.
+
+    Instead of one table per modelling phase differing only in the value
+    column, this aligns every phase's best_params on the same
+    ['Model', 'Parameter'] rows and lays them out side by side, one column
+    per phase, so the tuned value of a given hyperparameter can be compared
+    across phases at a glance.
+
+    Parameters
+    ----------
+    phase_best_params : dict of {str: pd.DataFrame}
+        Mapping of phase label (e.g. 'Clinical', 'Multimodal') to that
+        phase's long-format best_params table, in the order the phase
+        columns should appear.
+    use_display_names : bool, default True
+        If True, the 'Model' index level uses the full model names
+        (MODEL_DISPLAY_NAMES) instead of the abbreviations.
+
+    Returns
+    -------
+    pd.DataFrame
+        Indexed by a ['Model', 'Parameter'] MultiIndex (models in
+        MODEL_ORDER, parameters sorted alphabetically within each model,
+        unioned across every phase); column MultiIndex ['Value', phase
+        label] with one sub-column per entry in `phase_best_params`. A
+        hyperparameter not tuned in a given phase (e.g. a different search
+        space) is left blank for that phase's column rather than dropping
+        the row.
+    """
+    per_phase = {
+        phase_label: _collapse_best_params(best_params)
+        for phase_label, best_params in phase_best_params.items()
+    }
+    table = pd.DataFrame(per_phase)
+    table.index = table.index.set_names(["Model", "Parameter"])
+    table = table.reset_index()
+
+    table["Model"] = pd.Categorical(table["Model"], categories=MODEL_ORDER, ordered=True)
+    table = table.sort_values(by=["Model", "Parameter"])
+    table["Model"] = table["Model"].astype(str)
+
+    if use_display_names:
+        table["Model"] = table["Model"].map(
+            lambda abbreviation: MODEL_DISPLAY_NAMES.get(abbreviation, abbreviation)
+        )
+
+    table = table.set_index(["Model", "Parameter"])
+    table.columns = pd.MultiIndex.from_product(
+        [["Value"], table.columns], names=["", "Phase"]
+    )
+    return table

@@ -27,7 +27,6 @@ CLINICAL_FILTERING_COMPARISON_DIR = MODELS_DIR / "clinical_filtering_comparison"
 BEST_MODEL_DIR = MODELS_DIR / "best_model"
 EXPLAINABILITY_DIR = MODELS_DIR / "explainability"
 PUBLICATION_TABLES_DIR = RESULTS_DIR / "publication_tables"
-HYPERPARAMETERS_TABLES_DIR = PUBLICATION_TABLES_DIR / "hyperparameters"
 
 RISK_FACTORS_REVIEW_DATA_PATH = RAW_DATA_DIR / "clinical_variables_review.xlsx"
 RAW_CLINICAL_DATA_PATH = RAW_DATA_DIR / "predimar_miguelgomez.dta"

@@ -8,10 +8,12 @@ import pandas as pd
 from src.config import MODEL_ORDER
 from src.models.model_evaluation import (
     build_comparison_table,
-    build_model_hyperparameter_tables,
+    build_hyperparameters_table,
     build_performance_table,
 )
+from src.utils.excel_styling import save_excel_workbook
 from src.utils.filenames import (
+    BEST_PARAMS_FILE,
     CURVES_FILE,
     INTERNAL_VALIDATION_FILE,
     MODELS_METRICS_FILE,
@@ -355,68 +357,82 @@ def load_internal_validation(input_dir: Path, logger=None) -> dict:
 
 
 def build_performance_tables(
-    phases, metrics, output_dir: Path, decimals: int = 3, logger=None
+    phases, metrics: list, output_path: Path, decimals: int = 3, logger=None
 ) -> None:
-    """Build one wide performance table per modelling phase and per metric.
+    """Build one performance workbook with one sheet per modelling phase.
+
+    Each sheet is a single table covering every requested metric at once
+    (row index 'Model', column MultiIndex ['Metric', 'Partition']), read
+    straight from the phase's models_metrics.csv (see
+    model_evaluation.build_performance_table).
 
     Parameters
     ----------
     phases : list of dict
-        Modelling phases to summarize, each with keys 'label', 'input_dir'
-        and 'output_prefix' (see config.PERFORMANCE_PHASES).
-    metrics : dict
-        Mapping of metric name (e.g. 'ROC-AUC') to the filename slug used to
-        build each table's filename (see config.PUBLICATION_METRICS).
-    output_dir : str or Path
-        Directory where each phase's performance tables are saved.
+        Modelling phases to summarize, each with keys 'label' and 'input_dir'
+        (see config.PERFORMANCE_PHASES).
+    metrics : list of str
+        Metrics to report, e.g. ['ROC-AUC', 'PR-AUC'] (see
+        config.PUBLICATION_METRICS).
+    output_path : str or Path
+        Path of the .xlsx workbook to write.
     decimals : int, default 3
-        Number of decimals used to format the "mean (SD)" strings.
+        Number of decimals used to format the scores.
     logger : logging.Logger, optional
-        Logger used to report progress and missing input directories.
+        Logger used to report progress and missing input files.
     """
+    sheets = {}
     for phase in phases:
-        if logger is not None:
-            logger.info(f"Building the {phase['label']} performance tables...")
-        internal_validation = load_internal_validation(
-            phase["input_dir"], logger=logger
-        )
-        if not internal_validation:
+        metrics_file = Path(phase["input_dir"]) / MODELS_METRICS_FILE
+        if not metrics_file.exists():
             if logger is not None:
                 logger.warning(
-                    f"No internal-validation files found for {phase['label']} in "
-                    f"{phase['input_dir']}; skipping."
+                    f"Missing {metrics_file}; skipping the {phase['label']} "
+                    "performance table."
                 )
             continue
 
-        for metric, slug in metrics.items():
-            table = build_performance_table(
-                internal_validation, metric, decimals=decimals
-            )
-            filename = f"{phase['output_prefix']}_{slug}.csv"
-            save_csv(table, Path(output_dir) / filename)
+        if logger is not None:
+            logger.info(f"Building the {phase['label']} performance table...")
+        models_metrics = read_csv(metrics_file)
+        sheets[phase["label"]] = build_performance_table(
+            models_metrics, metrics, decimals=decimals
+        )
+
+    if not sheets:
+        if logger is not None:
+            logger.warning("No performance tables were built; skipping the workbook.")
+        return
+
+    save_excel_workbook(sheets, output_path, n_header_rows=3, n_index_cols=1)
 
 
 def build_comparison_tables(
-    phases, metrics, output_dir: Path, decimals: int = 3, logger=None
+    phases, metrics: list, output_path: Path, decimals: int = 3, logger=None
 ) -> None:
-    """Build one wide incremental-value table per comparison and per metric.
+    """Build one comparison workbook with one sheet per modality comparison.
+
+    Each sheet is a single table covering every requested metric at once
+    (row index 'Model', column MultiIndex ['Metric', {baseline, comparison,
+    Delta}]), reshaped from the delta table saved by pipeline 13 (see
+    model_evaluation.build_comparison_table).
 
     Parameters
     ----------
     phases : list of dict
         Comparisons to reshape, each with keys 'label', 'delta_file',
-        'baseline_label', 'comparison_label' and 'output_prefix' (see
-        config.COMPARISON_PHASES).
-    metrics : dict
-        Mapping of metric name (e.g. 'ROC-AUC') to the filename slug used to
-        build each table's filename (see config.PUBLICATION_METRICS).
-    output_dir : str or Path
-        Directory where each comparison's tables are saved.
+        'baseline_label' and 'comparison_label' (see config.COMPARISON_PHASES).
+    metrics : list of str
+        Metrics to report, e.g. ['ROC-AUC', 'PR-AUC'] (see
+        config.PUBLICATION_METRICS).
+    output_path : str or Path
+        Path of the .xlsx workbook to write.
     decimals : int, default 3
         Number of decimals used to format the scores and the delta.
     logger : logging.Logger, optional
         Logger used to report progress and missing delta files.
     """
+    sheets = {}
     for phase in phases:
         if not phase["delta_file"].exists():
             if logger is not None:
@@ -427,56 +443,68 @@ def build_comparison_tables(
             continue
 
         if logger is not None:
-            logger.info(f"Building the {phase['label']} comparison tables...")
+            logger.info(f"Building the {phase['label']} comparison table...")
         delta_table = read_csv(phase["delta_file"])
+        sheets[phase["label"]] = build_comparison_table(
+            delta_table,
+            metrics=metrics,
+            baseline_label=phase["baseline_label"],
+            comparison_label=phase["comparison_label"],
+            decimals=decimals,
+        )
 
-        for metric, slug in metrics.items():
-            table = build_comparison_table(
-                delta_table,
-                metric=metric,
-                baseline_label=phase["baseline_label"],
-                comparison_label=phase["comparison_label"],
-                decimals=decimals,
-            )
-            filename = f"{phase['output_prefix']}_{slug}.csv"
-            save_csv(table, Path(output_dir) / filename)
+    if not sheets:
+        if logger is not None:
+            logger.warning("No comparison tables were built; skipping the workbook.")
+        return
+
+    save_excel_workbook(sheets, output_path, n_header_rows=3, n_index_cols=1)
 
 
-def build_hyperparameters_tables(phases, output_dir: Path, logger=None) -> None:
-    """Build one Parameter/Value hyperparameters table per model per phase.
+def build_hyperparameters_tables(phases, output_path: Path, logger=None) -> None:
+    """Build a single hyperparameters workbook comparing every modelling phase.
 
-    Each file is named '{phase}_{model}.csv' (e.g. 'clinical_EN.csv',
-    'multimodal_SVM.csv'), with two columns ['Parameter', 'Value'] and every
-    scikit-learn pipeline prefix stripped from the parameter names.
+    Every phase's tuned hyperparameters are merged into one table, indexed by
+    a ['Model', 'Parameter'] MultiIndex, with one 'Value' sub-column per
+    phase side by side (see model_evaluation.build_hyperparameters_table),
+    instead of one near-identical table per phase.
 
     Parameters
     ----------
     phases : list of dict
-        Modelling phases to summarize, each with keys 'label', 'input_dir'
-        and 'prefix' (see config.PERFORMANCE_PHASES).
-    output_dir : str or Path
-        Directory where the hyperparameters tables are saved.
+        Modelling phases to summarize, each with keys 'label' and 'input_dir'
+        (see config.PERFORMANCE_PHASES).
+    output_path : str or Path
+        Path of the .xlsx workbook to write.
     logger : logging.Logger, optional
         Logger used to report progress and missing best_params files.
     """
+    phase_best_params = {}
     for phase in phases:
-        best_params_file = Path(phase["input_dir"]) / "best_params.csv"
+        best_params_file = Path(phase["input_dir"]) / BEST_PARAMS_FILE
         if not best_params_file.exists():
             if logger is not None:
                 logger.warning(
                     f"Missing {best_params_file}; skipping the {phase['label']} "
-                    "hyperparameters tables."
+                    "hyperparameters column."
                 )
             continue
 
         if logger is not None:
-            logger.info(f"Building the {phase['label']} hyperparameters tables...")
+            logger.info(f"Loading the {phase['label']} hyperparameters...")
         # keep_default_na=False: values such as the string "None" (a real,
         # meaningful hyperparameter setting, e.g. class_weight=None) must not
         # be silently parsed into a missing value.
-        best_params = read_csv(best_params_file, keep_default_na=False)
-        tables_by_model = build_model_hyperparameter_tables(best_params)
+        phase_best_params[phase["label"]] = read_csv(
+            best_params_file, keep_default_na=False
+        )
 
-        for model, table in tables_by_model.items():
-            filename = f"{phase['prefix']}_{model}.csv"
-            save_csv(table, Path(output_dir) / filename)
+    if not phase_best_params:
+        if logger is not None:
+            logger.warning("No hyperparameters were found; skipping the workbook.")
+        return
+
+    table = build_hyperparameters_table(phase_best_params)
+    save_excel_workbook(
+        {"Hyperparameters": table}, output_path, n_header_rows=3, n_index_cols=2
+    )

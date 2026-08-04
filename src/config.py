@@ -658,62 +658,36 @@ MODALITY_COMPARISONS = [
 ]
 
 # %% PUBLICATION TABLES — pipeline _publication_tables
-# Each entry is one modelling phase: where its per-model internal-validation
-# CSVs live, the phase prefix used to name its hyperparameters tables, and
-# the filename prefix of the performance tables it produces (one file per
-# metric, see PUBLICATION_METRICS).
+# Each entry is one modelling phase and becomes one sheet (named after
+# "label") in the performance and hyperparameters workbooks, read from the
+# models_metrics.csv / best_params.csv saved in "input_dir".
 PERFORMANCE_PHASES = [
-    {
-        "label": "Clinical",
-        "input_dir": CLINICAL_MODELS_DIR,
-        "prefix": "clinical",
-        "output_prefix": "performance_clinical",
-    },
-    {
-        "label": "Clinical filtered",
-        "input_dir": CLINICAL_MODELS_FILTERED_DIR,
-        "prefix": "clinical_filtered",
-        "output_prefix": "performance_clinical_filtered",
-    },
-    {
-        "label": "Proteomic",
-        "input_dir": PROTEOMIC_MODELS_DIR,
-        "prefix": "proteomic",
-        "output_prefix": "performance_proteomic",
-    },
-    {
-        "label": "Multimodal",
-        "input_dir": MULTIMODAL_MODELS_DIR,
-        "prefix": "multimodal",
-        "output_prefix": "performance_multimodal",
-    },
+    {"label": "Clinical", "input_dir": CLINICAL_MODELS_DIR},
+    {"label": "Clinical filtered", "input_dir": CLINICAL_MODELS_FILTERED_DIR},
+    {"label": "Proteomic", "input_dir": PROTEOMIC_MODELS_DIR},
+    {"label": "Multimodal", "input_dir": MULTIMODAL_MODELS_DIR},
 ]
 
-# Each entry reuses the delta table already saved by pipeline 13 and reshapes
-# it into a wide, manuscript-ready comparison table (one file per metric, see
-# PUBLICATION_METRICS).
+# Each entry reuses the delta table already saved by pipeline 13 and becomes
+# one sheet in the comparison workbook, reshaped into a wide, manuscript-ready
+# table covering every metric in PUBLICATION_METRICS at once.
 COMPARISON_PHASES = [
     {
         "label": "Clinical vs Multimodal",
         "delta_file": MODALITY_COMPARISON_DIR / "modality_comparison.csv",
         "baseline_label": "Clinical",
         "comparison_label": "Multimodal",
-        "output_prefix": "comparison_clinical_vs_multimodal",
     },
     {
         "label": "Clinical vs Clinical filtered",
         "delta_file": CLINICAL_FILTERING_COMPARISON_DIR / "modality_comparison.csv",
         "baseline_label": "Clinical",
         "comparison_label": "Clinical filtered",
-        "output_prefix": "comparison_clinical_vs_filtered",
     },
 ]
 
-# Metric name (as used across the modelling CSVs) mapped to the filename slug
-# used when splitting each publication table into one file per metric.
-PUBLICATION_METRICS = {
-    "ROC-AUC": "roc_auc",
-    "PR-AUC": "pr_auc",
-}
+# Metrics reported side by side (as top-level columns) in the performance and
+# comparison workbooks.
+PUBLICATION_METRICS = ["ROC-AUC", "PR-AUC"]
 
 PUBLICATION_TABLES_DECIMALS = 3
