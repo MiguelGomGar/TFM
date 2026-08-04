@@ -13,7 +13,7 @@ import pandas as pd
 import seaborn as sns
 
 from src.config import CATEGORICAL_COLOR_MAP
-from src.visualization.plot_utils import category_levels, label_bars
+from src.visualization.plot_utils import _style_axes_b, _style_axes_h, _style_axes_v, category_levels
 
 
 def plot_numeric_distribution(series: pd.Series, col_name: str) -> plt.Figure:
@@ -44,12 +44,7 @@ def plot_numeric_distribution(series: pd.Series, col_name: str) -> plt.Figure:
     ax.set_title(f"Distribution of {col_name}", fontsize=12, fontweight="bold", pad=15)
     ax.set_xlabel(col_name, fontsize=10, fontweight="bold", color="#2c3e50")
     ax.set_ylabel("n", fontsize=10, fontweight="bold", color="#2c3e50")
-    ax.tick_params(axis="both", labelcolor="#34495e", labelsize=10)
-    for label in ax.get_xticklabels() + ax.get_yticklabels():
-        label.set_fontweight("bold")
-    ax.grid(visible=False)
-    ax.set_axisbelow(True)
-    sns.despine(ax=ax)
+    _style_axes_h(ax)
     fig.tight_layout()
 
     return fig
@@ -84,13 +79,12 @@ def plot_categorical_distribution(
     )
 
     max_val = df_summary["n"].max()
-    label_bars(
-        ax,
+    ax.bar_label(
         bars,
-        df_summary["pct_label"],
-        orientation="horizontal",
-        offset=max_val * 0.02,
+        labels=df_summary["pct_label"],
+        padding=3,
         fontsize=9.5,
+        fontweight="bold",
         color="#2c3e50",
     )
 
@@ -98,12 +92,7 @@ def plot_categorical_distribution(
     ax.set_title(f"Distribution of {col_name}", fontsize=12, fontweight="bold", pad=15)
     ax.set_xlabel("n", fontsize=10, fontweight="bold", color="#2c3e50")
     ax.set_ylabel(None)
-    ax.tick_params(axis="both", labelcolor="#34495e", labelsize=10)
-    for label in ax.get_xticklabels() + ax.get_yticklabels():
-        label.set_fontweight("bold")
-    ax.grid(visible=False)
-    ax.set_axisbelow(True)
-    sns.despine(ax=ax, left=True, bottom=True)
+    _style_axes_v(ax)
     fig.tight_layout()
 
     return fig
@@ -175,11 +164,7 @@ def plot_stratified_numeric_distribution(
     )
     ax.set_xlabel(None)
     ax.set_ylabel(col_name, fontsize=10, fontweight="bold", color="#2c3e50")
-    ax.tick_params(axis="x", labelsize=10, labelcolor="#34495e")
-    ax.tick_params(axis="y", labelsize=10, labelcolor="#34495e")
-    ax.grid(visible=False)
-    ax.set_axisbelow(True)
-    sns.despine(ax=ax)
+    _style_axes_b(ax)
     fig.tight_layout(rect=(0, 0, 0.82, 1))
 
     return fig
@@ -255,12 +240,7 @@ def plot_stratified_categorical_distribution(
         bbox_to_anchor=(1.02, 0.5),
         frameon=True,
     )
-    ax.tick_params(axis="both", labelcolor="#34495e", labelsize=10)
-    for label in ax.get_xticklabels() + ax.get_yticklabels():
-        label.set_fontweight("bold")
-    ax.grid(visible=False)
-    ax.set_axisbelow(True)
-    sns.despine(ax=ax)
+    _style_axes_v(ax)
     fig.tight_layout(rect=(0, 0, 0.82, 1))
 
     return fig
@@ -316,8 +296,7 @@ def plot_qq(df_summary: dict, ci_level: float = 0.95) -> plt.Figure:
     )
     ax.set_ylabel(f"Observed Values for {feature}", fontsize=10, color="#2c3e50")
     ax.legend(loc="upper left")
-    ax.grid(color="#eaeded", linewidth=0.4)
-    sns.despine(ax=ax)
+    _style_axes_b(ax)
     fig.tight_layout()
 
     return fig

@@ -9,10 +9,9 @@ matplotlib.use("Agg", force=True)
 
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
-import seaborn as sns
 
 from src.config import CATEGORICAL_COLOR_MAP
-from src.visualization.plot_utils import label_bars
+from src.visualization.plot_utils import _style_axes_h, _style_axes_v
 
 
 def plot_row_missingness(
@@ -42,8 +41,6 @@ def plot_row_missingness(
     if na_summary is None or na_summary.empty:
         return None
 
-    total_records = na_summary["n_records"].sum()
-
     fig, ax = plt.subplots(figsize=(8, 6))
     bars = ax.bar(
         na_summary["row_na_count"],
@@ -55,12 +52,12 @@ def plot_row_missingness(
         linewidth=0.4,
     )
 
-    label_bars(
-        ax,
+    ax.bar_label(
         bars,
-        na_summary["pct_label"],
-        offset=total_records * 0.015,
+        labels=na_summary["pct_label"],
+        padding=3,
         fontsize=9,
+        fontweight="bold",
         color="#1e293b",
     )
 
@@ -76,14 +73,7 @@ def plot_row_missingness(
     ax.set_xlabel(x_label, fontsize=11, fontweight="bold", color="#1e293b", labelpad=10)
     ax.set_ylabel(y_label, fontsize=11, fontweight="bold", color="#1e293b", labelpad=10)
 
-    ax.tick_params(axis="both", labelcolor="#475569", labelsize=10)
-    for label in ax.get_xticklabels() + ax.get_yticklabels():
-        label.set_fontweight("bold")
-
-    ax.grid(axis="y", color="#f1f5f9", linewidth=1.2)
-    ax.grid(axis="x", visible=False)
-    ax.set_axisbelow(True)
-    sns.despine(ax=ax, left=True, bottom=True)
+    _style_axes_h(ax)
     fig.tight_layout()
 
     return fig
@@ -140,15 +130,13 @@ def plot_column_missingness(
     )
 
     max_count = counts.max()
-    offset = max_count * 0.015 if max_count > 0 else 0.1
 
-    label_bars(
-        ax,
+    ax.bar_label(
         bars,
-        [f"{rate * 100:.1f}%" for rate in rates],
-        orientation="horizontal",
-        offset=offset,
+        labels=[f"{rate * 100:.1f}%" for rate in rates],
+        padding=3,
         fontsize=9,
+        fontweight="bold",
         color="#1e293b",
     )
 
@@ -177,15 +165,8 @@ def plot_column_missingness(
     if y_label:
         ax.set_ylabel(y_label, fontsize=11, fontweight="bold", color="#1e293b")
 
-    ax.tick_params(axis="both", labelcolor="#475569", labelsize=10)
-    for label in ax.get_xticklabels() + ax.get_yticklabels():
-        label.set_fontweight("bold")
-
-    ax.grid(axis="x", color="#f1f5f9", linewidth=0.7)
-    ax.grid(axis="y", visible=False)
-    ax.set_axisbelow(True)
     ax.legend(fontsize=10, loc="lower right", frameon=True)
-    sns.despine(ax=ax, left=True, bottom=True)
+    _style_axes_v(ax)
     fig.tight_layout()
 
     return fig
@@ -334,14 +315,7 @@ def plot_stratified_missingness(
         bbox_to_anchor=(1, 1),
     )
 
-    ax.tick_params(axis="both", labelcolor="#475569", labelsize=10)
-    for label in ax.get_xticklabels() + ax.get_yticklabels():
-        label.set_fontweight("bold")
-
-    ax.grid(axis="x", visible=False)
-    ax.grid(axis="y", visible=False)
-    ax.set_axisbelow(True)
-    sns.despine(ax=ax, left=True, bottom=True)
+    _style_axes_v(ax)
     fig.tight_layout()
 
     return fig

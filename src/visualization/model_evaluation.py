@@ -10,7 +10,6 @@ matplotlib.use("Agg", force=True)
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 from matplotlib.patches import Patch
 
 from src.config import (
@@ -19,51 +18,8 @@ from src.config import (
     INTERNAL_VALIDATION_COLORS,
     MODALITY_COLORS,
     MODEL_BAR_COLOR,
-    MODEL_PALETTE,
 )
-from src.visualization.plot_utils import label_bars
-
-
-def _style_axes(ax, grid_axis: str = "y") -> None:
-    """Apply the shared axis styling used across the project figures.
-
-    Parameters
-    ----------
-    ax : matplotlib.axes.Axes
-        Axes to style.
-    grid_axis : str, default 'y'
-        Axis along which the grid is drawn ('x', 'y' or 'both').
-
-    Returns
-    -------
-    None
-    """
-    ax.tick_params(axis="both", labelcolor="#34495e", labelsize=10)
-    for label in ax.get_xticklabels() + ax.get_yticklabels():
-        label.set_fontweight("bold")
-    ax.grid(axis=grid_axis, color="#eaeded", linewidth=0.6)
-    ax.grid(axis="x", visible=False)
-    ax.set_axisbelow(True)
-    sns.despine(ax=ax)
-
-
-def _model_colors(model_names) -> dict:
-    """Assign a stable color to each model from the project palette.
-
-    Parameters
-    ----------
-    model_names : iterable of str
-        Model names, in reporting order.
-
-    Returns
-    -------
-    dict
-        Mapping of model name to hex color.
-    """
-    return {
-        name: MODEL_PALETTE[index % len(MODEL_PALETTE)]
-        for index, name in enumerate(model_names)
-    }
+from src.visualization.plot_utils import _model_colors, _style_axes_b, _style_axes_h, _style_axes_v
 
 
 def plot_internal_validation(
@@ -143,7 +99,7 @@ def plot_internal_validation(
     ax.set_xlabel(None)
     ax.set_ylabel(metric, fontsize=10, fontweight="bold", color="#2c3e50")
     ax.legend(title=None, fontsize=9, loc="upper right", frameon=True)
-    _style_axes(ax)
+    _style_axes_h(ax)
     fig.tight_layout()
 
     return fig
@@ -207,7 +163,7 @@ def plot_model_roc_curves(
     )
     ax.set_ylabel("True positive rate", fontsize=10, fontweight="bold", color="#2c3e50")
     ax.legend(loc=legend_loc, fontsize=9)
-    _style_axes(ax, grid_axis="both")
+    _style_axes_b(ax)
     fig.tight_layout()
 
     return fig
@@ -277,7 +233,7 @@ def plot_model_pr_curves(
     ax.set_xlabel("Recall", fontsize=10, fontweight="bold", color="#2c3e50")
     ax.set_ylabel("Precision", fontsize=10, fontweight="bold", color="#2c3e50")
     ax.legend(loc=legend_loc, fontsize=9)
-    _style_axes(ax, grid_axis="both")
+    _style_axes_b(ax)
     fig.tight_layout()
 
     return fig
@@ -344,7 +300,7 @@ def plot_metric_by_model(
     )
     ax.set_xlabel(None)
     ax.set_ylabel(metric, fontsize=10, fontweight="bold", color="#2c3e50")
-    _style_axes(ax)
+    _style_axes_h(ax)
     fig.tight_layout()
 
     return fig
@@ -427,7 +383,7 @@ def plot_modality_comparison(
         bbox_to_anchor=(1.05, 1.0),
         frameon=True,
     )
-    _style_axes(ax)
+    _style_axes_h(ax)
     fig.tight_layout()
 
     return fig
@@ -503,7 +459,7 @@ def plot_feature_selection_coefficients(
         "Elastic Net coefficient", fontsize=10, fontweight="bold", color="#2c3e50"
     )
     ax.set_ylabel(None)
-    _style_axes(ax, grid_axis="x")
+    _style_axes_v(ax)
 
     ax.legend(
         handles=[

@@ -23,7 +23,7 @@ import seaborn as sns
 import shap
 
 from src.config import FEATURE_BLOCK_COLORS, SHAP_TOP_FEATURES
-from src.visualization.model_evaluation import _style_axes
+from src.visualization.plot_utils import _style_axes_v
 
 
 def _block_legend_handles(blocks_present) -> list:
@@ -161,9 +161,7 @@ def plot_shap_bar(
     ax.barh(top["Feature"], top["Mean_Abs_SHAP"], color=colors)
     ax.set_xlabel("Mean |SHAP value|", fontsize=11, fontweight="bold")
     ax.set_title(title, fontsize=13, fontweight="bold")
-    _style_axes(ax, grid_axis="x")
-    ax.grid(axis="x", visible=True, color="#eaeded", linewidth=0.6)
-    ax.grid(axis="y", visible=False)
+    _style_axes_v(ax)
 
     blocks_present = [
         block

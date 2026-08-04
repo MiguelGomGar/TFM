@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 from src.config import THRESHOLD_SCENARIO_COLORS
-from src.visualization.model_evaluation import _style_axes
+from src.visualization.plot_utils import _style_axes_h
 
 
 
@@ -154,7 +154,7 @@ def plot_threshold_metrics_comparison(
     ax.set_xlabel(None)
     ax.set_ylabel("Score", fontsize=10, fontweight="bold", color="#2c3e50")
     ax.legend(title=None, fontsize=9, loc="upper right", frameon=True)
-    _style_axes(ax)
+    _style_axes_h(ax)
     fig.tight_layout()
 
     return fig
