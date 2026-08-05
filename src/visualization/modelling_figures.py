@@ -153,7 +153,7 @@ def plot_arm_comparison(
     output_dir: str | Path,
     extra_arms: list[tuple[str, Path]] | None = None,
     logger: logging.Logger | None = None,
-    **_unused,
+    **_unused: object,
 ) -> None:
     """Redraw one modelling-arm comparison, metric by metric.
 

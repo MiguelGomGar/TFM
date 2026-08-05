@@ -19,7 +19,7 @@ def plot_row_missingness(
     title: str = "Missing Values per record",
     x_label: str = "Amount of Missing Values",
     y_label: str = "Number of Records",
-):
+) -> plt.Figure | None:
     """Plot a bar chart of records by number of missing values.
 
     Parameters
@@ -85,7 +85,7 @@ def plot_column_missingness(
     threshold: float | None = None,
     x_label: str = "Number of Missing Values",
     y_label: str = None,
-):
+) -> plt.Figure | None:
     """Plot a horizontal bar chart of missing value counts per feature.
 
     Parameters
@@ -177,7 +177,7 @@ def plot_missingness_heatmap(
     title: str = "Missing Values Heatmap",
     x_label: str = "Features",
     y_label: str = "Records",
-):
+) -> plt.Figure | None:
     """Plot a heatmap showing missing value patterns across records and features.
 
     Parameters
@@ -227,7 +227,7 @@ def plot_stratified_missingness(
     title: str = "Missing Values Stratified by AF Recurrence",
     x_label: str = "Proportion of Missing Values",
     y_label: str = None,
-):
+) -> plt.Figure | None:
     """Plot a stacked horizontal bar chart of feature missingness by group.
 
     Parameters

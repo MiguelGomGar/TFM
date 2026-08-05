@@ -1,5 +1,7 @@
 """Risk score evaluation and metrics calculation."""
 
+from collections.abc import Sequence
+
 import pandas as pd
 from sklearn.metrics import (
     average_precision_score,
@@ -9,7 +11,9 @@ from sklearn.metrics import (
 )
 
 
-def evaluate_risk_scores(df, target, score_columns):
+def evaluate_risk_scores(
+    df: pd.DataFrame, target: str, score_columns: Sequence[str]
+) -> tuple[pd.DataFrame, list[tuple], list[tuple]]:
     """Evaluate performance of multiple risk scores (ROC-AUC and PR-AUC).
 
     Parameters

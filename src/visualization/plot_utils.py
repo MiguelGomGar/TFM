@@ -1,12 +1,15 @@
 """Shared helpers reused across the visualization modules."""
 
+from collections.abc import Sequence
+
+import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
 from src.config import MODEL_PALETTE
 
 
-def _style_axes_v(ax) -> None:
+def _style_axes_v(ax: plt.Axes) -> None:
     """Style axes for horizontal barplots (ax.barh).
 
     Draws grid lines along the x axis, perpendicular to the horizontal bars,
@@ -30,7 +33,7 @@ def _style_axes_v(ax) -> None:
     sns.despine(ax=ax)
 
 
-def _style_axes_h(ax) -> None:
+def _style_axes_h(ax: plt.Axes) -> None:
     """Style axes for vertical barplots (ax.bar).
 
     Draws grid lines along the y axis, perpendicular to the vertical bars,
@@ -54,7 +57,7 @@ def _style_axes_h(ax) -> None:
     sns.despine(ax=ax)
 
 
-def _style_axes_b(ax) -> None:
+def _style_axes_b(ax: plt.Axes) -> None:
     """Style axes for non-barplot figures (line, scatter, violin plots...).
 
     Draws grid lines along both axes.
@@ -76,7 +79,7 @@ def _style_axes_b(ax) -> None:
     sns.despine(ax=ax)
 
 
-def _model_colors(model_names) -> dict:
+def _model_colors(model_names: Sequence[str]) -> dict[str, str]:
     """Assign a stable color to each model from the project palette.
 
     Parameters

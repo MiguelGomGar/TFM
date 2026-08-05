@@ -5,17 +5,20 @@ Elastic Net logistic regression: every predictor whose coefficient is shrunk to
 exactly zero is filtered out before the remaining models are trained.
 """
 
+from collections.abc import Sequence
+from logging import Logger
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from sklearn.pipeline import Pipeline
 
 from src.utils.filenames import FEATURE_SELECTION_FILE
 from src.utils.io import read_csv, save_csv
 from src.models.results_saving import _clean_feature_names, get_relevant_features
 
 
-def _build_coefficient_table(fitted_pipeline) -> pd.DataFrame:
+def _build_coefficient_table(fitted_pipeline: Pipeline) -> pd.DataFrame:
     """Extract the fitted coefficients of a regularized pipeline.
 
     Parameters
@@ -43,7 +46,9 @@ def _build_coefficient_table(fitted_pipeline) -> pd.DataFrame:
     return table.sort_values(by="Coefficient", ascending=False).reset_index(drop=True)
 
 
-def _warn_if_penalty_cannot_shrink(fitted_pipeline, logger=None) -> None:
+def _warn_if_penalty_cannot_shrink(
+    fitted_pipeline: Pipeline, logger: Logger | None = None
+) -> None:
     """Log a warning when the fitted Elastic Net cannot zero out coefficients.
 
     Since scikit-learn 1.8 the penalty type is derived from l1_ratio alone, and
@@ -83,8 +88,11 @@ def _warn_if_penalty_cannot_shrink(fitted_pipeline, logger=None) -> None:
 
 
 def select_features_with_elastic_net(
-    fitted_en_pipeline, output_dir, identifier: str = "EN", logger=None
-):
+    fitted_en_pipeline: Pipeline,
+    output_dir: str | Path,
+    identifier: str = "EN",
+    logger: Logger | None = None,
+) -> tuple[list[str], list[str], pd.DataFrame]:
     """Split the predictors into those kept and those dropped by the Elastic Net.
 
     The pipeline must have been fitted on the training set only, so that the
@@ -142,7 +150,11 @@ def select_features_with_elastic_net(
     return relevant_features, irrelevant_features, coefficients
 
 
-def apply_feature_filter(X: pd.DataFrame, irrelevant_features, logger=None):
+def apply_feature_filter(
+    X: pd.DataFrame,
+    irrelevant_features: Sequence[str],
+    logger: Logger | None = None,
+) -> pd.DataFrame:
     """Drop the features rejected by the Elastic Net from a feature matrix.
 
     If the regularization happened to zero out every predictor, the matrix is
@@ -176,7 +188,7 @@ def apply_feature_filter(X: pd.DataFrame, irrelevant_features, logger=None):
     return X.drop(columns=columns_to_drop)
 
 
-def load_previously_kept_features(*feature_selection_dirs) -> list:
+def load_previously_kept_features(*feature_selection_dirs: str | Path) -> list[str]:
     """Collect the predictors surviving earlier Elastic Net filterings.
 
     Reads the ``features_kept.csv`` written by ``select_features_with_elastic_net``

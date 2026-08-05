@@ -21,6 +21,7 @@ logger = setup_logger(Path(__file__).stem)
 
 # %% Main function
 def main() -> None:
+    """Draw the risk score ROC and precision-recall curves."""
     logger.info(f"Loading the risk score metrics from {RISK_SCORES_METRICS_PATH}...")
     metrics = read_csv(RISK_SCORES_METRICS_PATH).set_index("score")
 

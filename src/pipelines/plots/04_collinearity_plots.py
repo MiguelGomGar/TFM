@@ -25,6 +25,7 @@ logger = setup_logger(Path(__file__).stem)
 
 # %% Main
 def main() -> None:
+    """Draw the correlation matrices and the VIF chart."""
     for dtype, label, ticks_size in CORRELATION_MATRICES:
         logger.info(f"Plotting the {label.lower()} correlation matrix...")
         corr_data = read_csv(

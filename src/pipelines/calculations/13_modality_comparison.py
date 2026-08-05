@@ -22,6 +22,7 @@ logger = setup_logger(Path(__file__).stem)
 
 # %% Main function
 def main() -> None:
+    """Save the model-by-model deltas between the modelling arms."""
     for comparison_spec in MODALITY_COMPARISONS:
         build_modality_comparison(**comparison_spec, logger=logger)
 

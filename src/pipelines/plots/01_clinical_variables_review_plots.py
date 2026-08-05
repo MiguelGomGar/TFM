@@ -17,6 +17,7 @@ logger = setup_logger(Path(__file__).stem)
 
 # %% Main
 def main() -> None:
+    """Draw the clinical variables review bar chart."""
     logger.info(f"Loading the review table from {INPUT_FILE}...")
     df = read_csv(INPUT_FILE)
 

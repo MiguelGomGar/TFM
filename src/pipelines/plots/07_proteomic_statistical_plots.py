@@ -34,6 +34,7 @@ logger = setup_logger(Path(__file__).stem)
 
 
 def main() -> None:
+    """Draw the proteomic distribution, Q-Q and stratified figures."""
     logger.info(f"Reading the protein names from {SCHEMA_FILE}...")
     proteomic_data = read_parquet(SCHEMA_FILE)
     proteomic_features = get_proteomic_features(proteomic_data)

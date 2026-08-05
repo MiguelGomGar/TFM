@@ -3,7 +3,7 @@
 import pandas as pd
 
 
-def compute_row_missingness_data(df):
+def compute_row_missingness_data(df: pd.DataFrame) -> pd.DataFrame | None:
     """Calculate row-wise (record-level) missingness summary for visualization.
 
     Parameters
@@ -34,7 +34,7 @@ def compute_row_missingness_data(df):
     return na_summary
 
 
-def compute_column_missingness_data(df):
+def compute_column_missingness_data(df: pd.DataFrame) -> pd.DataFrame | None:
     """Calculate column-wise (feature-level) missingness summary for visualization.
 
     Parameters

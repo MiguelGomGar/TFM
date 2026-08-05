@@ -33,6 +33,7 @@ logger = setup_logger(Path(__file__).stem)
 
 # %% Main function
 def main() -> None:
+    """Train and evaluate every model on the full clinical dataset."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"Loading data from {INPUT_FILE}...")

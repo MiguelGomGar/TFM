@@ -20,6 +20,7 @@ logger = setup_logger(Path(__file__).stem)
 
 # %% Main
 def main() -> None:
+    """Build and save the clinical variables review table."""
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"Loading data from {INPUT_FILE}...")

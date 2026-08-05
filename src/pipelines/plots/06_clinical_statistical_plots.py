@@ -36,6 +36,7 @@ logger = setup_logger(Path(__file__).stem)
 
 
 def main() -> None:
+    """Draw the clinical distribution, Q-Q and stratified figures."""
     logger.info(f"Reading the feature names from {SCHEMA_FILE}...")
     clinical_data = read_parquet(SCHEMA_FILE)
     numeric_features = get_numeric_columns(clinical_data)

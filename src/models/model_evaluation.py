@@ -1,7 +1,10 @@
 """Evaluation of the fitted models on the external validation set."""
 
+from collections.abc import Sequence
+
 import numpy as np
 import pandas as pd
+from sklearn.base import BaseEstimator
 from sklearn.metrics import (
     accuracy_score,
     average_precision_score,
@@ -16,7 +19,7 @@ from sklearn.metrics import (
 from src.config import MODEL_DISPLAY_NAMES, MODEL_ORDER
 
 
-def get_decision_scores(model, X) -> np.ndarray:
+def get_decision_scores(model: BaseEstimator, X: pd.DataFrame) -> np.ndarray:
     """Return continuous scores for the positive class.
 
     Uses predict_proba when available and falls back to decision_function,
@@ -50,7 +53,9 @@ def get_decision_scores(model, X) -> np.ndarray:
     )
 
 
-def compute_hard_metrics(y_test, y_pred) -> dict:
+def compute_hard_metrics(
+    y_test: pd.Series | np.ndarray, y_pred: np.ndarray
+) -> dict:
     """Compute the threshold-dependent ('hard') classification metrics.
 
     Factored out of evaluate_on_test so that other callers (e.g. a
@@ -80,7 +85,9 @@ def compute_hard_metrics(y_test, y_pred) -> dict:
     }
 
 
-def evaluate_on_test(model, X_test, y_test):
+def evaluate_on_test(
+    model: BaseEstimator, X_test: pd.DataFrame, y_test: pd.Series
+) -> tuple[pd.DataFrame, dict]:
     """Score a fitted model on the held-out external validation set.
 
     Parameters
@@ -160,7 +167,9 @@ def build_auc_table(metrics_df: pd.DataFrame, metric: str) -> pd.DataFrame:
     return table.sort_values(by="Score", ascending=False).reset_index(drop=True)
 
 
-def load_curve_areas(metrics_df: pd.DataFrame, metric: str, model_order=None) -> dict:
+def load_curve_areas(
+    metrics_df: pd.DataFrame, metric: str, model_order: Sequence[str] | None = None
+) -> dict:
     """Collect the external validation area under the curve of every model.
 
     Reads the areas back from the consolidated metrics table instead of the
@@ -191,7 +200,8 @@ def load_curve_areas(metrics_df: pd.DataFrame, metric: str, model_order=None) ->
 
 
 def build_internal_validation_table(
-    internal_validation_by_model: dict, model_order=None
+    internal_validation_by_model: dict[str, pd.DataFrame],
+    model_order: Sequence[str] | None = None,
 ) -> pd.DataFrame:
     """Stack the per-model internal validation summaries into one ordered table.
 
@@ -224,7 +234,7 @@ def build_modality_comparison_table(
     comparison_metrics: pd.DataFrame,
     baseline_label: str = "Clinical",
     comparison_label: str = "Multimodal",
-    metrics=("ROC-AUC", "PR-AUC"),
+    metrics: Sequence[str] = ("ROC-AUC", "PR-AUC"),
     extra_arms: list[tuple[str, pd.DataFrame]] | None = None,
 ) -> pd.DataFrame:
     """Pair the external validation scores of two or more modelling arms.
@@ -338,7 +348,7 @@ def build_modality_delta_table(
 
 def build_performance_table(
     models_metrics: pd.DataFrame,
-    metrics: list,
+    metrics: Sequence[str],
     decimals: int = 3,
     use_display_names: bool = True,
 ) -> pd.DataFrame:
@@ -421,7 +431,7 @@ def build_performance_table(
 
 def build_comparison_table(
     delta_table: pd.DataFrame,
-    metrics: list,
+    metrics: Sequence[str],
     baseline_label: str,
     comparison_label: str,
     decimals: int = 3,
@@ -544,7 +554,7 @@ def _collapse_best_params(best_params: pd.DataFrame) -> pd.Series:
 
 
 def build_hyperparameters_table(
-    phase_best_params: dict, use_display_names: bool = True
+    phase_best_params: dict[str, pd.DataFrame], use_display_names: bool = True
 ) -> pd.DataFrame:
     """Merge every phase's tuned hyperparameters into a single wide table.
 

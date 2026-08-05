@@ -44,6 +44,7 @@ logger = setup_logger(Path(__file__).stem)
 
 # %% Main function
 def main() -> None:
+    """Train the multimodal arm and its matched clinical counterpart."""
     CLINICAL_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     MULTIMODAL_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 

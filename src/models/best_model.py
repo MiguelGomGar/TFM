@@ -9,6 +9,7 @@ Youden-optimal threshold instead: the ROC cut-off that maximizes sensitivity
 + specificity - 1, a standard criterion for choosing clinical risk cut-offs.
 """
 
+from logging import Logger
 from pathlib import Path
 
 import numpy as np
@@ -22,7 +23,7 @@ from src.models.model_evaluation import compute_hard_metrics, get_decision_score
 from src.utils.io import read_joblib
 
 
-def load_fitted_pipeline(model_dir, abbreviation: str) -> Pipeline:
+def load_fitted_pipeline(model_dir: str | Path, abbreviation: str) -> Pipeline:
     """Load one fitted pipeline persisted by a modelling phase.
 
     Parameters
@@ -68,7 +69,9 @@ def get_model_feature_columns(fitted_pipeline: Pipeline) -> list[str]:
     return list(fitted_pipeline.named_steps["preprocessor"].feature_names_in_)
 
 
-def compute_youden_threshold(y_test, y_score) -> dict:
+def compute_youden_threshold(
+    y_test: pd.Series | np.ndarray, y_score: np.ndarray
+) -> dict:
     """Find the ROC cut-off that maximizes Youden's J statistic.
 
     Youden's J = sensitivity + specificity - 1 = true positive rate - false
@@ -109,7 +112,7 @@ def compute_youden_threshold(y_test, y_score) -> dict:
     }
 
 
-def apply_threshold(y_score, threshold: float) -> np.ndarray:
+def apply_threshold(y_score: np.ndarray, threshold: float) -> np.ndarray:
     """Binarize a continuous decision score at an arbitrary cut-off.
 
     Parameters
@@ -128,7 +131,11 @@ def apply_threshold(y_score, threshold: float) -> np.ndarray:
     return (np.asarray(y_score) > threshold).astype(int)
 
 
-def build_confusion_matrix_table(y_true, y_pred, labels=(0, 1)) -> pd.DataFrame:
+def build_confusion_matrix_table(
+    y_true: pd.Series | np.ndarray,
+    y_pred: np.ndarray,
+    labels: tuple[int, int] = (0, 1),
+) -> pd.DataFrame:
     """Build a labeled confusion matrix.
 
     Parameters
@@ -176,12 +183,12 @@ def build_threshold_metrics_table(metrics_by_scenario: dict) -> pd.DataFrame:
 
 def analyze_model(
     abbreviation: str,
-    model_dir,
+    model_dir: str | Path,
     df: pd.DataFrame,
     y: pd.Series,
     seed: int = SEED,
     test_size: float = TEST_SIZE,
-    logger=None,
+    logger: Logger | None = None,
 ) -> dict:
     """Score one fitted pipeline at its Youden-optimal threshold.
 

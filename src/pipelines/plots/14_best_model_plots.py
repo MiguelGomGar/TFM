@@ -26,6 +26,7 @@ logger = setup_logger(Path(__file__).stem)
 
 # %% Main function
 def main() -> None:
+    """Draw the confusion matrices and threshold comparison chart."""
     # The threshold table carries the scenario label each confusion matrix was
     # computed at, which is what titles its figure.
     threshold_info = read_csv(INPUT_DIR / THRESHOLD_INFO_FILE).set_index("Model")

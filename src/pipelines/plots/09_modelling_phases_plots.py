@@ -18,6 +18,7 @@ logger = setup_logger(Path(__file__).stem)
 
 # %% Main function
 def main() -> None:
+    """Draw every figure of the five modelling phases."""
     for phase_spec in MODELLING_PHASES:
         plot_modelling_phase(**phase_spec, logger=logger)
 

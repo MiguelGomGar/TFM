@@ -35,6 +35,7 @@ logger = setup_logger(Path(__file__).stem)
 
 # %% Main
 def main() -> None:
+    """Save the missing-value diagnostics, before and after cleaning."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"Loading data from {INPUT_FILE}...")

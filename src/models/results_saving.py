@@ -1,9 +1,12 @@
 """Helpers for persisting model evaluation artifacts."""
 
+from collections.abc import Sequence
+from logging import Logger
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from sklearn.pipeline import Pipeline
 
 from src.config import MODEL_ORDER
 from src.models.model_evaluation import (
@@ -22,7 +25,7 @@ from src.utils.filenames import (
 from src.utils.io import read_csv, save_csv, save_joblib
 
 
-def _clean_feature_names(feature_list):
+def _clean_feature_names(feature_list: Sequence[str]) -> list[str]:
     """Remove pipeline prefixes from feature names.
 
     Strips everything before and including the double underscore ('__')
@@ -41,7 +44,9 @@ def _clean_feature_names(feature_list):
     return [name.split("__")[-1] for name in feature_list]
 
 
-def get_relevant_features(regularized_model_pipeline):
+def get_relevant_features(
+    regularized_model_pipeline: Pipeline,
+) -> tuple[list[str], list[str]]:
     """Extract relevant (non-zero) and irrelevant (zero) features from a regularized model.
 
     Separates features based on their coefficients from a fitted regularized
@@ -107,7 +112,9 @@ def get_relevant_features(regularized_model_pipeline):
     return relevant_cols, irrelevant_cols
 
 
-def save_model(fitted_pipeline, output_dir, identifier=None):
+def save_model(
+    fitted_pipeline: Pipeline, output_dir: Path, identifier: str | None = None
+) -> None:
     """Save a fitted scikit-learn pipeline to disk as a joblib file.
 
     Persists the entire trained pipeline (including preprocessing and classifier),
@@ -118,7 +125,7 @@ def save_model(fitted_pipeline, output_dir, identifier=None):
     fitted_pipeline : sklearn.pipeline.Pipeline
         A fully trained pipeline object containing a 'preprocessor' and 'clf'
         (classifier) step.
-    output_dir : str or Path
+    output_dir : Path
         Directory where the joblib file will be saved.
     identifier : str, optional
         Optional string to identify the model in the filename. If provided,
@@ -147,7 +154,9 @@ def save_model(fitted_pipeline, output_dir, identifier=None):
     save_joblib(fitted_pipeline, file_path)
 
 
-def save_metrics_results(models_dict, output_dir=None):
+def save_metrics_results(
+    models_dict: dict[str, pd.DataFrame], output_dir: str | Path | None = None
+) -> pd.DataFrame:
     """Consolidate cross-validation metrics from multiple models into a master DataFrame.
 
     Combines long-format metric DataFrames from multiple models into a single
@@ -203,8 +212,13 @@ def save_metrics_results(models_dict, output_dir=None):
 
 
 def save_curves_results(
-    model_names, x_list, y_list, curve_type="roc", output_dir=None, filename=None
-):
+    model_names: Sequence[str],
+    x_list: Sequence[np.ndarray],
+    y_list: Sequence[np.ndarray],
+    curve_type: str = "roc",
+    output_dir: str | Path | None = None,
+    filename: str | None = None,
+) -> pd.DataFrame:
     """Build and save evaluation curve coordinates (ROC or PR) for multiple models.
 
     Consolidates X and Y coordinates for ROC or Precision-Recall curves from
@@ -275,7 +289,9 @@ def save_curves_results(
     return df_curve
 
 
-def save_prevalence(y_test, output_dir) -> pd.DataFrame:
+def save_prevalence(
+    y_test: pd.Series | np.ndarray, output_dir: str | Path
+) -> pd.DataFrame:
     """Persist the positive-class rate of an evaluation set.
 
     The precision-recall figures need the prevalence to draw the no-skill
@@ -308,7 +324,7 @@ def save_prevalence(y_test, output_dir) -> pd.DataFrame:
     return table
 
 
-def load_prevalence(input_dir) -> float:
+def load_prevalence(input_dir: str | Path) -> float:
     """Read back the prevalence saved by ``save_prevalence``.
 
     Parameters
@@ -324,7 +340,9 @@ def load_prevalence(input_dir) -> float:
     return float(read_csv(Path(input_dir) / PREVALENCE_FILE)["Prevalence"].iloc[0])
 
 
-def load_internal_validation(input_dir: Path, logger=None) -> dict:
+def load_internal_validation(
+    input_dir: str | Path, logger: Logger | None = None
+) -> dict[str, pd.DataFrame]:
     """Load every internal_validation_{model}.csv file found in input_dir.
 
     Parameters
@@ -357,7 +375,11 @@ def load_internal_validation(input_dir: Path, logger=None) -> dict:
 
 
 def build_performance_tables(
-    phases, metrics: list, output_path: Path, decimals: int = 3, logger=None
+    phases: Sequence[dict],
+    metrics: Sequence[str],
+    output_path: str | Path,
+    decimals: int = 3,
+    logger: Logger | None = None,
 ) -> None:
     """Build one performance workbook with one sheet per modelling phase.
 
@@ -408,7 +430,11 @@ def build_performance_tables(
 
 
 def build_comparison_tables(
-    phases, metrics: list, output_path: Path, decimals: int = 3, logger=None
+    phases: Sequence[dict],
+    metrics: Sequence[str],
+    output_path: str | Path,
+    decimals: int = 3,
+    logger: Logger | None = None,
 ) -> None:
     """Build one comparison workbook with one sheet per modality comparison.
 
@@ -461,7 +487,9 @@ def build_comparison_tables(
     save_excel_workbook(sheets, output_path, n_header_rows=3, n_index_cols=1)
 
 
-def build_hyperparameters_tables(phases, output_path: Path, logger=None) -> None:
+def build_hyperparameters_tables(
+    phases: Sequence[dict], output_path: str | Path, logger: Logger | None = None
+) -> None:
     """Build a single hyperparameters workbook comparing every modelling phase.
 
     Every phase's tuned hyperparameters are merged into one table, indexed by

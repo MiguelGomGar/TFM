@@ -119,7 +119,9 @@ def compute_stratified_categorical_distribution(
     )
 
 
-def compute_qq(df: pd.DataFrame, feature: str, ci_level: float = 0.95):
+def compute_qq(
+    df: pd.DataFrame, feature: str, ci_level: float = 0.95
+) -> dict | None:
     """Compute Q-Q plot coordinates and confidence bands for a numeric feature.
 
     Generates theoretical vs. observed quantiles and a confidence band around

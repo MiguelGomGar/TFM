@@ -11,6 +11,7 @@ logger = setup_logger(Path(__file__).stem)
 
 # %% Main function
 def main() -> None:
+    """Draw the modelling-arm comparison bar charts."""
     for comparison_spec in MODALITY_COMPARISONS:
         plot_arm_comparison(**comparison_spec, logger=logger)
 

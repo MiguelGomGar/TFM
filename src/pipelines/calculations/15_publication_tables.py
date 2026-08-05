@@ -37,6 +37,7 @@ HYPERPARAMETERS_WORKBOOK = PUBLICATION_TABLES_DIR / "hyperparameters_tables.xlsx
 
 # %% Main function
 def main() -> None:
+    """Write the three publication-ready Excel workbooks."""
     PUBLICATION_TABLES_DIR.mkdir(parents=True, exist_ok=True)
 
     build_performance_tables(

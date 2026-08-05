@@ -6,6 +6,8 @@ corresponding figures are drawn from these tables by
 ``src/pipelines/plots/13_modality_comparison_plots.py``.
 """
 
+from collections.abc import Sequence
+from logging import Logger
 from pathlib import Path
 
 from src.config import SCORING_METRICS
@@ -22,8 +24,10 @@ from src.utils.io import read_csv, save_csv
 
 
 def modality_order(
-    baseline_label: str, comparison_label: str, extra_arms=None
-) -> tuple:
+    baseline_label: str,
+    comparison_label: str,
+    extra_arms: Sequence[tuple[str, Path]] | None = None,
+) -> tuple[str, ...]:
     """List the arms of one comparison in reporting order.
 
     Shared by the table builder and the plotting pipeline so both lay the arms
@@ -49,12 +53,12 @@ def modality_order(
 
 def build_modality_comparison(
     baseline_label: str,
-    baseline_metrics_file,
+    baseline_metrics_file: str | Path,
     comparison_label: str,
-    comparison_metrics_file,
-    output_dir,
-    extra_arms=None,
-    logger=None,
+    comparison_metrics_file: str | Path,
+    output_dir: str | Path,
+    extra_arms: Sequence[tuple[str, Path]] | None = None,
+    logger: Logger | None = None,
 ) -> None:
     """Build and save one modelling-arm comparison, metric by metric.
 

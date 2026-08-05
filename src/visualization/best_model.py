@@ -18,7 +18,7 @@ from src.visualization.plot_utils import _style_axes_h
 def plot_confusion_matrix(
     matrix: pd.DataFrame,
     title: str = "Confusion matrix",
-    figsize=(5, 5),
+    figsize: tuple[float, float] = (5, 5),
 ) -> plt.Figure:
     """Plot a single confusion matrix heatmap for one threshold scenario.
 
@@ -87,7 +87,7 @@ def plot_confusion_matrix(
 def plot_threshold_metrics_comparison(
     metrics_table: pd.DataFrame,
     title: str = "Hard metrics by threshold scenario",
-    figsize=(9, 6),
+    figsize: tuple[float, float] = (9, 6),
     palette: dict | None = None,
 ) -> plt.Figure:
     """Plot the hard metrics of several scenarios side by side.

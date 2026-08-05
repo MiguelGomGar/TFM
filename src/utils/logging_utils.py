@@ -5,6 +5,7 @@ import logging
 import sys
 from datetime import datetime
 from pathlib import Path
+from types import TracebackType
 
 from src.utils.paths import LOGS_DIR
 
@@ -55,13 +56,23 @@ def setup_logger(name: str, log_dir: Path | None = None) -> logging.Logger:
 
     logger.info(f"[{datetime.now():%Y-%m-%d %H:%M:%S}] Started: {name}")
 
-    def log_uncaught_exception(exc_type, exc_value, exc_traceback):
+    def log_uncaught_exception(
+        exc_type: type[BaseException],
+        exc_value: BaseException,
+        exc_traceback: TracebackType | None,
+    ) -> None:
+        """Record a crash in the log file instead of only on the console.
+
+        A Ctrl-C is deliberately left to the default hook: it is the user
+        stopping the run, not a failure worth a traceback in the log.
+        """
         if issubclass(exc_type, KeyboardInterrupt):
             sys.__excepthook__(exc_type, exc_value, exc_traceback)
             return
         logger.error("Run failed", exc_info=(exc_type, exc_value, exc_traceback))
 
-    def log_finished():
+    def log_finished() -> None:
+        """Stamp the end of the run, however the interpreter exits."""
         logger.info(f"[{datetime.now():%Y-%m-%d %H:%M:%S}] Finished: {name}")
 
     sys.excepthook = log_uncaught_exception

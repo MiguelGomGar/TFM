@@ -28,6 +28,7 @@ logger = setup_logger(Path(__file__).stem)
 
 # %% Main function
 def main() -> None:
+    """Score the published clinical risk scores on the observed recurrences."""
     # Create output directory
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 

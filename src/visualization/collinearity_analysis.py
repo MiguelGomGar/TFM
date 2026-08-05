@@ -17,7 +17,7 @@ def plot_corr_matrix(
     dtype: str = "Numeric",
     threshold: float = 0.5,
     axis_ticks_size: int = 14,
-):
+) -> plt.Figure | None:
     """Plot a lower-triangular correlation heatmap for numeric or categorical data.
 
     Parameters
@@ -125,7 +125,7 @@ def plot_vif(
     title: str = "VIF Diagnostics",
     x_label: str = "VIF / GVIF^2",
     y_label: str = None,
-):
+) -> plt.Figure | None:
     """Plot a horizontal bar chart of Variance Inflation Factor (VIF) values.
 
     Parameters

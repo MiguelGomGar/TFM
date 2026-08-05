@@ -31,6 +31,7 @@ logger = setup_logger(Path(__file__).stem)
 
 # %% Main
 def main() -> None:
+    """Draw the missing-value heatmaps and bar charts."""
     # The heatmap and the stratified tables were saved with their index, which
     # carries the record and feature labels the figures rely on.
     for stage in ("before", "after"):

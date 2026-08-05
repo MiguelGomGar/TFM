@@ -36,6 +36,7 @@ logger = setup_logger(Path(__file__).stem)
 
 # %% Main function
 def main() -> None:
+    """Train and evaluate every model on the Elastic Net feature subset."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"Loading data from {INPUT_FILE}...")

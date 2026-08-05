@@ -42,6 +42,7 @@ logger = setup_logger(Path(__file__).stem)
 
 # %% Main
 def main() -> None:
+    """Build the analysis-ready clinical, proteomic and multimodal datasets."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"Loading clinical data from {CLINICAL_INPUT_FILE}...")

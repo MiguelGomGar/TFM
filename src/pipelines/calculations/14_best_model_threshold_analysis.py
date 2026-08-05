@@ -44,6 +44,7 @@ logger = setup_logger(Path(__file__).stem)
 
 # %% Main function
 def main() -> None:
+    """Save the threshold sensitivity of the three best models."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"Loading the multimodal dataset from {INPUT_FILE}...")

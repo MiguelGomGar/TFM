@@ -39,6 +39,7 @@ logger = setup_logger(Path(__file__).stem)
 
 # %% Main
 def main() -> None:
+    """Save the correlation matrices and the VIF diagnostics."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"Loading data from {INPUT_FILE}...")

@@ -37,6 +37,7 @@ logger = setup_logger(Path(__file__).stem)
 
 
 def main() -> None:
+    """Save the clinical distribution, Q-Q and stratified tables, plus table 1."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"Loading clinical data from {INPUT_FILE}...")

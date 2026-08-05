@@ -26,7 +26,7 @@ def plot_internal_validation(
     summary_df: pd.DataFrame,
     metric: str,
     title: str | None = None,
-    figsize=(9, 6),
+    figsize: tuple[float, float] = (9, 6),
 ) -> plt.Figure:
     """Plot the overfitting analysis of every model on the internal folds.
 
@@ -109,7 +109,7 @@ def plot_model_roc_curves(
     curves_df: pd.DataFrame,
     auc_by_model: dict,
     title: str = "ROC curves",
-    figsize=(7, 6),
+    figsize: tuple[float, float] = (7, 6),
     legend_loc: str = "lower right",
     colors: dict | None = None,
 ) -> plt.Figure:
@@ -174,7 +174,7 @@ def plot_model_pr_curves(
     pr_auc_by_model: dict,
     prevalence: float,
     title: str = "Precision-recall curves",
-    figsize=(7, 6),
+    figsize: tuple[float, float] = (7, 6),
     legend_loc: str = "lower right",
     colors: dict | None = None,
 ) -> plt.Figure:
@@ -244,7 +244,7 @@ def plot_metric_by_model(
     metric: str,
     baseline: float | None = None,
     title: str | None = None,
-    figsize=(8, 6),
+    figsize: tuple[float, float] = (8, 6),
 ) -> plt.Figure:
     """Plot one bar per model with its score on the external validation set.
 
@@ -311,7 +311,7 @@ def plot_modality_comparison(
     metric: str,
     modality_order: tuple[str, ...] = ("Clinical", "Multimodal"),
     title: str | None = None,
-    figsize=(9, 6),
+    figsize: tuple[float, float] = (9, 6),
 ) -> plt.Figure:
     """Compare modelling arms across every model, for a single metric.
 
@@ -393,7 +393,7 @@ def plot_feature_selection_coefficients(
     coefficients: pd.DataFrame,
     title: str | None = None,
     top_n: int | None = None,
-    figsize=(9, 10),
+    figsize: tuple[float, float] = (9, 10),
 ) -> plt.Figure:
     """Plot the Elastic Net coefficients of the predictors it kept.
 

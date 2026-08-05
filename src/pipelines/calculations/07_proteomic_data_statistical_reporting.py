@@ -33,6 +33,7 @@ logger = setup_logger(Path(__file__).stem)
 
 
 def main() -> None:
+    """Save the proteomic distribution, Q-Q and stratified tables."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"Loading data from {INPUT_FILE}...")

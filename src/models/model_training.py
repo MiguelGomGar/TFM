@@ -1,9 +1,17 @@
 """Hyperparameter optimization, internal validation and phase orchestration."""
 
+from collections.abc import Sequence
+from logging import Logger
 from pathlib import Path
 
 import pandas as pd
-from sklearn.model_selection import RandomizedSearchCV, cross_validate
+from sklearn.base import BaseEstimator
+from sklearn.model_selection import (
+    BaseCrossValidator,
+    RandomizedSearchCV,
+    cross_validate,
+)
+from sklearn.pipeline import Pipeline
 
 from src.config import (
     FEATURE_SELECTION_MODEL,
@@ -34,16 +42,16 @@ from src.utils.io import save_csv
 
 
 def optimize_model(
-    pipeline,
-    param_distributions,
-    X_train,
-    y_train,
-    cv,
+    pipeline: Pipeline,
+    param_distributions: dict,
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    cv: BaseCrossValidator,
     aim: str,
     n_iter: int,
     seed: int,
     n_jobs: int = N_JOBS,
-):
+) -> tuple[Pipeline, dict]:
     """Tune a pipeline with a randomized search over its hyperparameters.
 
     Parameters
@@ -90,7 +98,13 @@ def optimize_model(
     return search.best_estimator_, search.best_params_
 
 
-def cross_validate_model(model, X_train, y_train, cv, scoring=None) -> pd.DataFrame:
+def cross_validate_model(
+    model: BaseEstimator,
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    cv: BaseCrossValidator,
+    scoring: dict[str, str] | None = None,
+) -> pd.DataFrame:
     """Run the internal cross-validation used to assess overfitting.
 
     Both the training folds and the held-out validation fold are scored, so
@@ -195,20 +209,20 @@ def _build_best_params_table(best_params_by_model: dict) -> pd.DataFrame:
 
 
 def run_modelling_phase(
-    X_train,
-    X_test,
-    y_train,
-    y_test,
+    X_train: pd.DataFrame,
+    X_test: pd.DataFrame,
+    y_train: pd.Series,
+    y_test: pd.Series,
     search_spaces: dict,
-    output_dir,
+    output_dir: str | Path,
     n_iter: int,
-    cv,
+    cv: BaseCrossValidator,
     apply_filter: bool = False,
     seed: int = SEED,
-    model_order=None,
-    scoring=None,
+    model_order: Sequence[str] | None = None,
+    scoring: dict[str, str] | None = None,
     objective_metric: str = OBJECTIVE_METRIC,
-    logger=None,
+    logger: Logger | None = None,
 ) -> pd.DataFrame:
     """Train, tune and evaluate every model of one modelling phase.
 

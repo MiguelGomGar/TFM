@@ -19,7 +19,8 @@ logger = setup_logger(Path(__file__).stem)
 
 
 # %% Main
-def main():
+def main() -> None:
+    """Select, rename and type the raw clinical variables."""
     logger.info(f"Loading raw data from {INPUT_FILE}...")
     df = read_dta(INPUT_FILE)
 
