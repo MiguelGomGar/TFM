@@ -49,7 +49,6 @@ MODELLING_PLOT_PIPELINES = [
         "Figuras: comparación entre modalidades",
     ),
     ("src.pipelines.plots.14_best_model_plots", "Figuras: análisis del umbral"),
-    ("src.pipelines.plots.15_explainability_plots", "Figuras: explicabilidad SHAP"),
 ]
 
 

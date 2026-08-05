@@ -55,16 +55,12 @@ MODELLING_PIPELINES = [
         "Comparación clínico vs multimodal",
     ),
     (
-        "src.pipelines.calculations._publication_tables",
-        "Tablas de resultados para publicación",
-    ),
-    (
         "src.pipelines.calculations.14_best_model_threshold_analysis",
         "Análisis de sensibilidad al umbral de los tres mejores modelos",
     ),
     (
-        "src.pipelines.calculations.15_model_explainability",
-        "Explicabilidad SHAP de los tres mejores modelos",
+        "src.pipelines.calculations.15_publication_tables",
+        "Tablas de resultados para publicación",
     ),
 ]
 
