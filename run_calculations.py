@@ -1,168 +1,111 @@
 #!/usr/bin/env python3
-"""Orquestador: ejecuta los pipelines de cálculo (src/pipelines/calculations/) secuencialmente con logging unificado."""
+"""Run the calculation pipelines (src/pipelines/calculations/) in order.
 
-import argparse
-import importlib
-import sys
-import time
-from datetime import datetime
+Every table, model and dataset the project reports is produced here. The
+figures are drawn separately by run_plots.py, which only reads what this script
+leaves in results/.
+"""
 
-from src.utils.paths import LOGS_DIR
-from src.utils.logging_utils import setup_logger
+from src.utils.orchestration import Pipeline, parse_args, run_orchestrator
 
-ORCHESTRATOR_LOG_NAME = "orchestrator"
-
-# Lista ordenada de pipelines de cálculo: (módulo, descripción)
+# Ordered analysis steps: each one consumes what the previous one wrote.
 PIPELINES = [
-    (
+    Pipeline(
         "src.pipelines.calculations.01_clinical_variables_review",
-        "Revisión de variables clínicas",
+        "Clinical variables review",
     ),
-    ("src.pipelines.calculations.02_data_collection", "Recolección de datos clínicos"),
-    (
+    Pipeline(
+        "src.pipelines.calculations.02_data_collection",
+        "Clinical data collection",
+    ),
+    Pipeline(
         "src.pipelines.calculations.03_missing_values_reporting",
-        "Análisis de valores faltantes",
+        "Missing values analysis",
     ),
-    ("src.pipelines.calculations.04_collinearity_reporting", "Colinealidad"),
-    ("src.pipelines.calculations.05_clinical_data_cleaning", "Limpieza de datos clínicos"),
-    (
+    Pipeline(
+        "src.pipelines.calculations.04_collinearity_reporting",
+        "Collinearity analysis",
+    ),
+    Pipeline(
+        "src.pipelines.calculations.05_clinical_data_cleaning",
+        "Clinical data cleaning",
+    ),
+    Pipeline(
         "src.pipelines.calculations.06_clinical_data_statistical_reporting",
-        "Reporte estadístico clínico",
+        "Clinical statistical report",
     ),
-    (
+    Pipeline(
         "src.pipelines.calculations.07_proteomic_data_statistical_reporting",
-        "Reporte estadístico proteómico",
+        "Proteomic statistical report",
     ),
-    (
+    Pipeline(
         "src.pipelines.calculations.08_risk_scores_validation",
-        "Validación de risk scores",
+        "Risk scores validation",
     ),
 ]
 
-# Pipelines de modelado. Son órdenes de magnitud más lentos que los anteriores
-# (búsqueda aleatoria de hiperparámetros sobre ocho modelos y cuatro fases), así
-# que se mantienen en una lista aparte y se pueden omitir con --skip-modelling.
+# Modelling steps. These are orders of magnitude slower than the ones above (a
+# randomized hyperparameter search over eight models and five phases), so they
+# are kept apart and can be left out with --skip-modelling.
 MODELLING_PIPELINES = [
-    ("src.pipelines.calculations.09_clinical_modelling", "Modelado clínico (fase 1)"),
-    (
+    Pipeline(
+        "src.pipelines.calculations.09_clinical_modelling",
+        "Clinical modelling (phase 1)",
+    ),
+    Pipeline(
         "src.pipelines.calculations.10_clinical_filtered_modelling",
-        "Modelado clínico filtrado (fase 1b)",
+        "Filtered clinical modelling (phase 1b)",
     ),
-    ("src.pipelines.calculations.11_proteomic_modelling", "Modelado proteómico (fase 2)"),
-    ("src.pipelines.calculations.12_multimodal_modelling", "Modelado multimodal (fase 3)"),
-    (
+    Pipeline(
+        "src.pipelines.calculations.11_proteomic_modelling",
+        "Proteomic modelling (phase 2)",
+    ),
+    Pipeline(
+        "src.pipelines.calculations.12_multimodal_modelling",
+        "Multimodal modelling (phase 3)",
+    ),
+    Pipeline(
         "src.pipelines.calculations.13_modality_comparison",
-        "Comparación clínico vs multimodal",
+        "Clinical vs multimodal comparison",
     ),
-    (
+    Pipeline(
         "src.pipelines.calculations.14_best_model_threshold_analysis",
-        "Análisis de sensibilidad al umbral de los tres mejores modelos",
+        "Threshold sensitivity of the three best models",
     ),
-    (
+    Pipeline(
         "src.pipelines.calculations.15_publication_tables",
-        "Tablas de resultados para publicación",
+        "Publication-ready result tables",
     ),
 ]
 
 
-def parse_args(argv=None) -> argparse.Namespace:
-    """Interpreta los argumentos de línea de comandos del orquestador."""
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--skip-modelling",
-        action="store_true",
-        help="Omite las fases de modelado (09 a 15), que son las lentas.",
+def main(argv: list[str] | None = None) -> None:
+    """Run the calculation pipelines, or only the fast ones if asked.
+
+    Parameters
+    ----------
+    argv : list of str, optional
+        Command-line arguments. Defaults to sys.argv.
+
+    Returns
+    -------
+    None
+    """
+    args = parse_args(
+        description=__doc__,
+        skip_flag="--skip-modelling",
+        skip_help="Skip the modelling phases (09 to 15), which are the slow ones.",
+        argv=argv,
     )
-    return parser.parse_args(argv)
-
-
-def select_pipelines(args: argparse.Namespace) -> list[tuple[str, str]]:
-    """Construye la lista ordenada de pipelines de cálculo a ejecutar."""
     pipelines = list(PIPELINES)
     if not args.skip_modelling:
         pipelines += MODELLING_PIPELINES
-    return pipelines
 
-
-def run_pipeline(module_name: str, description: str, logger) -> float:
-    """Importa y ejecuta main() del pipeline, retornando duración en segundos."""
-    logger.info("=" * 72)
-    logger.info(f"INICIANDO: {description}  ({module_name})")
-    logger.info("=" * 72)
-
-    t0 = time.perf_counter()
-    try:
-        mod = importlib.import_module(module_name)
-        mod.main()
-        elapsed = time.perf_counter() - t0
-        logger.info(f"✓ FINALIZADO: {description}  ({elapsed:.1f} s)")
-    except Exception:
-        elapsed = time.perf_counter() - t0
-        logger.exception(
-            f"✗ ERROR en {description} tras {elapsed:.1f} s — abortando ejecución."
-        )
-        raise
-    return elapsed
-
-
-def main(argv=None) -> None:
-    overall_start = time.perf_counter()
-
-    pipelines = select_pipelines(parse_args(argv))
-
-    # ── Logger del orquestador (consola + archivo único) ──────────────────────
-    log_dir = LOGS_DIR / "orchestrator"
-    log_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = log_dir / f"run_calculations_{timestamp}.log"
-
-    logger = setup_logger(ORCHESTRATOR_LOG_NAME, log_dir=log_dir)
-
-    sys.stdout.flush()
-    sys.stderr.flush()
-
-    logger.info(f"Orquestador de pipelines de cálculo")
-    logger.info(f"Inicio:          {datetime.now().isoformat()}")
-    logger.info(f"Log file:        {log_file}")
-    logger.info(f"Python:          {sys.version}")
-    logger.info(f"Pipelines a ejecutar: {len(pipelines)}")
-    logger.info("")
-
-    results: list[tuple[str, str, float, str]] = []
-
-    for module_name, description in pipelines:
-        try:
-            elapsed = run_pipeline(module_name, description, logger)
-            results.append((module_name, description, elapsed, "OK"))
-        except Exception:
-            results.append((module_name, description, 0.0, "ERROR"))
-            break  # Detenemos la ejecución en el primer error
-
-    # ── Resumen final ─────────────────────────────────────────────────────────
-    overall_elapsed = time.perf_counter() - overall_start
-    logger.info("")
-    logger.info(f"Resumen de ejecución de pipelines")
-    logger.info(f"{'Pipeline':<45} {'Estado':<8} {'Tiempo':>8}")
-    logger.info("-" * 63)
-    for module_name, description, elapsed, status in results:
-        label = f"{description} ({module_name.split('.')[-1]})"
-        time_str = f"{elapsed:.1f} s" if status == "OK" else "—"
-        logger.info(f"{label:<45} {status:<8} {time_str:>8}")
-    logger.info("-" * 63)
-    logger.info(f"{'TOTAL':<45} {'':<8} {overall_elapsed:.1f} s")
-
-    ok_count = sum(1 for _, _, _, s in results if s == "OK")
-    logger.info(f"\nPipelines completados: {ok_count} / {len(pipelines)}")
-
-    log_path_msg = f"\nLog completo guardado en: {log_file}"
-    if ok_count == len(pipelines):
-        logger.info(
-            f"✅ Todos los pipelines se ejecutaron correctamente.{log_path_msg}"
-        )
-    else:
-        failed = [d for _, d, _, s in results if s != "OK"]
-        logger.error(f"❌ Los siguientes pipelines fallaron: {failed}.{log_path_msg}")
-        sys.exit(1)
+    run_orchestrator(
+        pipelines,
+        log_name="run_calculations",
+        title="Calculation pipeline orchestrator",
+    )
 
 
 if __name__ == "__main__":
