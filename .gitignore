@@ -15,6 +15,7 @@
 .ipynb_checkpoints/
 __pycache__/
 *.pyc
+.pytest_cache/
 
 # ========================
 # IDE & OS
@@ -39,7 +40,11 @@ oryx-build-commands.txt
 *.md
 
 #=======================
-# CLAUDE    
+# MARKDOWN FILES
 #=======================
-CLAUDE.md
+# *.md above keeps drafts and notes out of the repository; the documentation
+# entry points are versioned explicitly.
+!CLAUDE.md
+!README.md
+!/docs/**/*.md
 /.claude/
