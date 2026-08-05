@@ -17,7 +17,7 @@ from src.utils.filenames import (
     QQ_FILE,
     STRATIFIED_DISTRIBUTION_FILE,
 )
-from src.utils.dataframe_utils import get_proteomic_features
+from src.utils.dataframe_utils import get_proteomic_features, iter_stratified_pairs
 from src.utils.io import read_parquet, save_csv
 from src.utils.logging_utils import setup_logger
 from src.utils.paths import (
@@ -28,6 +28,10 @@ from src.config import TARGET_VARIABLE, GROUP_ALLOCATION_VARIABLE
 
 INPUT_FILE = CLEANED_PROTEOMIC_DATA_PATH
 OUTPUT_DIR = PROTEOMIC_EDA_DIR
+
+# Reporting order of the stratifying variables, kept in step with the plotting
+# mirror so both write and read the same filenames.
+STRATIFY_ORDER = [GROUP_ALLOCATION_VARIABLE, TARGET_VARIABLE]
 
 logger = setup_logger(Path(__file__).stem)
 
@@ -55,18 +59,15 @@ def main() -> None:
         save_csv(build_qq_table(qq_data), OUTPUT_DIR / QQ_FILE.format(feature=feature))
 
     logger.info("Computing stratified distributions for proteomic features...")
-    for target_var in [GROUP_ALLOCATION_VARIABLE, TARGET_VARIABLE]:
-        for feature in proteomic_features:
-            stratified_data = compute_stratified_numeric_distribution(
-                proteomic_data, feature, target_var
-            )
-            save_csv(
-                stratified_data,
-                OUTPUT_DIR
-                / STRATIFIED_DISTRIBUTION_FILE.format(
-                    feature=feature, group=target_var
-                ),
-            )
+    for feature, target_var in iter_stratified_pairs(proteomic_features, STRATIFY_ORDER):
+        stratified_data = compute_stratified_numeric_distribution(
+            proteomic_data, feature, target_var
+        )
+        save_csv(
+            stratified_data,
+            OUTPUT_DIR
+            / STRATIFIED_DISTRIBUTION_FILE.format(feature=feature, group=target_var),
+        )
 
 
 if __name__ == "__main__":

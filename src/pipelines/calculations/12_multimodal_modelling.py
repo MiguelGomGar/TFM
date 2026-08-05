@@ -17,7 +17,10 @@ from src.config import (
     TEST_SIZE,
 )
 from src.models.data_preprocessing import encode_target_variable
-from src.models.feature_selection import load_previously_kept_features
+from src.models.feature_selection import (
+    load_previously_kept_features,
+    restrict_to_available,
+)
 from src.models.model_training import run_modelling_phase
 from src.utils.io import read_parquet
 from src.utils.logging_utils import setup_logger
@@ -51,8 +54,9 @@ def main() -> None:
     logger.info(f"Loading data from {INPUT_FILE}...")
     df = read_parquet(INPUT_FILE)
 
-    clinical_predictors = load_previously_kept_features(CLINICAL_MODELS_FILTERED_DIR)
-    clinical_predictors = [col for col in clinical_predictors if col in df.columns]
+    clinical_predictors = restrict_to_available(
+        load_previously_kept_features(CLINICAL_MODELS_FILTERED_DIR), df
+    )
     y = encode_target_variable(df, TARGET_VARIABLE)
 
     X_clinical = df[clinical_predictors]
@@ -92,12 +96,12 @@ def main() -> None:
     # every protein, reuse the features already kept by phase 1b (clinical_filtered)
     # and by the standalone proteomic phase (phase 2). This keeps the
     # multimodal design matrix at a tractable dimensionality from the start.
-    previously_kept_features = load_previously_kept_features(
-        CLINICAL_MODELS_FILTERED_DIR, PROTEOMIC_MODELS_DIR
+    multimodal_predictors = restrict_to_available(
+        load_previously_kept_features(
+            CLINICAL_MODELS_FILTERED_DIR, PROTEOMIC_MODELS_DIR
+        ),
+        df,
     )
-    multimodal_predictors = [
-        column for column in previously_kept_features if column in df.columns
-    ]
     logger.info(
         f"Reusing {len(multimodal_predictors)} feature(s) already kept by the "
         "clinical and proteomic filterings as the multimodal starting set."

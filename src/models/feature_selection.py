@@ -213,3 +213,27 @@ def load_previously_kept_features(*feature_selection_dirs: str | Path) -> list[s
             if feature not in kept_features:
                 kept_features.append(feature)
     return kept_features
+
+
+def restrict_to_available(features: Sequence[str], df: pd.DataFrame) -> list[str]:
+    """Keep only the predictors a dataframe actually carries.
+
+    Features kept by an earlier phase were selected on that phase's cohort. A
+    later phase runs on a different frame (the multimodal subcohort, say), which
+    may not carry all of them, and indexing with a missing column raises. The
+    order of ``features`` is preserved, since it drives the column order of the
+    design matrix.
+
+    Parameters
+    ----------
+    features : sequence of str
+        Predictor names, typically from ``load_previously_kept_features``.
+    df : pd.DataFrame
+        Frame the predictors will be selected from.
+
+    Returns
+    -------
+    list of str
+        The subset present in ``df``, in the order given.
+    """
+    return [feature for feature in features if feature in df.columns]

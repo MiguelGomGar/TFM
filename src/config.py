@@ -552,6 +552,12 @@ THRESHOLD_SCENARIO_COLORS = {
     "Optimal": "#16a085",
 }
 
+# Hard metrics compared across the best models at their optimal threshold. F1
+# is deliberately left out: it is reported per model in
+# threshold_metrics_{model}.csv, but a fifth bar per model makes the grouped
+# comparison chart unreadable.
+THRESHOLD_COMPARISON_METRICS = ["Accuracy", "Precision", "Recall", "Specificity"]
+
 # Plot colors for the top-model comparison, keyed by model abbreviation.
 BEST_MODELS_COLORS = {
     "EN": "#2563eb",

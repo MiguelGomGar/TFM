@@ -9,6 +9,7 @@ Youden-optimal threshold instead: the ROC cut-off that maximizes sensitivity
 + specificity - 1, a standard criterion for choosing clinical risk cut-offs.
 """
 
+from collections.abc import Sequence
 from logging import Logger
 from pathlib import Path
 
@@ -18,7 +19,7 @@ from sklearn.metrics import average_precision_score, confusion_matrix, roc_auc_s
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 
-from src.config import SEED, TEST_SIZE
+from src.config import SEED, TEST_SIZE, THRESHOLD_COMPARISON_METRICS
 from src.models.model_evaluation import compute_hard_metrics, get_decision_scores
 from src.utils.io import read_joblib
 
@@ -179,6 +180,89 @@ def build_threshold_metrics_table(metrics_by_scenario: dict) -> pd.DataFrame:
         for scenario, metrics in metrics_by_scenario.items()
     ]
     return pd.concat(frames, ignore_index=True)
+
+
+def build_ranking_metrics_table(ranking_metrics: dict[str, float]) -> pd.DataFrame:
+    """Lay a model's threshold-free ranking metrics out as a saveable table.
+
+    Parameters
+    ----------
+    ranking_metrics : dict of str to float
+        Metric label to score, e.g. {'ROC-AUC': 0.71, 'PR-AUC': 0.54}. These
+        are computed from the continuous decision score, so they do not depend
+        on the chosen cut-off.
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns ['Metric', 'Score'], one row per metric.
+    """
+    return pd.DataFrame(
+        {"Metric": list(ranking_metrics), "Score": list(ranking_metrics.values())}
+    )
+
+
+def build_threshold_info_table(
+    results_by_model: dict[str, dict], model_order: Sequence[str]
+) -> pd.DataFrame:
+    """Gather the chosen cut-off of every model into one table.
+
+    Parameters
+    ----------
+    results_by_model : dict of str to dict
+        Model abbreviation to its ``analyze_model`` result, which must carry a
+        'threshold_rows' entry.
+    model_order : sequence of str
+        Model abbreviations, in reporting order.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per model and threshold scenario.
+    """
+    rows = [
+        row
+        for abbreviation in model_order
+        for row in results_by_model[abbreviation]["threshold_rows"]
+    ]
+    return pd.DataFrame(rows)
+
+
+def build_model_comparison_table(
+    results_by_model: dict[str, dict],
+    model_order: Sequence[str],
+    metrics: Sequence[str] = THRESHOLD_COMPARISON_METRICS,
+) -> pd.DataFrame:
+    """Compare several models at their own optimal threshold, metric by metric.
+
+    Restricted to ``metrics`` because the per-model tables already report every
+    metric; this one feeds a grouped bar chart, which stops being readable past
+    a handful of bars per model.
+
+    Parameters
+    ----------
+    results_by_model : dict of str to dict
+        Model abbreviation to its ``analyze_model`` result, which must carry a
+        'metrics_optimal' entry.
+    model_order : sequence of str
+        Model abbreviations, in reporting order.
+    metrics : sequence of str
+        Hard metrics to include.
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns ['Scenario', 'Metric', 'Score'], where Scenario is the model.
+    """
+    return build_threshold_metrics_table(
+        {
+            abbreviation: {
+                metric: results_by_model[abbreviation]["metrics_optimal"][metric]
+                for metric in metrics
+            }
+            for abbreviation in model_order
+        }
+    )
 
 
 def analyze_model(

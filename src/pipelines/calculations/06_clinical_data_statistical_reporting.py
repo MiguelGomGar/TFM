@@ -15,7 +15,11 @@ from src.data.statistical_analysis import (
     compute_qq,
     create_table1,
 )
-from src.utils.dataframe_utils import get_categorical_columns, get_numeric_columns
+from src.utils.dataframe_utils import (
+    get_categorical_columns,
+    get_numeric_columns,
+    iter_stratified_pairs,
+)
 from src.utils.filenames import (
     DISTRIBUTION_FILE,
     QQ_FILE,
@@ -32,6 +36,10 @@ from src.config import TARGET_VARIABLE, GROUP_ALLOCATION_VARIABLE, NON_NORMAL_VA
 
 INPUT_FILE = CLEANED_CLINICAL_DATA_PATH
 OUTPUT_DIR = CLINICAL_EDA_DIR
+
+# Reporting order of the stratifying variables, kept in step with the plotting
+# mirror so both write and read the same filenames.
+STRATIFY_ORDER = [GROUP_ALLOCATION_VARIABLE, TARGET_VARIABLE]
 
 logger = setup_logger(Path(__file__).stem)
 
@@ -60,18 +68,15 @@ def main() -> None:
         save_csv(build_qq_table(qq_data), OUTPUT_DIR / QQ_FILE.format(feature=feature))
 
     logger.info("Computing stratified distributions for numeric features...")
-    for target_var in [GROUP_ALLOCATION_VARIABLE, TARGET_VARIABLE]:
-        for feature in numeric_features:
-            stratified_data = compute_stratified_numeric_distribution(
-                clinical_data, feature, target_var
-            )
-            save_csv(
-                stratified_data,
-                OUTPUT_DIR
-                / STRATIFIED_DISTRIBUTION_FILE.format(
-                    feature=feature, group=target_var
-                ),
-            )
+    for feature, target_var in iter_stratified_pairs(numeric_features, STRATIFY_ORDER):
+        stratified_data = compute_stratified_numeric_distribution(
+            clinical_data, feature, target_var
+        )
+        save_csv(
+            stratified_data,
+            OUTPUT_DIR
+            / STRATIFIED_DISTRIBUTION_FILE.format(feature=feature, group=target_var),
+        )
 
     logger.info("Computing global distributions for categorical features...")
     for feature in categorical_features:
@@ -81,21 +86,18 @@ def main() -> None:
         )
 
     logger.info("Computing stratified distributions for categorical features...")
-    for target_var in [GROUP_ALLOCATION_VARIABLE, TARGET_VARIABLE]:
-        for feature in categorical_features:
-            if feature == target_var:
-                continue
-            stratified_data = compute_stratified_categorical_distribution(
-                clinical_data, feature, target_var
-            )
-            save_csv(
-                stratified_data,
-                OUTPUT_DIR
-                / STRATIFIED_DISTRIBUTION_FILE.format(
-                    feature=feature, group=target_var
-                ),
-                index=True,
-            )
+    for feature, target_var in iter_stratified_pairs(
+        categorical_features, STRATIFY_ORDER
+    ):
+        stratified_data = compute_stratified_categorical_distribution(
+            clinical_data, feature, target_var
+        )
+        save_csv(
+            stratified_data,
+            OUTPUT_DIR
+            / STRATIFIED_DISTRIBUTION_FILE.format(feature=feature, group=target_var),
+            index=True,
+        )
 
     logger.info(f"Creating table 1 stratified by {TARGET_VARIABLE}...")
     table1 = create_table1(

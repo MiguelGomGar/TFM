@@ -15,10 +15,13 @@ here by src/pipelines/plots/14_best_model_plots.py.
 
 from pathlib import Path
 
-import pandas as pd
-
 from src.config import BEST_MODELS, TARGET_VARIABLE
-from src.models.best_model import analyze_model, build_threshold_metrics_table
+from src.models.best_model import (
+    analyze_model,
+    build_model_comparison_table,
+    build_ranking_metrics_table,
+    build_threshold_info_table,
+)
 from src.models.data_preprocessing import encode_target_variable
 from src.utils.filenames import (
     CONFUSION_MATRIX_FILE,
@@ -59,7 +62,6 @@ def main() -> None:
     # ------------------------------------------------------------------
     # Save per-model results
     # ------------------------------------------------------------------
-    all_threshold_rows = []
     for abbreviation, result in results.items():
         save_csv(
             result["metrics_table"],
@@ -73,36 +75,21 @@ def main() -> None:
             index=True,
         )
 
-        ranking_metrics_df = pd.DataFrame(
-            {
-                "Metric": list(result["ranking_metrics"]),
-                "Score": list(result["ranking_metrics"].values()),
-            }
-        )
         save_csv(
-            ranking_metrics_df,
+            build_ranking_metrics_table(result["ranking_metrics"]),
             OUTPUT_DIR / RANKING_METRICS_FILE.format(model=abbreviation),
         )
 
-        all_threshold_rows.extend(result["threshold_rows"])
-
-    save_csv(pd.DataFrame(all_threshold_rows), OUTPUT_DIR / THRESHOLD_INFO_FILE)
-
-    # ------------------------------------------------------------------
-    # Cross-model comparison, optimal-threshold scenario only. Restricted to
-    # the hard metrics the comparison was requested for (F1 is available per
-    # model in threshold_metrics_{model}.csv but left out of this chart).
-    # ------------------------------------------------------------------
-    hard_metrics = ["Accuracy", "Precision", "Recall", "Specificity"]
-    comparison_table = build_threshold_metrics_table(
-        {
-            abbreviation: {
-                metric: results[abbreviation]["metrics_optimal"][metric] for metric in hard_metrics
-            }
-            for abbreviation in BEST_MODELS
-        }
+    save_csv(
+        build_threshold_info_table(results, BEST_MODELS),
+        OUTPUT_DIR / THRESHOLD_INFO_FILE,
     )
-    save_csv(comparison_table, OUTPUT_DIR / THRESHOLD_COMPARISON_FILE)
+
+    # Cross-model comparison, optimal-threshold scenario only.
+    save_csv(
+        build_model_comparison_table(results, BEST_MODELS),
+        OUTPUT_DIR / THRESHOLD_COMPARISON_FILE,
+    )
 
     logger.info(f"Top-model threshold analysis results saved to {OUTPUT_DIR}.")
 

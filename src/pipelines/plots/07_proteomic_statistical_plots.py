@@ -8,7 +8,7 @@ from pathlib import Path
 
 from src.config import GROUP_ALLOCATION_VARIABLE, TARGET_VARIABLE
 from src.data.statistical_analysis import load_qq_data
-from src.utils.dataframe_utils import get_proteomic_features
+from src.utils.dataframe_utils import get_proteomic_features, iter_stratified_pairs
 from src.utils.filenames import (
     DISTRIBUTION_FIGURE,
     DISTRIBUTION_FILE,
@@ -29,6 +29,10 @@ from src.visualization.statistical_analysis import (
 SCHEMA_FILE = CLEANED_PROTEOMIC_DATA_PATH
 INPUT_DIR = PROTEOMIC_EDA_DIR
 OUTPUT_DIR = PROTEOMIC_EDA_DIR
+
+# Must match STRATIFY_ORDER in the computing pipeline: both sides derive the
+# same filenames from it.
+STRATIFY_ORDER = [GROUP_ALLOCATION_VARIABLE, TARGET_VARIABLE]
 
 logger = setup_logger(Path(__file__).stem)
 
@@ -55,21 +59,16 @@ def main() -> None:
         save_figure(plot_qq(qq_data), OUTPUT_DIR / QQ_FIGURE.format(feature=feature))
 
     logger.info("Plotting stratified distributions for proteomic features...")
-    for target_var in [GROUP_ALLOCATION_VARIABLE, TARGET_VARIABLE]:
-        for feature in proteomic_features:
-            stratified_data = read_csv(
-                INPUT_DIR
-                / STRATIFIED_DISTRIBUTION_FILE.format(feature=feature, group=target_var)
-            )
-            save_figure(
-                plot_stratified_numeric_distribution(
-                    stratified_data, feature, target_var
-                ),
-                OUTPUT_DIR
-                / STRATIFIED_DISTRIBUTION_FIGURE.format(
-                    feature=feature, group=target_var
-                ),
-            )
+    for feature, target_var in iter_stratified_pairs(proteomic_features, STRATIFY_ORDER):
+        stratified_data = read_csv(
+            INPUT_DIR
+            / STRATIFIED_DISTRIBUTION_FILE.format(feature=feature, group=target_var)
+        )
+        save_figure(
+            plot_stratified_numeric_distribution(stratified_data, feature, target_var),
+            OUTPUT_DIR
+            / STRATIFIED_DISTRIBUTION_FIGURE.format(feature=feature, group=target_var),
+        )
 
 
 if __name__ == "__main__":

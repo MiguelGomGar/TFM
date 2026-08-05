@@ -8,7 +8,11 @@ from pathlib import Path
 
 from src.config import GROUP_ALLOCATION_VARIABLE, TARGET_VARIABLE
 from src.data.statistical_analysis import load_qq_data
-from src.utils.dataframe_utils import get_categorical_columns, get_numeric_columns
+from src.utils.dataframe_utils import (
+    get_categorical_columns,
+    get_numeric_columns,
+    iter_stratified_pairs,
+)
 from src.utils.filenames import (
     DISTRIBUTION_FIGURE,
     DISTRIBUTION_FILE,
@@ -31,6 +35,10 @@ from src.visualization.statistical_analysis import (
 SCHEMA_FILE = CLEANED_CLINICAL_DATA_PATH
 INPUT_DIR = CLINICAL_EDA_DIR
 OUTPUT_DIR = CLINICAL_EDA_DIR
+
+# Must match STRATIFY_ORDER in the computing pipeline: both sides derive the
+# same filenames from it.
+STRATIFY_ORDER = [GROUP_ALLOCATION_VARIABLE, TARGET_VARIABLE]
 
 logger = setup_logger(Path(__file__).stem)
 
@@ -60,21 +68,16 @@ def main() -> None:
         )
 
     logger.info("Plotting stratified distributions for numeric features...")
-    for target_var in [GROUP_ALLOCATION_VARIABLE, TARGET_VARIABLE]:
-        for feature in numeric_features:
-            stratified_data = read_csv(
-                INPUT_DIR
-                / STRATIFIED_DISTRIBUTION_FILE.format(feature=feature, group=target_var)
-            )
-            save_figure(
-                plot_stratified_numeric_distribution(
-                    stratified_data, feature, target_var
-                ),
-                OUTPUT_DIR
-                / STRATIFIED_DISTRIBUTION_FIGURE.format(
-                    feature=feature, group=target_var
-                ),
-            )
+    for feature, target_var in iter_stratified_pairs(numeric_features, STRATIFY_ORDER):
+        stratified_data = read_csv(
+            INPUT_DIR
+            / STRATIFIED_DISTRIBUTION_FILE.format(feature=feature, group=target_var)
+        )
+        save_figure(
+            plot_stratified_numeric_distribution(stratified_data, feature, target_var),
+            OUTPUT_DIR
+            / STRATIFIED_DISTRIBUTION_FIGURE.format(feature=feature, group=target_var),
+        )
 
     logger.info("Plotting global distributions for categorical features...")
     for feature in categorical_features:
@@ -87,34 +90,29 @@ def main() -> None:
         )
 
     logger.info("Plotting stratified distributions for categorical features...")
-    for target_var in [GROUP_ALLOCATION_VARIABLE, TARGET_VARIABLE]:
-        for feature in categorical_features:
-            if feature == target_var:
-                continue
-            # Saved with its index: it holds the levels of the stratifying
-            # variable that label the bars.
-            stratified_data = read_csv(
-                INPUT_DIR
-                / STRATIFIED_DISTRIBUTION_FILE.format(
-                    feature=feature, group=target_var
-                ),
-                index_col=0,
+    for feature, target_var in iter_stratified_pairs(
+        categorical_features, STRATIFY_ORDER
+    ):
+        # Saved with its index: it holds the levels of the stratifying
+        # variable that label the bars.
+        stratified_data = read_csv(
+            INPUT_DIR
+            / STRATIFIED_DISTRIBUTION_FILE.format(feature=feature, group=target_var),
+            index_col=0,
+        )
+        figure = plot_stratified_categorical_distribution(
+            stratified_data, feature, target_var
+        )
+        if figure is None:
+            logger.warning(
+                f"Nothing to plot for {feature} stratified by {target_var}; skipping."
             )
-            figure = plot_stratified_categorical_distribution(
-                stratified_data, feature, target_var
-            )
-            if figure is None:
-                logger.warning(
-                    f"Nothing to plot for {feature} stratified by {target_var}; skipping."
-                )
-                continue
-            save_figure(
-                figure,
-                OUTPUT_DIR
-                / STRATIFIED_DISTRIBUTION_FIGURE.format(
-                    feature=feature, group=target_var
-                ),
-            )
+            continue
+        save_figure(
+            figure,
+            OUTPUT_DIR
+            / STRATIFIED_DISTRIBUTION_FIGURE.format(feature=feature, group=target_var),
+        )
 
 
 if __name__ == "__main__":
