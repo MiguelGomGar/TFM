@@ -11,12 +11,12 @@ from pathlib import Path
 from sklearn.model_selection import StratifiedKFold, train_test_split
 
 from src.config import (
+    CLINICAL_SEARCH_SPACE,
     CV_N_SPLITS,
     SEARCH_N_ITER,
     SEED,
     TARGET_VARIABLE,
     TEST_SIZE,
-    clinical_hyperparameters_search_space,
 )
 from src.models.data_preprocessing import encode_target_variable
 from src.models.model_training import run_modelling_phase
@@ -28,7 +28,7 @@ INPUT_FILE = CLEANED_CLINICAL_DATA_PATH
 OUTPUT_DIR = CLINICAL_MODELS_FILTERED_DIR
 
 PHASE_KEY = "clinical_filtered"
-SEARCH_SPACE = clinical_hyperparameters_search_space
+SEARCH_SPACE = CLINICAL_SEARCH_SPACE
 APPLY_FILTER = True
 
 logger = setup_logger(Path(__file__).stem)

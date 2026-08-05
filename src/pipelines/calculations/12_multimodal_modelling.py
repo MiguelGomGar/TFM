@@ -8,13 +8,13 @@ from pathlib import Path
 from sklearn.model_selection import StratifiedKFold, train_test_split
 
 from src.config import (
+    CLINICAL_SEARCH_SPACE,
     CV_N_SPLITS,
+    MULTIMODAL_SEARCH_SPACE,
     SEARCH_N_ITER,
     SEED,
     TARGET_VARIABLE,
     TEST_SIZE,
-    clinical_hyperparameters_search_space,
-    multimodal_hyperparameters_search_space,
 )
 from src.models.data_preprocessing import encode_target_variable
 from src.models.feature_selection import load_previously_kept_features
@@ -75,7 +75,7 @@ def main() -> None:
         X_test=X_test,
         y_train=y_train,
         y_test=y_test,
-        search_spaces=clinical_hyperparameters_search_space,
+        search_spaces=CLINICAL_SEARCH_SPACE,
         output_dir=CLINICAL_OUTPUT_DIR,
         n_iter=SEARCH_N_ITER["clinical_matched"],
         cv=cv,
@@ -119,7 +119,7 @@ def main() -> None:
         X_test=X_test,
         y_train=y_train,
         y_test=y_test,
-        search_spaces=multimodal_hyperparameters_search_space,
+        search_spaces=MULTIMODAL_SEARCH_SPACE,
         output_dir=MULTIMODAL_OUTPUT_DIR,
         n_iter=SEARCH_N_ITER["multimodal"],
         cv=cv,

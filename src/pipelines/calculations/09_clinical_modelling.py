@@ -5,12 +5,12 @@ from pathlib import Path
 from sklearn.model_selection import StratifiedKFold, train_test_split
 
 from src.config import (
+    CLINICAL_SEARCH_SPACE,
     CV_N_SPLITS,
     SEARCH_N_ITER,
     SEED,
     TARGET_VARIABLE,
     TEST_SIZE,
-    clinical_hyperparameters_search_space,
 )
 from src.models.data_preprocessing import encode_target_variable
 from src.models.model_training import run_modelling_phase
@@ -22,7 +22,7 @@ INPUT_FILE = CLEANED_CLINICAL_DATA_PATH
 OUTPUT_DIR = CLINICAL_MODELS_DIR
 
 PHASE_KEY = "clinical"
-SEARCH_SPACE = clinical_hyperparameters_search_space
+SEARCH_SPACE = CLINICAL_SEARCH_SPACE
 
 # Phase 1 is the clinical-only benchmark: every predictor is kept so that the
 # filtered phase can be compared against it.

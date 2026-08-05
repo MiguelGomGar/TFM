@@ -3,6 +3,7 @@
 import numpy as np
 from scipy.stats import uniform, loguniform, randint
 
+from src.utils.filenames import MODALITY_DELTA_FILE, MODELS_METRICS_FILE
 from src.utils.paths import (
     CLINICAL_FILTERING_COMPARISON_DIR,
     CLINICAL_MODELS_DIR,
@@ -233,9 +234,7 @@ GROUP_ALLOCATION_VARIABLE = "group_allocation"
 STRATIFY_VARIABLES = [TARGET_VARIABLE, GROUP_ALLOCATION_VARIABLE]
 NON_NORMAL_VARIABLES = ["AF_duration", "triglycerides", "glucose"]
 
-# %% STATISTICAL ANALYSIS — pipeline 06_statistical_reporting
-
-# %% RISK SCORES EVALUATION — pipeline 07_risk_scores_validation
+# %% RISK SCORES EVALUATION — pipeline 08_risk_scores_validation
 TARGET_ENCODING = {"no": 0, "yes": 1}
 
 # %% MODELLING — shared configuration (pipelines 09 to 14)
@@ -327,7 +326,7 @@ MODEL_PALETTE = [
 ]
 
 # %% CLINICAL DATA MODELLING — pipelines 09 and 10
-clinical_hyperparameters_search_space = {
+CLINICAL_SEARCH_SPACE = {
     # Elastic Net Logistic Regression
     # l1_ratio must stay strictly above 0: since scikit-learn 1.8 the penalty
     # type is derived from l1_ratio alone (the `penalty` argument is deprecated),
@@ -411,7 +410,7 @@ clinical_hyperparameters_search_space = {
 }
 
 # %% PROTEOMIC DATA MODELLING — pipeline 11
-proteomic_hyperparameters_search_space = {
+PROTEOMIC_SEARCH_SPACE = {
     # Elastic Net Logistic Regression (see the note on l1_ratio above)
     "EN": {"clf__l1_ratio": uniform(0.01, 0.98), "clf__C": loguniform(1e-4, 1e2)},
     # Support Vector Machine
@@ -478,7 +477,7 @@ proteomic_hyperparameters_search_space = {
 # (26 clinical predictors plus 361 proteins), so the same ranges apply. It is
 # defined explicitly rather than aliased so that it can diverge later without
 # side effects on the proteomic phase.
-multimodal_hyperparameters_search_space = {
+MULTIMODAL_SEARCH_SPACE = {
     # Elastic Net Logistic Regression (see the note on l1_ratio above)
     "EN": {"clf__l1_ratio": uniform(0.01, 0.98), "clf__C": loguniform(1e-4, 1e2)},
     # Support Vector Machine
@@ -560,46 +559,6 @@ BEST_MODELS_COLORS = {
     "MLP": "#16a085",
 }
 
-# %% MODEL EXPLAINABILITY — pipeline 15
-# SHAP analysis of the three best-performing models on the multimodal arm.
-# Restricted to that arm because it is the only one where the clinical vs
-# proteomic block comparison is possible at all.
-EXPLAINABILITY_MODELS = BEST_MODELS
-
-# Reference ("background") set summarizing the training distribution, against
-# which every SHAP contribution is measured. Drawn with shap.sample and a fixed
-# seed, so the whole analysis is reproducible. 100 of the 390 training patients
-# keeps the KernelExplainer for the MLP at roughly one minute.
-SHAP_BACKGROUND_SIZE = 100
-
-# Number of features displayed in the summary and bar plots.
-SHAP_TOP_FEATURES = 20
-
-# Additivity tolerance for the quality control check
-# (base_value + sum(shap_values) == model output). LinearExplainer is exact, so
-# it is held to machine precision; KernelExplainer estimates the values by
-# weighted regression and only warrants a looser bound.
-SHAP_ADDITIVITY_TOLERANCE = {"exact": 1e-8, "approximate": 1e-2}
-
-# Plot colors for the feature blocks, reusing the modality palette above so the
-# same concept keeps the same color across the whole report.
-FEATURE_BLOCK_COLORS = {
-    "Clinical": MODALITY_COLORS["Clinical"],
-    "Proteomic": MODALITY_COLORS["Proteomic"],
-}
-
-# Individual patients explained with a waterfall plot, selected by rule from the
-# external validation set (see model_explainability.select_local_cases). The
-# false negative is the clinically costliest error: a recurrence the model
-# confidently declared safe.
-SHAP_LOCAL_CASES = [
-    "Confident TP",
-    "Confident TN",
-    "Confident FN",
-    "Confident FP",
-    "Borderline",
-]
-
 # %% MODELLING FIGURES — pipelines/plots/09
 # One entry per modelling arm produced by pipelines 09 to 12, in reporting
 # order. The plotting pipeline redraws each arm's charts from the tables its
@@ -642,22 +601,22 @@ MODELLING_PHASES = [
 MODALITY_COMPARISONS = [
     {
         "baseline_label": "Clinical",
-        "baseline_metrics_file": CLINICAL_MODELS_MATCHED_DIR / "models_metrics.csv",
+        "baseline_metrics_file": CLINICAL_MODELS_MATCHED_DIR / MODELS_METRICS_FILE,
         "comparison_label": "Multimodal",
-        "comparison_metrics_file": MULTIMODAL_MODELS_DIR / "models_metrics.csv",
-        "extra_arms": [("Proteomic", PROTEOMIC_MODELS_DIR / "models_metrics.csv")],
+        "comparison_metrics_file": MULTIMODAL_MODELS_DIR / MODELS_METRICS_FILE,
+        "extra_arms": [("Proteomic", PROTEOMIC_MODELS_DIR / MODELS_METRICS_FILE)],
         "output_dir": MODALITY_COMPARISON_DIR,
     },
     {
         "baseline_label": "Clinical",
-        "baseline_metrics_file": CLINICAL_MODELS_DIR / "models_metrics.csv",
+        "baseline_metrics_file": CLINICAL_MODELS_DIR / MODELS_METRICS_FILE,
         "comparison_label": "Clinical filtered",
-        "comparison_metrics_file": CLINICAL_MODELS_FILTERED_DIR / "models_metrics.csv",
+        "comparison_metrics_file": CLINICAL_MODELS_FILTERED_DIR / MODELS_METRICS_FILE,
         "output_dir": CLINICAL_FILTERING_COMPARISON_DIR,
     },
 ]
 
-# %% PUBLICATION TABLES — pipeline _publication_tables
+# %% PUBLICATION TABLES — pipeline 15_publication_tables
 # Each entry is one modelling phase and becomes one sheet (named after
 # "label") in the performance and hyperparameters workbooks, read from the
 # models_metrics.csv / best_params.csv saved in "input_dir".
@@ -674,13 +633,13 @@ PERFORMANCE_PHASES = [
 COMPARISON_PHASES = [
     {
         "label": "Clinical vs Multimodal",
-        "delta_file": MODALITY_COMPARISON_DIR / "modality_comparison.csv",
+        "delta_file": MODALITY_COMPARISON_DIR / MODALITY_DELTA_FILE,
         "baseline_label": "Clinical",
         "comparison_label": "Multimodal",
     },
     {
         "label": "Clinical vs Clinical filtered",
-        "delta_file": CLINICAL_FILTERING_COMPARISON_DIR / "modality_comparison.csv",
+        "delta_file": CLINICAL_FILTERING_COMPARISON_DIR / MODALITY_DELTA_FILE,
         "baseline_label": "Clinical",
         "comparison_label": "Clinical filtered",
     },
