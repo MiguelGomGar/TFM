@@ -5,6 +5,8 @@ import pandas as pd
 import scipy.stats as stats
 import statsmodels.api as sm
 
+from src.utils.dataframe_utils import get_categorical_columns
+
 
 def compute_num_corr_matrix(df: pd.DataFrame) -> pd.DataFrame:
     """Compute Spearman correlation matrix for all numeric columns.
@@ -77,7 +79,7 @@ def compute_cat_corr_matrix(df: pd.DataFrame) -> pd.DataFrame:
     ValueError
         If the dataframe contains fewer than 2 categorical columns.
     """
-    cat_df = df.select_dtypes(include=["category", "object", "bool"])
+    cat_df = df[get_categorical_columns(df)]
     feature_names = list(cat_df.columns)
     n_features = len(feature_names)
 

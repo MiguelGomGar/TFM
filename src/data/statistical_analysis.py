@@ -5,6 +5,8 @@ import pandas as pd
 import scipy.stats as stats
 from tableone import TableOne
 
+from src.utils.dataframe_utils import get_categorical_columns, get_numeric_columns
+
 
 def compute_numeric_distribution(df: pd.DataFrame, col_name: str) -> pd.Series:
     """Extract a numeric column and remove missing values.
@@ -287,8 +289,8 @@ def create_table1(
     if target_var not in df.columns:
         raise ValueError(f"target_var '{target_var}' not found in dataframe columns.")
 
-    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-    categorical_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
+    numeric_cols = get_numeric_columns(df)
+    categorical_cols = get_categorical_columns(df)
 
     if target_var in numeric_cols:
         numeric_cols.remove(target_var)
