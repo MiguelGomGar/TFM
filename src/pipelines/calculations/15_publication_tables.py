@@ -10,6 +10,9 @@ CSV) so several metrics/partitions/parameters can be read at a glance:
   models, columns = (Metric, {baseline, comparison, Delta}).
 - hyperparameters_tables.xlsx: a single sheet comparing every modelling
   phase, rows = (Model, Parameter), columns = (Value, Phase).
+- table1.xlsx: the clinical descriptive Table 1 (pipeline 06), rows =
+  (Variable, Level), columns = (AF recurrence group, {Overall, no, yes,
+  P-Value}).
 """
 
 from pathlib import Path
@@ -21,11 +24,12 @@ from src.config import (
     PUBLICATION_TABLES_DECIMALS,
 )
 from src.utils.logging_utils import setup_logger
-from src.utils.paths import PUBLICATION_TABLES_DIR
+from src.utils.paths import PUBLICATION_TABLES_DIR, TABLE1_PATH
 from src.models.results_saving import (
     build_comparison_tables,
     build_hyperparameters_tables,
     build_performance_tables,
+    build_table1_workbook,
 )
 
 logger = setup_logger(Path(__file__).stem)
@@ -33,6 +37,7 @@ logger = setup_logger(Path(__file__).stem)
 PERFORMANCE_WORKBOOK = PUBLICATION_TABLES_DIR / "performance_tables.xlsx"
 COMPARISON_WORKBOOK = PUBLICATION_TABLES_DIR / "comparison_tables.xlsx"
 HYPERPARAMETERS_WORKBOOK = PUBLICATION_TABLES_DIR / "hyperparameters_tables.xlsx"
+TABLE1_WORKBOOK = PUBLICATION_TABLES_DIR / "table1.xlsx"
 
 
 # %% Main function
@@ -57,6 +62,7 @@ def main() -> None:
     build_hyperparameters_tables(
         PERFORMANCE_PHASES, HYPERPARAMETERS_WORKBOOK, logger=logger
     )
+    build_table1_workbook(TABLE1_PATH, TABLE1_WORKBOOK, logger=logger)
 
     logger.info(f"Publication tables saved to {PUBLICATION_TABLES_DIR}.")
 

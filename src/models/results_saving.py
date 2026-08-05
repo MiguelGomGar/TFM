@@ -1,5 +1,6 @@
 """Helpers for persisting model evaluation artifacts."""
 
+import re
 from collections.abc import Sequence
 from logging import Logger
 from pathlib import Path
@@ -485,6 +486,121 @@ def build_comparison_tables(
         return
 
     save_excel_workbook(sheets, output_path, n_header_rows=3, n_index_cols=1)
+
+
+_MEAN_SD_SUFFIX = ", mean (SD)"
+_MEAN_SD_VALUE = re.compile(r"^(-?\d+\.?\d*)\s*\((-?\d+\.?\d*)\)$")
+
+
+def _format_mean_sd_value(value: object) -> object:
+    """Turn a TableOne 'mean (SD)' cell into 'mean ± SD'.
+
+    Parameters
+    ----------
+    value : object
+        Cell value; only strings matching the '<mean> (<SD>)' pattern are
+        reformatted, everything else (NaN, already-formatted strings) passes
+        through unchanged.
+
+    Returns
+    -------
+    object
+        The reformatted string, or the original value if it does not match.
+    """
+    if not isinstance(value, str):
+        return value
+    match = _MEAN_SD_VALUE.match(value.strip())
+    if not match:
+        return value
+    mean, sd = match.groups()
+    return f"{mean} ± {sd}"
+
+
+def _humanize_table1(table1: pd.DataFrame) -> pd.DataFrame:
+    """Reformat a raw TableOne export for manuscript-ready presentation.
+
+    Underscores in variable and group names are TableOne's stand-in for
+    spaces (it reads them straight off the dataframe's column names), not a
+    meaningful separator, so they are replaced throughout. Numeric variables
+    reported as 'mean (SD)' are also switched to 'mean ± SD', which reads
+    better in a table than the parenthesized form; non-normal variables
+    reported as median [Q1,Q3] are left untouched since that reflects their
+    skewed distribution.
+
+    Parameters
+    ----------
+    table1 : pd.DataFrame
+        Table as read from table1.csv, with a ['Variable', 'Level'] row
+        MultiIndex and a 2-level column MultiIndex.
+
+    Returns
+    -------
+    pd.DataFrame
+        Same shape, with underscores stripped from labels and 'mean (SD)'
+        rows switched to 'mean ± SD'.
+    """
+    table1 = table1.copy()
+
+    variables = table1.index.get_level_values("Variable")
+    mean_sd_mask = variables.str.endswith(_MEAN_SD_SUFFIX)
+    for column in table1.columns:
+        table1.loc[mean_sd_mask, column] = table1.loc[mean_sd_mask, column].map(
+            _format_mean_sd_value
+        )
+
+    new_variables = variables.str.replace(
+        _MEAN_SD_SUFFIX, ", mean ± SD", regex=False
+    ).str.replace("_", " ", regex=False)
+    levels = table1.index.get_level_values("Level")
+    table1.index = pd.MultiIndex.from_arrays(
+        [new_variables, levels], names=["Variable", "Level"]
+    )
+
+    table1.columns = table1.columns.set_levels(
+        table1.columns.levels[0].str.replace("_", " ", regex=False), level=0
+    )
+
+    return table1
+
+
+def build_table1_workbook(
+    table1_path: str | Path,
+    output_path: str | Path,
+    logger: Logger | None = None,
+) -> None:
+    """Build a single-sheet workbook with the clinical Table 1.
+
+    Reformats the raw TableOne export (pipeline 06) into a merged-cell,
+    styled worksheet matching the rest of the publication tables, instead of
+    the flat, repeated-label CSV (see _humanize_table1 for the label/value
+    clean-up applied).
+
+    Parameters
+    ----------
+    table1_path : str or Path
+        Path to table1.csv (see config.TABLE1_PATH), as saved by
+        data.statistical_analysis.create_table1.
+    output_path : str or Path
+        Path of the .xlsx workbook to write.
+    logger : logging.Logger, optional
+        Logger used to report progress and a missing input file.
+    """
+    table1_path = Path(table1_path)
+    if not table1_path.exists():
+        if logger is not None:
+            logger.warning(f"Missing {table1_path}; skipping the Table 1 workbook.")
+        return
+
+    if logger is not None:
+        logger.info("Building the Table 1 workbook...")
+
+    table1 = read_csv(table1_path, header=[0, 1], index_col=[0, 1])
+    table1.index = table1.index.set_names(["Variable", "Level"])
+    table1 = _humanize_table1(table1)
+
+    save_excel_workbook(
+        {"Table 1": table1}, output_path, n_header_rows=3, n_index_cols=2
+    )
 
 
 def build_hyperparameters_tables(
