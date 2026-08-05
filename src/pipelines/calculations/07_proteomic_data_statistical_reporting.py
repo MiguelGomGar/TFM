@@ -17,6 +17,7 @@ from src.utils.filenames import (
     QQ_FILE,
     STRATIFIED_DISTRIBUTION_FILE,
 )
+from src.utils.dataframe_utils import get_proteomic_features
 from src.utils.io import read_parquet, save_csv
 from src.utils.logging_utils import setup_logger
 from src.utils.paths import (
@@ -37,11 +38,7 @@ def main() -> None:
     logger.info(f"Loading data from {INPUT_FILE}...")
     proteomic_data = read_parquet(INPUT_FILE)
 
-    proteomic_features = [
-        col
-        for col in proteomic_data.select_dtypes(include=["number"]).columns
-        if col not in [GROUP_ALLOCATION_VARIABLE, TARGET_VARIABLE]
-    ]
+    proteomic_features = get_proteomic_features(proteomic_data)
 
     logger.info("Computing global distributions for proteomic features...")
     for feature in proteomic_features:
