@@ -71,7 +71,7 @@ numbers (metrics, threshold selection, path and artifact-name resolution).
 
 ## Layout
 
-```
+``` bash
 run_calculations.py      Orchestrator: computes every result
 run_plots.py             Orchestrator: draws every figure
 src/

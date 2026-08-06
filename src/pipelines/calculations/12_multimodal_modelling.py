@@ -36,10 +36,9 @@ INPUT_FILE = CLEANED_MULTIMODAL_DATA_PATH
 CLINICAL_OUTPUT_DIR = CLINICAL_MODELS_MATCHED_DIR
 MULTIMODAL_OUTPUT_DIR = MULTIMODAL_MODELS_DIR
 
-# The clinical arm still filters its own predictors through the Elastic Net.
-CLINICAL_APPLY_FILTER = True
-# The multimodal arm starts from the features already kept by phases 1b and 2,
-# so it does not need to filter any further.
+# The clinical arm starts from the features already kept by phase 1b
+CLINICAL_APPLY_FILTER = False
+# The multimodal arm starts from the features already kept by phases 1b and 2
 MULTIMODAL_APPLY_FILTER = False
 
 logger = setup_logger(Path(__file__).stem)
